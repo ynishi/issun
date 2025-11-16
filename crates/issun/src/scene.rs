@@ -34,3 +34,47 @@ pub trait Scene: Send {
     /// Called when leaving this scene
     async fn on_exit(&mut self);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Scene; // Import derive macro
+    use async_trait::async_trait;
+
+    // Test Scene derive macro
+    #[derive(Scene)]
+    struct TestScene {
+        entered: bool,
+    }
+
+    #[tokio::test]
+    async fn test_derived_scene() {
+        let mut scene = TestScene { entered: false };
+
+        // Default on_enter should work
+        scene.on_enter().await;
+
+        // Default on_update should return Stay
+        let transition = scene.on_update().await;
+        assert_eq!(transition, SceneTransition::Stay);
+
+        // Default on_exit should work
+        scene.on_exit().await;
+    }
+
+    #[derive(Scene)]
+    enum GameScene {
+        Title,
+        Combat,
+    }
+
+    #[tokio::test]
+    async fn test_derived_enum_scene() {
+        let mut scene = GameScene::Title;
+
+        scene.on_enter().await;
+        let transition = scene.on_update().await;
+        assert_eq!(transition, SceneTransition::Stay);
+        scene.on_exit().await;
+    }
+}

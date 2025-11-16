@@ -14,16 +14,38 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 /// # Example
 /// ```ignore
 /// #[derive(Scene)]
-/// #[scene(context = "GameContext")]
 /// enum MyGameScene {
 ///     Title,
 ///     Combat(CombatData),
 /// }
 /// ```
 #[proc_macro_derive(Scene, attributes(scene))]
-pub fn derive_scene(_input: TokenStream) -> TokenStream {
-    // TODO: Implement Scene derive macro
-    TokenStream::new()
+pub fn derive_scene(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = &input.ident;
+
+    // For now, implement a default Scene that returns Stay on update
+    // In the future, we can support enum-based scene routing
+    let expanded = quote! {
+        #[async_trait::async_trait]
+        impl Scene for #name {
+            async fn on_enter(&mut self) {
+                // Default implementation: do nothing
+            }
+
+            async fn on_update(&mut self) -> SceneTransition {
+                // Default implementation: stay in current scene
+                SceneTransition::Stay
+            }
+
+            async fn on_exit(&mut self) {
+                // Default implementation: do nothing
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
 }
 
 /// Derive macro for Entity trait
