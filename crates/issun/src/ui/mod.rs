@@ -5,6 +5,7 @@
 //! - `core`: Abstract widget trait definitions (backend-independent)
 //! - `ratatui`: Ratatui backend implementations for widgets
 //! - `tui`: Terminal initialization and management
+//! - `input`: Input polling utilities for game loops
 //! - `title_screen`: Auto-generated title screen system
 //! - `ascii_art`: ASCII art presets
 //!
@@ -22,6 +23,7 @@
 pub mod core;
 pub mod ratatui;
 pub mod tui;
+pub mod input;
 pub mod title_screen;
 pub mod ascii_art;
 
