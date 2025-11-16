@@ -1,0 +1,123 @@
+//! Game loop for ISSUN
+//!
+//! Currently implements a simple synchronous turn-based loop.
+//! Async support can be added later if needed for non-blocking operations.
+
+use crate::error::Result;
+use crate::scene::{Scene, SceneTransition};
+use crossterm::event::{self, Event, KeyCode};
+use std::time::Duration;
+
+/// Game loop configuration
+pub struct GameLoopConfig {
+    /// Timeout for input polling (milliseconds)
+    pub input_timeout_ms: u64,
+    /// Enable input echo
+    pub enable_echo: bool,
+}
+
+impl Default for GameLoopConfig {
+    fn default() -> Self {
+        Self {
+            input_timeout_ms: 100,
+            enable_echo: false,
+        }
+    }
+}
+
+/// Simple synchronous game loop for turn-based games
+pub struct GameLoop {
+    config: GameLoopConfig,
+}
+
+impl GameLoop {
+    /// Create a new game loop with default configuration
+    pub fn new() -> Self {
+        Self {
+            config: GameLoopConfig::default(),
+        }
+    }
+
+    /// Create a game loop with custom configuration
+    pub fn with_config(config: GameLoopConfig) -> Self {
+        Self { config }
+    }
+
+    /// Run the game loop with a scene
+    ///
+    /// Returns when SceneTransition::Quit is received
+    pub fn run<S: Scene>(&self, mut scene: S) -> Result<()> {
+        scene.on_enter();
+
+        loop {
+            // Poll for input
+            if event::poll(Duration::from_millis(self.config.input_timeout_ms))? {
+                if let Event::Key(key_event) = event::read()? {
+                    // Handle quit
+                    if key_event.code == KeyCode::Char('q') 
+                        || key_event.code == KeyCode::Esc {
+                        break;
+                    }
+                }
+            }
+
+            // Update scene
+            match scene.on_update() {
+                SceneTransition::Stay => {
+                    // Continue current scene
+                }
+                SceneTransition::Transition => {
+                    // Scene requests transition
+                    // TODO: Handle scene transitions
+                    break;
+                }
+                SceneTransition::Quit => {
+                    // Quit requested
+                    break;
+                }
+            }
+        }
+
+        scene.on_exit();
+        Ok(())
+    }
+}
+
+impl Default for GameLoop {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestScene {
+        update_count: usize,
+    }
+
+    impl Scene for TestScene {
+        fn on_enter(&mut self) {
+            self.update_count = 0;
+        }
+
+        fn on_update(&mut self) -> SceneTransition {
+            self.update_count += 1;
+            if self.update_count >= 3 {
+                SceneTransition::Quit
+            } else {
+                SceneTransition::Stay
+            }
+        }
+
+        fn on_exit(&mut self) {}
+    }
+
+    #[test]
+    fn test_game_loop_config() {
+        let config = GameLoopConfig::default();
+        assert_eq!(config.input_timeout_ms, 100);
+        assert_eq!(config.enable_echo, false);
+    }
+}

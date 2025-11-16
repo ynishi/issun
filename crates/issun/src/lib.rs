@@ -29,15 +29,21 @@
 pub use issun_macros::*;
 
 // Core modules
+pub mod error;
 pub mod plugin;
 pub mod scene;
 pub mod context;
+pub mod builder;
+pub mod engine;
+pub mod ui;
 
 // Prelude for convenient imports
 pub mod prelude {
+    pub use crate::error::{IssunError, Result};
     pub use crate::plugin::Plugin;
     pub use crate::scene::{Scene, SceneTransition};
     pub use crate::context::GameContext;
+    pub use crate::builder::GameBuilder;
 }
 
 #[cfg(test)]
