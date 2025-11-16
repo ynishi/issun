@@ -6,7 +6,6 @@ pub mod entities;
 pub mod scenes;
 pub mod game_context;
 pub mod game_scene;
-pub mod scene_handler;
 pub mod scene_helpers;
 
 pub use game_context::GameContext;
