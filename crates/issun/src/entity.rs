@@ -34,6 +34,8 @@ pub trait Entity: Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Entity; // Import derive macro from crate root
+    use async_trait::async_trait; // Needed for macro expansion
 
     struct TestEntity {
         id: String,
@@ -81,5 +83,36 @@ mod tests {
             entity.update(&mut ctx).await;
         }
         assert!(entity.is_dead());
+    }
+
+    // Test Entity derive macro
+    #[derive(Entity)]
+    struct DerivedPlayer {
+        #[entity(id)]
+        name: String,
+        hp: i32,
+    }
+
+    #[tokio::test]
+    async fn test_derived_entity() {
+        let player = DerivedPlayer {
+            name: "Alice".to_string(),
+            hp: 100,
+        };
+
+        assert_eq!(player.id(), "Alice");
+    }
+
+    #[tokio::test]
+    async fn test_derived_entity_update() {
+        let mut player = DerivedPlayer {
+            name: "Bob".to_string(),
+            hp: 100,
+        };
+        let mut ctx = Context::new();
+
+        // Default update implementation should do nothing (no panic)
+        player.update(&mut ctx).await;
+        assert_eq!(player.hp, 100); // hp unchanged
     }
 }

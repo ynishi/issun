@@ -28,6 +28,9 @@
 // Re-export macros
 pub use issun_macros::*;
 
+// Re-export async-trait for macros
+pub use async_trait;
+
 // Core modules
 pub mod error;
 pub mod plugin;
