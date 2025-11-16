@@ -37,14 +37,18 @@ pub mod builder;
 pub mod engine;
 pub mod ui;
 pub mod storage;
+pub mod entity;
+pub mod service;
 
 // Prelude for convenient imports
 pub mod prelude {
     pub use crate::error::{IssunError, Result};
-    pub use crate::plugin::Plugin;
+    pub use crate::plugin::{Plugin, PluginBuilder};
     pub use crate::scene::{Scene, SceneTransition};
-    pub use crate::context::GameContext;
+    pub use crate::context::{GameContext, Context};
     pub use crate::builder::GameBuilder;
+    pub use crate::entity::Entity;
+    pub use crate::service::Service;
 }
 
 #[cfg(test)]

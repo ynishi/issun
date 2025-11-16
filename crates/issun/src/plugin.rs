@@ -24,5 +24,15 @@ pub trait Plugin: Send + Sync {
 
 /// Builder interface for plugins to register components
 pub trait PluginBuilder {
-    // TODO: Add methods for registering services, assets, scenes
+    /// Register an entity type
+    fn register_entity(&mut self, name: &str, entity: Box<dyn crate::entity::Entity>);
+
+    /// Register a service
+    fn register_service(&mut self, service: Box<dyn crate::service::Service>);
+
+    /// Register a scene
+    fn register_scene(&mut self, name: &str, scene: Box<dyn crate::scene::Scene>);
+
+    /// Register an asset
+    fn register_asset(&mut self, name: &str, asset: Box<dyn std::any::Any + Send + Sync>);
 }

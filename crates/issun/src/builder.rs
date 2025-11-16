@@ -2,7 +2,7 @@
 
 use crate::error::{IssunError, Result};
 use crate::plugin::{Plugin, PluginBuilder};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Game builder for composing plugins and configuring the game
 pub struct GameBuilder {
@@ -122,17 +122,39 @@ impl Default for GameBuilder {
 
 /// Default plugin builder implementation
 struct DefaultPluginBuilder {
-    // TODO: Add fields for services, assets, scenes
+    entities: HashMap<String, Box<dyn crate::entity::Entity>>,
+    services: Vec<Box<dyn crate::service::Service>>,
+    scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
+    assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
 }
 
 impl DefaultPluginBuilder {
     fn new() -> Self {
-        Self {}
+        Self {
+            entities: HashMap::new(),
+            services: Vec::new(),
+            scenes: HashMap::new(),
+            assets: HashMap::new(),
+        }
     }
 }
 
 impl PluginBuilder for DefaultPluginBuilder {
-    // TODO: Implement PluginBuilder methods
+    fn register_entity(&mut self, name: &str, entity: Box<dyn crate::entity::Entity>) {
+        self.entities.insert(name.to_string(), entity);
+    }
+
+    fn register_service(&mut self, service: Box<dyn crate::service::Service>) {
+        self.services.push(service);
+    }
+
+    fn register_scene(&mut self, name: &str, scene: Box<dyn crate::scene::Scene>) {
+        self.scenes.insert(name.to_string(), scene);
+    }
+
+    fn register_asset(&mut self, name: &str, asset: Box<dyn std::any::Any + Send + Sync>) {
+        self.assets.insert(name.to_string(), asset);
+    }
 }
 
 /// Game instance
