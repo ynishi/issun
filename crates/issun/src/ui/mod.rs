@@ -3,8 +3,7 @@
 //! # Structure
 //!
 //! - `core`: Abstract widget trait definitions (backend-independent)
-//! - `ratatui`: Ratatui backend implementations for widgets
-//! - `tui`: Terminal initialization and management
+//! - `ratatui`: Ratatui backend implementations for widgets (including Tui)
 //! - `input`: Input polling utilities for game loops
 //! - `title_screen`: Auto-generated title screen system
 //! - `ascii_art`: ASCII art presets
@@ -22,12 +21,10 @@
 
 pub mod core;
 pub mod ratatui;
-pub mod tui;
 pub mod input;
-pub mod title_screen;
-pub mod ascii_art;
+pub mod title;
 
 // Re-exports for convenience
 pub use core::{Widget, InputEvent};
-pub use tui::Tui;
-pub use title_screen::{TitleScreenAsset, AsciiFont, TitleScreenService};
+pub use ratatui::Tui;
+pub use title::title_screen::{TitleScreenAsset, AsciiFont, TitleScreenService};

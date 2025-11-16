@@ -103,7 +103,7 @@ impl TitleScreenService {
                 }
             }
             AsciiFont::Preset(name) => {
-                if let Some(art) = crate::ui::ascii_art::get_art_by_name(name) {
+                if let Some(art) = crate::ui::title::ascii_art::get_art_by_name(name) {
                     output.push_str(art);
                 } else {
                     output.push_str(&asset.game_name);
