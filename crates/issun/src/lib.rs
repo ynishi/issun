@@ -36,6 +36,7 @@ pub mod context;
 pub mod builder;
 pub mod engine;
 pub mod ui;
+pub mod storage;
 
 // Prelude for convenient imports
 pub mod prelude {
