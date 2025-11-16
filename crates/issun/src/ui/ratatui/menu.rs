@@ -1,15 +1,25 @@
-//! Menu widget for ISSUN
+//! Menu widget for ratatui backend
 
-use crate::ui::widgets::Widget as IssunWidget;
-use crossterm::event::KeyCode;
+use crate::ui::core::widget::{InputEvent, Widget};
+use crate::ui::core::menu::Menu;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
+    Frame,
 };
 
-/// Menu widget with cursor navigation
+/// Menu widget with cursor navigation (ratatui implementation)
+///
+/// # Example
+///
+/// ```ignore
+/// use issun::ui::ratatui::MenuWidget;
+///
+/// let mut menu = MenuWidget::new(vec!["Start Game".into(), "Quit".into()]);
+/// menu.render(frame, area);
+/// ```
 pub struct MenuWidget {
     /// Menu items
     items: Vec<String>,
@@ -49,33 +59,13 @@ impl MenuWidget {
         self
     }
 
-    /// Get selected index
-    pub fn selected(&self) -> usize {
-        self.selected
+    /// Render the menu widget (ratatui-specific)
+    pub fn render(&self, frame: &mut Frame, area: Rect) {
+        self.render_to_buffer(area, frame.buffer_mut());
     }
 
-    /// Get selected item
-    pub fn selected_item(&self) -> Option<&str> {
-        self.items.get(self.selected).map(|s| s.as_str())
-    }
-
-    /// Move cursor up
-    pub fn move_up(&mut self) {
-        if self.selected > 0 {
-            self.selected -= 1;
-        }
-    }
-
-    /// Move cursor down
-    pub fn move_down(&mut self) {
-        if self.selected < self.items.len().saturating_sub(1) {
-            self.selected += 1;
-        }
-    }
-}
-
-impl IssunWidget for MenuWidget {
-    fn render(&self, area: Rect, buf: &mut Buffer) {
+    /// Render to buffer (for lower-level rendering)
+    pub fn render_to_buffer(&self, area: Rect, buf: &mut Buffer) {
         let mut y = area.y;
 
         // Render title if present
@@ -112,7 +102,8 @@ impl IssunWidget for MenuWidget {
         }
     }
 
-    fn min_size(&self) -> (u16, u16) {
+    /// Get minimum size required for this menu
+    pub fn min_size(&self) -> (u16, u16) {
         let height = self.items.len() as u16 + if self.title.is_some() { 2 } else { 0 };
         let width = self
             .items
@@ -123,18 +114,46 @@ impl IssunWidget for MenuWidget {
             + 2; // +2 for cursor
         (width, height)
     }
+}
 
-    fn handle_input(&mut self, key: KeyCode) -> bool {
-        match key {
-            KeyCode::Up | KeyCode::Char('k') => {
+impl Widget for MenuWidget {
+    fn handle_input(&mut self, event: InputEvent) -> bool {
+        match event {
+            InputEvent::Up => {
                 self.move_up();
                 true
             }
-            KeyCode::Down | KeyCode::Char('j') => {
+            InputEvent::Down => {
                 self.move_down();
                 true
             }
             _ => false,
+        }
+    }
+
+    fn widget_type(&self) -> &'static str {
+        "MenuWidget"
+    }
+}
+
+impl Menu for MenuWidget {
+    fn selected(&self) -> usize {
+        self.selected
+    }
+
+    fn selected_item(&self) -> Option<&str> {
+        self.items.get(self.selected).map(|s| s.as_str())
+    }
+
+    fn move_up(&mut self) {
+        if self.selected > 0 {
+            self.selected -= 1;
+        }
+    }
+
+    fn move_down(&mut self) {
+        if self.selected < self.items.len().saturating_sub(1) {
+            self.selected += 1;
         }
     }
 }
@@ -153,18 +172,18 @@ mod tests {
     #[test]
     fn test_menu_navigation() {
         let mut menu = MenuWidget::new(vec!["Item 1".into(), "Item 2".into(), "Item 3".into()]);
-        
+
         assert_eq!(menu.selected(), 0);
-        
+
         menu.move_down();
         assert_eq!(menu.selected(), 1);
-        
+
         menu.move_down();
         assert_eq!(menu.selected(), 2);
-        
+
         menu.move_down(); // Should not go beyond
         assert_eq!(menu.selected(), 2);
-        
+
         menu.move_up();
         assert_eq!(menu.selected(), 1);
     }
@@ -172,13 +191,13 @@ mod tests {
     #[test]
     fn test_handle_input() {
         let mut menu = MenuWidget::new(vec!["Item 1".into(), "Item 2".into()]);
-        
-        assert!(menu.handle_input(KeyCode::Down));
+
+        assert!(menu.handle_input(InputEvent::Down));
         assert_eq!(menu.selected(), 1);
-        
-        assert!(menu.handle_input(KeyCode::Up));
+
+        assert!(menu.handle_input(InputEvent::Up));
         assert_eq!(menu.selected(), 0);
-        
-        assert!(!menu.handle_input(KeyCode::Enter)); // Not handled
+
+        assert!(!menu.handle_input(InputEvent::Select)); // Not handled
     }
 }
