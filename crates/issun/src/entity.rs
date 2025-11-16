@@ -34,8 +34,8 @@ pub trait Entity: Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Entity; // Import derive macro from crate root
-    use async_trait::async_trait; // Needed for macro expansion
+    use crate::Entity; // Import derive macro
+    use async_trait::async_trait;
 
     struct TestEntity {
         id: String,
