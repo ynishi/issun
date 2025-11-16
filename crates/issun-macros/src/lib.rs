@@ -125,7 +125,16 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_derive(Asset)]
-pub fn derive_asset(_input: TokenStream) -> TokenStream {
-    // TODO: Implement Asset derive macro
-    TokenStream::new()
+pub fn derive_asset(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = &input.ident;
+
+    let expanded = quote! {
+        impl Asset for #name {
+            // Uses default implementation from trait
+        }
+    };
+
+    TokenStream::from(expanded)
 }
