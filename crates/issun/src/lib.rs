@@ -48,7 +48,7 @@ pub mod store;
 // Prelude for convenient imports
 pub mod prelude {
     pub use crate::error::{IssunError, Result};
-    pub use crate::plugin::{Plugin, PluginBuilder};
+    pub use crate::plugin::{Plugin, PluginBuilder, TurnBasedCombatPlugin};
     pub use crate::scene::{Scene, SceneTransition};
     pub use crate::context::{GameContext, Context};
     pub use crate::builder::GameBuilder;

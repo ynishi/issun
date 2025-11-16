@@ -1,8 +1,36 @@
 //! Plugin system for ISSUN
 //!
 //! Plugins allow you to compose game systems in a modular way.
+//!
+//! # Built-in Plugins (Future)
+//!
+//! ISSUN will provide optional built-in plugins for common game systems:
+//! - `TurnBasedCombatPlugin`: Turn-based combat with damage calculation, combat log
+//! - `InventoryPlugin`: Item management, equipment system
+//! - `LootPlugin`: Drop generation, rarity system
+//! - `DungeonPlugin`: Floor progression, room generation
+//! - `BuffPlugin`: Buff/debuff management
+//!
+//! # Usage
+//!
+//! ```ignore
+//! use issun::plugin::{Plugin, TurnBasedCombatPlugin};
+//!
+//! let game = GameBuilder::new()
+//!     .add_plugin(TurnBasedCombatPlugin::default())
+//!     .build();
+//! ```
 
 use async_trait::async_trait;
+
+// Built-in plugins
+pub mod combat;
+// pub mod inventory;  // TODO: Implement
+// pub mod loot;       // TODO: Implement
+// pub mod dungeon;    // TODO: Implement
+
+// Re-exports for convenience
+pub use combat::TurnBasedCombatPlugin;
 
 /// Plugin trait for system composition
 #[async_trait]
