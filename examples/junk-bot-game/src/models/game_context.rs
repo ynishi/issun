@@ -4,7 +4,7 @@
 
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
-use super::entities::{Player, Bot, Weapon, BuffCard, BuffType, Dungeon};
+use super::entities::{Player, Bot, Weapon, BuffCard, BuffType, Dungeon, LootItem, ItemEffect, WeaponEffect};
 
 /// Persistent game data (survives scene transitions)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +110,41 @@ impl GameContext {
             }
         }
         self.buff_cards.push(card);
+    }
+
+    /// Apply a loot item to the player
+    pub fn apply_loot_item(&mut self, item: &LootItem) {
+        match &item.effect {
+            ItemEffect::Weapon { attack: _, ammo: _ } => {
+                // Determine weapon effect based on name
+                let effect = match item.name.as_str() {
+                    "Shotgun" => WeaponEffect::Shotgun,
+                    "Sniper Rifle" => WeaponEffect::Sniper,
+                    "Electric Gun" => WeaponEffect::Electric,
+                    _ => WeaponEffect::None,
+                };
+
+                // Add weapon to inventory instead of directly equipping
+                if let Some(weapon) = item.to_weapon(effect) {
+                    self.add_to_inventory(weapon);
+                }
+            }
+            ItemEffect::Armor(defense) => {
+                self.player.defense += defense;
+            }
+            ItemEffect::Consumable(hp) => {
+                self.player.hp = (self.player.hp + hp).min(self.player.max_hp);
+            }
+            ItemEffect::Ammo(amount) => {
+                // Refill player's weapon ammo
+                if self.player.equipped_weapon.max_ammo > 0 {
+                    self.player.equipped_weapon.current_ammo =
+                        (self.player.equipped_weapon.current_ammo + amount)
+                            .min(self.player.equipped_weapon.max_ammo + amount);
+                    self.player.equipped_weapon.max_ammo += amount;
+                }
+            }
+        }
     }
 }
 

@@ -1,4 +1,7 @@
 use crate::models::entities::Floor4Choice;
+use crate::models::{GameContext, GameScene, scenes::{CombatSceneData, TitleSceneData}};
+use issun::prelude::SceneTransition;
+use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
 /// Scene data for Floor 4 choice
@@ -37,6 +40,40 @@ impl Floor4ChoiceSceneData {
             1 => Floor4Choice::Normal,
             2 => Floor4Choice::Hard,
             _ => Floor4Choice::Normal,
+        }
+    }
+
+    pub fn handle_input(
+        mut self,
+        ctx: &mut GameContext,
+        input: InputEvent,
+    ) -> (GameScene, SceneTransition) {
+        match input {
+            InputEvent::Up => {
+                self.cursor_up();
+                (GameScene::Floor4Choice(self), SceneTransition::Stay)
+            }
+            InputEvent::Down => {
+                self.cursor_down();
+                (GameScene::Floor4Choice(self), SceneTransition::Stay)
+            }
+            InputEvent::Select => {
+                // Apply floor 4 choice
+                let choice = self.get_selected_choice();
+                if let Some(dungeon) = ctx.get_dungeon_mut() {
+                    dungeon.set_floor4_choice(choice);
+                    // Get the room and start combat
+                    if let Some(room) = dungeon.get_current_room() {
+                        return (GameScene::Combat(CombatSceneData::from_room(room.clone())), SceneTransition::Stay);
+                    }
+                }
+                (GameScene::Floor4Choice(self), SceneTransition::Stay)
+            }
+            InputEvent::Cancel => {
+                // Go back to title
+                (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay)
+            }
+            _ => (GameScene::Floor4Choice(self), SceneTransition::Stay)
         }
     }
 }

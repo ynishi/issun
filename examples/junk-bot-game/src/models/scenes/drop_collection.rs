@@ -1,6 +1,9 @@
 //! Drop collection scene data
 
-use crate::models::entities::LootItem;
+use crate::models::entities::{LootItem, generate_random_cards};
+use crate::models::{GameContext, GameScene, scenes::CardSelectionSceneData};
+use issun::prelude::SceneTransition;
+use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
 /// Scene data for collecting dropped items after combat
@@ -55,6 +58,52 @@ impl DropCollectionSceneData {
             Some(item)
         } else {
             None
+        }
+    }
+
+    pub fn handle_input(
+        mut self,
+        ctx: &mut GameContext,
+        input: InputEvent,
+    ) -> (GameScene, SceneTransition) {
+        match input {
+            InputEvent::Up => {
+                self.move_up();
+                (GameScene::DropCollection(self), SceneTransition::Stay)
+            }
+            InputEvent::Down => {
+                self.move_down();
+                (GameScene::DropCollection(self), SceneTransition::Stay)
+            }
+            InputEvent::Select => {
+                // Take selected item
+                if let Some(item) = self.take_selected() {
+                    ctx.apply_loot_item(&item);
+                }
+
+                // If no more items, transition to card selection
+                if !self.has_drops() {
+                    let cards = generate_random_cards(3);
+                    (GameScene::CardSelection(CardSelectionSceneData::new(cards)), SceneTransition::Stay)
+                } else {
+                    (GameScene::DropCollection(self), SceneTransition::Stay)
+                }
+            }
+            InputEvent::Char(' ') => {
+                // Take all items
+                while let Some(item) = self.take_selected() {
+                    ctx.apply_loot_item(&item);
+                }
+                // Transition to card selection after taking all
+                let cards = generate_random_cards(3);
+                (GameScene::CardSelection(CardSelectionSceneData::new(cards)), SceneTransition::Stay)
+            }
+            InputEvent::Cancel => {
+                // Skip all items, transition to card selection
+                let cards = generate_random_cards(3);
+                (GameScene::CardSelection(CardSelectionSceneData::new(cards)), SceneTransition::Stay)
+            }
+            _ => (GameScene::DropCollection(self), SceneTransition::Stay)
         }
     }
 }

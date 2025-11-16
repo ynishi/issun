@@ -1,4 +1,7 @@
 use crate::models::entities::Room;
+use crate::models::{GameContext, GameScene, scenes::TitleSceneData};
+use issun::prelude::SceneTransition;
+use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
 /// Scene data for room selection
@@ -36,5 +39,14 @@ impl RoomSelectionSceneData {
     /// Get the selected room
     pub fn get_selected_room(&self) -> Option<Room> {
         self.available_rooms.get(self.cursor).cloned()
+    }
+
+    /// Room selection is no longer used in dungeon mode, redirect to title
+    pub fn handle_input(
+        self,
+        _ctx: &mut GameContext,
+        _input: InputEvent,
+    ) -> (GameScene, SceneTransition) {
+        (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay)
     }
 }

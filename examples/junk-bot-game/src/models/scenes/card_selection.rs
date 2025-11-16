@@ -1,4 +1,7 @@
 use crate::models::entities::BuffCard;
+use crate::models::{GameContext, GameScene, proceed_to_next_floor};
+use issun::prelude::SceneTransition;
+use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
 /// Scene data for card selection
@@ -45,5 +48,36 @@ impl CardSelectionSceneData {
     pub fn get_selected_card(&self) -> Option<BuffCard> {
         self.selected_index
             .and_then(|idx| self.available_cards.get(idx).cloned())
+    }
+
+    pub fn handle_input(
+        mut self,
+        ctx: &mut GameContext,
+        input: InputEvent,
+    ) -> (GameScene, SceneTransition) {
+        match input {
+            InputEvent::Up => {
+                self.cursor_up();
+                (GameScene::CardSelection(self), SceneTransition::Stay)
+            }
+            InputEvent::Down => {
+                self.cursor_down();
+                (GameScene::CardSelection(self), SceneTransition::Stay)
+            }
+            InputEvent::Select => {
+                // Select card and apply buff
+                self.select_current();
+                if let Some(card) = self.get_selected_card() {
+                    ctx.apply_buff_card(card);
+                }
+                // Proceed to next floor after selecting a card
+                proceed_to_next_floor(ctx)
+            }
+            InputEvent::Cancel => {
+                // Skip card selection, proceed to next floor
+                proceed_to_next_floor(ctx)
+            }
+            _ => (GameScene::CardSelection(self), SceneTransition::Stay)
+        }
     }
 }
