@@ -43,6 +43,7 @@ pub mod storage;
 pub mod entity;
 pub mod service;
 pub mod asset;
+pub mod store;
 
 // Prelude for convenient imports
 pub mod prelude {
@@ -54,6 +55,7 @@ pub mod prelude {
     pub use crate::entity::Entity;
     pub use crate::service::Service;
     pub use crate::asset::Asset;
+    pub use crate::store::{Store, EntityStore};
 }
 
 #[cfg(test)]

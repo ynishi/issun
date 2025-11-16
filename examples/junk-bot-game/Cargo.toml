@@ -1,0 +1,15 @@
+[package]
+name = "junk-bot-game"
+version = "0.1.0"
+edition = "2021"
+
+# Exclude from parent workspace (this is a standalone template)
+[workspace]
+
+[dependencies]
+issun = { path = "../../crates/issun" }
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+async-trait = "0.1"
+rand = "0.8"
+ratatui = "0.28"

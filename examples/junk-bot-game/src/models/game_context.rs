@@ -1,0 +1,122 @@
+//! Game context - persistent data across scenes
+//!
+//! This data survives scene transitions and should be saved/loaded
+
+use issun::prelude::*;
+use serde::{Deserialize, Serialize};
+use super::entities::{Player, Bot, Weapon, BuffCard, BuffType, Dungeon};
+
+/// Persistent game data (survives scene transitions)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameContext {
+    pub player: Player,
+    pub bots: Vec<Bot>,
+    pub inventory: Vec<Weapon>,
+    pub buff_cards: Vec<BuffCard>,
+    pub score: u32,
+    pub floor: u32,
+    pub dungeon: Option<Dungeon>,
+}
+
+impl GameContext {
+    pub fn new() -> Self {
+        Self {
+            player: Player::new("Hero"),
+            bots: vec![
+                Bot::new("Rusty"),
+                Bot::new("Sparky"),
+            ],
+            inventory: Vec::new(),
+            buff_cards: Vec::new(),
+            score: 0,
+            floor: 1,
+            dungeon: None,
+        }
+    }
+
+    /// Start a new dungeon run
+    pub fn start_dungeon(&mut self) {
+        self.dungeon = Some(Dungeon::new());
+        self.floor = 1;
+    }
+
+    /// Get current dungeon
+    pub fn get_dungeon(&self) -> Option<&Dungeon> {
+        self.dungeon.as_ref()
+    }
+
+    /// Get mutable dungeon
+    pub fn get_dungeon_mut(&mut self) -> Option<&mut Dungeon> {
+        self.dungeon.as_mut()
+    }
+
+    /// Check if at least one party member (player or bot) is alive
+    pub fn is_party_alive(&self) -> bool {
+        self.player.is_alive() || self.bots.iter().any(|bot| bot.is_alive())
+    }
+
+    /// Get all alive bots
+    pub fn alive_bots(&self) -> Vec<&Bot> {
+        self.bots.iter().filter(|bot| bot.is_alive()).collect()
+    }
+
+    /// Get mutable reference to alive bots
+    pub fn alive_bots_mut(&mut self) -> Vec<&mut Bot> {
+        self.bots.iter_mut().filter(|bot| bot.is_alive()).collect()
+    }
+
+    /// Add weapon to inventory
+    pub fn add_to_inventory(&mut self, weapon: Weapon) {
+        self.inventory.push(weapon);
+    }
+
+    /// Remove weapon from inventory by index
+    pub fn remove_from_inventory(&mut self, index: usize) -> Option<Weapon> {
+        if index < self.inventory.len() {
+            Some(self.inventory.remove(index))
+        } else {
+            None
+        }
+    }
+
+    /// Apply a buff card to the player and bots
+    pub fn apply_buff_card(&mut self, card: BuffCard) {
+        match &card.buff_type {
+            BuffType::AttackUp(amount) => {
+                self.player.attack += amount;
+                for bot in &mut self.bots {
+                    bot.attack += amount;
+                }
+            }
+            BuffType::HpUp(amount) => {
+                self.player.max_hp += amount;
+                self.player.hp += amount; // Also heal by the amount
+                for bot in &mut self.bots {
+                    bot.max_hp += amount;
+                    bot.hp += amount;
+                }
+            }
+            BuffType::DropRateUp(_multiplier) => {
+                // TODO: Implement drop rate system in the future
+                // For now, just store the card
+            }
+            BuffType::CriticalUp(_rate) => {
+                // TODO: Implement critical hit system in the future
+                // For now, just store the card
+            }
+            BuffType::SpeedUp(_amount) => {
+                // TODO: Implement speed system in the future
+                // For now, just store the card
+            }
+        }
+        self.buff_cards.push(card);
+    }
+}
+
+impl Default for GameContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl issun::context::GameContext for GameContext {}
