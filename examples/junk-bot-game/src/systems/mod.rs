@@ -1,16 +1,11 @@
 //! Business logic layer
 //!
-//! Pure functions that operate on entities and game state
-
-pub mod combat_system;
-
-// Example: Combat system
-// Apply damage to a target
-pub fn apply_damage(target_hp: i32, damage: i32) -> i32 {
-    (target_hp - damage).max(0)
-}
-
-// Calculate damage (simple: attacker's attack value)
-pub fn calculate_damage(attacker_attack: i32) -> i32 {
-    attacker_attack
-}
+//! Domain services for complex logic that doesn't fit in Entities or SceneHandler.
+//! Keep this minimal - most game logic should live in:
+//! - entities/* (data + factory methods + simple domain logic)
+//! - scene_handler.rs (game flow + scene transitions)
+//!
+//! Only add services here when:
+//! - Logic is too complex for Entity methods
+//! - External API clients are needed
+//! - Cross-entity orchestration is required
