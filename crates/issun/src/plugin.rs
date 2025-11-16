@@ -2,7 +2,10 @@
 //!
 //! Plugins allow you to compose game systems in a modular way.
 
+use async_trait::async_trait;
+
 /// Plugin trait for system composition
+#[async_trait]
 pub trait Plugin: Send + Sync {
     /// Unique identifier for this plugin
     fn name(&self) -> &'static str;
@@ -16,7 +19,7 @@ pub trait Plugin: Send + Sync {
     }
 
     /// Initialize plugin (called before build)
-    fn initialize(&mut self) {}
+    async fn initialize(&mut self) {}
 }
 
 /// Builder interface for plugins to register components

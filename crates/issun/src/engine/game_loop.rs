@@ -1,7 +1,6 @@
 //! Game loop for ISSUN
 //!
-//! Currently implements a simple synchronous turn-based loop.
-//! Async support can be added later if needed for non-blocking operations.
+//! Async-enabled turn-based game loop with non-blocking operations support.
 
 use crate::error::Result;
 use crate::scene::{Scene, SceneTransition};
@@ -46,15 +45,15 @@ impl GameLoop {
     /// Run the game loop with a scene
     ///
     /// Returns when SceneTransition::Quit is received
-    pub fn run<S: Scene>(&self, mut scene: S) -> Result<()> {
-        scene.on_enter();
+    pub async fn run<S: Scene>(&self, mut scene: S) -> Result<()> {
+        scene.on_enter().await;
 
         loop {
             // Poll for input
             if event::poll(Duration::from_millis(self.config.input_timeout_ms))? {
                 if let Event::Key(key_event) = event::read()? {
                     // Handle quit
-                    if key_event.code == KeyCode::Char('q') 
+                    if key_event.code == KeyCode::Char('q')
                         || key_event.code == KeyCode::Esc {
                         break;
                     }
@@ -62,7 +61,7 @@ impl GameLoop {
             }
 
             // Update scene
-            match scene.on_update() {
+            match scene.on_update().await {
                 SceneTransition::Stay => {
                     // Continue current scene
                 }
@@ -78,7 +77,7 @@ impl GameLoop {
             }
         }
 
-        scene.on_exit();
+        scene.on_exit().await;
         Ok(())
     }
 }
@@ -92,17 +91,19 @@ impl Default for GameLoop {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
 
     struct TestScene {
         update_count: usize,
     }
 
+    #[async_trait]
     impl Scene for TestScene {
-        fn on_enter(&mut self) {
+        async fn on_enter(&mut self) {
             self.update_count = 0;
         }
 
-        fn on_update(&mut self) -> SceneTransition {
+        async fn on_update(&mut self) -> SceneTransition {
             self.update_count += 1;
             if self.update_count >= 3 {
                 SceneTransition::Quit
@@ -111,7 +112,7 @@ mod tests {
             }
         }
 
-        fn on_exit(&mut self) {}
+        async fn on_exit(&mut self) {}
     }
 
     #[test]

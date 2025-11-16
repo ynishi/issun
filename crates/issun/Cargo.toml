@@ -25,6 +25,8 @@ rand = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 figlet-rs = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.8"

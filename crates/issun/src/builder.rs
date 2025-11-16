@@ -37,10 +37,10 @@ impl GameBuilder {
     }
 
     /// Build and run the game
-    pub fn build(mut self) -> Result<Game> {
+    pub async fn build(mut self) -> Result<Game> {
         // Initialize plugins first
         for plugin in &mut self.plugins {
-            plugin.initialize();
+            plugin.initialize().await;
         }
 
         // Resolve dependencies (creates indices, not references)

@@ -2,6 +2,8 @@
 //!
 //! Scenes represent distinct game states with their own data and lifecycle.
 
+use async_trait::async_trait;
+
 /// Scene transition result
 ///
 /// Note: This is a simple enum without data.
@@ -21,13 +23,14 @@ pub enum SceneTransition {
 ///
 /// Scenes represent distinct game states (Title, Combat, etc.)
 /// Each scene has its own data that is discarded on transition.
-pub trait Scene {
+#[async_trait]
+pub trait Scene: Send {
     /// Called when entering this scene
-    fn on_enter(&mut self);
+    async fn on_enter(&mut self);
 
     /// Called every frame, returns transition decision
-    fn on_update(&mut self) -> SceneTransition;
+    async fn on_update(&mut self) -> SceneTransition;
 
     /// Called when leaving this scene
-    fn on_exit(&mut self);
+    async fn on_exit(&mut self);
 }

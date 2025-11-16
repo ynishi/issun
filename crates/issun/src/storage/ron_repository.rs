@@ -1,10 +1,11 @@
 //! RON-based save repository
 
+use async_trait::async_trait;
 use crate::error::{IssunError, Result};
 use crate::storage::repository::SaveRepository;
 use crate::storage::save_data::{SaveData, SaveMetadata};
-use std::fs;
 use std::path::{Path, PathBuf};
+use tokio::fs;
 
 /// RON-based save repository
 pub struct RonSaveRepository {
@@ -13,12 +14,12 @@ pub struct RonSaveRepository {
 
 impl RonSaveRepository {
     /// Create a new RON repository
-    pub fn new(save_dir: impl AsRef<Path>) -> Result<Self> {
+    pub async fn new(save_dir: impl AsRef<Path>) -> Result<Self> {
         let save_dir = save_dir.as_ref().to_path_buf();
-        
+
         // Create directory if it doesn't exist
         if !save_dir.exists() {
-            fs::create_dir_all(&save_dir)?;
+            fs::create_dir_all(&save_dir).await?;
         }
 
         Ok(Self { save_dir })
@@ -30,19 +31,20 @@ impl RonSaveRepository {
     }
 }
 
+#[async_trait]
 impl SaveRepository for RonSaveRepository {
-    fn save(&self, data: &SaveData) -> Result<()> {
+    async fn save(&self, data: &SaveData) -> Result<()> {
         let path = self.slot_path(&data.slot);
         let ron = ron::ser::to_string_pretty(data, ron::ser::PrettyConfig::default())
             .map_err(|e| IssunError::Serialization(e.to_string()))?;
-        
-        fs::write(path, ron)?;
+
+        fs::write(path, ron).await?;
         Ok(())
     }
 
-    fn load(&self, slot: &str) -> Result<SaveData> {
+    async fn load(&self, slot: &str) -> Result<SaveData> {
         let path = self.slot_path(slot);
-        
+
         if !path.exists() {
             return Err(IssunError::AssetLoad(format!(
                 "Save slot '{}' not found",
@@ -50,23 +52,23 @@ impl SaveRepository for RonSaveRepository {
             )));
         }
 
-        let ron = fs::read_to_string(path)?;
+        let ron = fs::read_to_string(path).await?;
         let data: SaveData = ron::from_str(&ron)
             .map_err(|e| IssunError::Serialization(e.to_string()))?;
-        
+
         Ok(data)
     }
 
-    fn list_saves(&self) -> Result<Vec<SaveMetadata>> {
+    async fn list_saves(&self) -> Result<Vec<SaveMetadata>> {
         let mut saves = Vec::new();
+        let mut read_dir = fs::read_dir(&self.save_dir).await?;
 
-        for entry in fs::read_dir(&self.save_dir)? {
-            let entry = entry?;
+        while let Some(entry) = read_dir.next_entry().await? {
             let path = entry.path();
 
             if path.extension().and_then(|s| s.to_str()) == Some("ron") {
                 if let Some(slot) = path.file_stem().and_then(|s| s.to_str()) {
-                    if let Ok(metadata) = self.get_metadata(slot) {
+                    if let Ok(metadata) = self.get_metadata(slot).await {
                         saves.push(metadata);
                     }
                 }
@@ -79,23 +81,23 @@ impl SaveRepository for RonSaveRepository {
         Ok(saves)
     }
 
-    fn delete(&self, slot: &str) -> Result<()> {
+    async fn delete(&self, slot: &str) -> Result<()> {
         let path = self.slot_path(slot);
-        
+
         if path.exists() {
-            fs::remove_file(path)?;
+            fs::remove_file(path).await?;
         }
 
         Ok(())
     }
 
-    fn exists(&self, slot: &str) -> bool {
+    async fn exists(&self, slot: &str) -> bool {
         self.slot_path(slot).exists()
     }
 
-    fn get_metadata(&self, slot: &str) -> Result<SaveMetadata> {
+    async fn get_metadata(&self, slot: &str) -> Result<SaveMetadata> {
         let path = self.slot_path(slot);
-        
+
         if !path.exists() {
             return Err(IssunError::AssetLoad(format!(
                 "Save slot '{}' not found",
@@ -103,8 +105,8 @@ impl SaveRepository for RonSaveRepository {
             )));
         }
 
-        let file_size = fs::metadata(&path)?.len();
-        let ron = fs::read_to_string(path)?;
+        let file_size = fs::metadata(&path).await?.len();
+        let ron = fs::read_to_string(path).await?;
         let data: SaveData = ron::from_str(&ron)
             .map_err(|e| IssunError::Serialization(e.to_string()))?;
 
@@ -117,28 +119,28 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_save_and_load() {
+    #[tokio::test]
+    async fn test_save_and_load() {
         let temp_dir = TempDir::new().unwrap();
-        let repo = RonSaveRepository::new(temp_dir.path()).unwrap();
+        let repo = RonSaveRepository::new(temp_dir.path()).await.unwrap();
 
         let data = SaveData::new("test_slot", serde_json::json!({"score": 100}));
-        repo.save(&data).unwrap();
+        repo.save(&data).await.unwrap();
 
-        let loaded = repo.load("test_slot").unwrap();
+        let loaded = repo.load("test_slot").await.unwrap();
         assert_eq!(loaded.slot, "test_slot");
     }
 
-    #[test]
-    fn test_exists() {
+    #[tokio::test]
+    async fn test_exists() {
         let temp_dir = TempDir::new().unwrap();
-        let repo = RonSaveRepository::new(temp_dir.path()).unwrap();
+        let repo = RonSaveRepository::new(temp_dir.path()).await.unwrap();
 
-        assert!(!repo.exists("nonexistent"));
+        assert!(!repo.exists("nonexistent").await);
 
         let data = SaveData::new("test_slot", serde_json::json!({"score": 100}));
-        repo.save(&data).unwrap();
+        repo.save(&data).await.unwrap();
 
-        assert!(repo.exists("test_slot"));
+        assert!(repo.exists("test_slot").await);
     }
 }
