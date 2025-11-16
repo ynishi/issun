@@ -1,0 +1,35 @@
+[package]
+name = "issun"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "A mini game engine for logic-focused games - Build games in ISSUN (一寸) of time"
+keywords = ["game", "engine", "roguelike", "tui", "mini-game"]
+categories = ["game-engines", "command-line-interface"]
+
+[dependencies]
+# Re-export macros
+issun-macros = { path = "../issun-macros", version = "0.1.0" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+ron = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+rand = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+figlet-rs = { workspace = true }
+
+[dev-dependencies]
+
+[features]
+default = ["ui", "storage"]
+ui = []           # TUI support
+storage = []      # Save/Load support
+full = ["ui", "storage"]
