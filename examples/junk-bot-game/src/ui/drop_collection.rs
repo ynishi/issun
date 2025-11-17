@@ -1,6 +1,6 @@
 //! Drop collection screen rendering
 
-use crate::models::scenes::DropCollectionSceneData;
+use crate::models::{scenes::DropCollectionSceneData, entities::RarityExt};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -60,12 +60,12 @@ fn render_item_list(frame: &mut Frame, area: Rect, data: &DropCollectionSceneDat
         .enumerate()
         .map(|(i, item)| {
             let prefix = if i == data.selected_index { "> " } else { "  " };
-            let rarity_symbol = item.rarity.symbol();
+            let rarity_symbol = item.rarity.ui_symbol();
             let line = Line::from(vec![
                 Span::raw(prefix),
-                Span::styled(rarity_symbol, Style::default().fg(item.rarity.color())),
+                Span::styled(rarity_symbol, Style::default().fg(item.rarity.ui_color())),
                 Span::raw(" "),
-                Span::styled(&item.name, Style::default().fg(item.rarity.color())),
+                Span::styled(&item.name, Style::default().fg(item.rarity.ui_color())),
             ]);
 
             if i == data.selected_index {
@@ -90,11 +90,11 @@ fn render_item_details(frame: &mut Frame, area: Rect, data: &DropCollectionScene
         let lines = vec![
             Line::from(vec![
                 Span::styled("Name: ", Style::default().fg(Color::Gray)),
-                Span::styled(&item.name, Style::default().fg(item.rarity.color()).add_modifier(Modifier::BOLD)),
+                Span::styled(&item.name, Style::default().fg(item.rarity.ui_color()).add_modifier(Modifier::BOLD)),
             ]),
             Line::from(vec![
                 Span::styled("Rarity: ", Style::default().fg(Color::Gray)),
-                Span::styled(item.rarity.name(), Style::default().fg(item.rarity.color())),
+                Span::styled(item.rarity.display_name(), Style::default().fg(item.rarity.ui_color())),
             ]),
             Line::from(vec![
                 Span::styled("Effect: ", Style::default().fg(Color::Gray)),

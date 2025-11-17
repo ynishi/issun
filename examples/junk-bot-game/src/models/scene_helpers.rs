@@ -45,18 +45,14 @@ pub fn proceed_to_next_floor(ctx: &mut GameContext) -> (GameScene, SceneTransiti
 
 /// Generate loot drops from defeated enemies
 pub fn generate_drops(enemies: &[Enemy], loot_multiplier: f32) -> Vec<LootItem> {
-    use rand::Rng;
+    use issun::prelude::{DropConfig, LootService};
     let mut rng = rand::thread_rng();
-    let mut drops = Vec::new();
 
-    for _enemy in enemies.iter().filter(|e| !e.is_alive()) {
-        // 30% base drop rate, apply multiplier
-        let drop_rate = (0.3 * loot_multiplier).min(1.0);
+    // Use LootService for drop calculations
+    let config = DropConfig::new(0.3, loot_multiplier); // 30% base rate
+    let dead_enemy_count = enemies.iter().filter(|e| !e.is_alive()).count();
+    let drop_count = LootService::calculate_drop_count(dead_enemy_count, &config, &mut rng);
 
-        if rng.gen_bool(drop_rate as f64) {
-            drops.push(generate_random_loot());
-        }
-    }
-
-    drops
+    // Generate random loot for each drop
+    (0..drop_count).map(|_| generate_random_loot()).collect()
 }

@@ -27,6 +27,8 @@ async fn main() -> std::io::Result<()> {
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
         .with_plugin(InventoryPlugin::new())
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+        .with_plugin(LootPlugin::new())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
         .build()
         .await
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;

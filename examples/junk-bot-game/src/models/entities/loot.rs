@@ -100,36 +100,11 @@ impl LootItem {
 /// Generate random loot based on rarity weights
 pub fn generate_random_loot() -> LootItem {
     use rand::Rng;
+    use issun::prelude::LootService;
     let mut rng = rand::thread_rng();
 
-    // Weighted random rarity
-    let total_weight: f32 = [
-        Rarity::Common,
-        Rarity::Uncommon,
-        Rarity::Rare,
-        Rarity::Epic,
-        Rarity::Legendary,
-    ]
-    .iter()
-    .map(|r| r.drop_weight())
-    .sum();
-
-    let mut roll = rng.gen_range(0.0..total_weight);
-    let mut selected_rarity = Rarity::Common;
-
-    for rarity in [
-        Rarity::Common,
-        Rarity::Uncommon,
-        Rarity::Rare,
-        Rarity::Epic,
-        Rarity::Legendary,
-    ] {
-        roll -= rarity.drop_weight();
-        if roll <= 0.0 {
-            selected_rarity = rarity;
-            break;
-        }
-    }
+    // Use LootService for weighted rarity selection
+    let selected_rarity = LootService::select_rarity(&mut rng);
 
     // Generate item based on rarity
     match selected_rarity {

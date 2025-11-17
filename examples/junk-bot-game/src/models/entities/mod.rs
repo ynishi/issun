@@ -17,7 +17,7 @@ pub use player::Player;
 pub use enemy::Enemy;
 pub use weapon::{Weapon, WeaponEffect};
 pub use bot::{Bot, BotState};
-pub use rarity::Rarity;
+pub use rarity::{Rarity, RarityExt};
 pub use loot::{LootItem, ItemEffect, generate_random_loot};
 pub use buff_card::{BuffCard, BuffType, generate_random_cards};
 pub use room_buff::RoomBuff;

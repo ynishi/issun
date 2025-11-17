@@ -1,4 +1,4 @@
-use crate::models::scenes::CardSelectionSceneData;
+use crate::models::{scenes::CardSelectionSceneData, entities::RarityExt};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
@@ -45,8 +45,8 @@ fn render_card_list(frame: &mut Frame, area: Rect, data: &CardSelectionSceneData
                 "[ ] "
             };
 
-            let rarity_symbol = card.rarity.symbol();
-            let rarity_color = card.rarity.color();
+            let rarity_symbol = card.rarity.ui_symbol();
+            let rarity_color = card.rarity.ui_color();
 
             let line = Line::from(vec![
                 Span::raw(cursor),
