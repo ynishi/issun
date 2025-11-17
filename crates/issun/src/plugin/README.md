@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Plugin system allows you to compose game systems in a modular, reusable way.
+The Plugin system allows you to compose game systems in a modular, reusable way following the **80/20 pattern**:
+- Framework provides **80%** reusable logic
+- Games customize **20%** specific to their needs
 
 ## Architecture
 
@@ -11,16 +13,25 @@ Plugins bundle **System** (Application Logic) + **Service** (Domain Service):
 ```
 plugin/
 ├── mod.rs           # Plugin trait definition
-└── combat/
-    ├── plugin.rs    # TurnBasedCombatPlugin (registers System + Service)
-    ├── engine.rs    # CombatSystem (System - orchestration)
-    ├── service.rs   # CombatService (Service - pure logic)
-    └── types.rs     # Domain types (Combatant trait, etc.)
+├── combat/
+│   ├── plugin.rs    # TurnBasedCombatPlugin (registers System + Service)
+│   ├── engine.rs    # CombatSystem (System - orchestration)
+│   ├── service.rs   # CombatService (Service - pure logic)
+│   └── types.rs     # Domain types (Combatant trait, etc.)
+├── inventory/
+│   ├── plugin.rs    # InventoryPlugin
+│   ├── service.rs   # InventoryService (generic item management)
+│   └── types.rs     # Item trait
+└── loot/
+    ├── plugin.rs    # LootPlugin
+    ├── service.rs   # LootService (drop calculations)
+    └── types.rs     # Rarity enum, DropConfig
 ```
 
 **Service vs System**:
 - **Service** (`service.rs`): Pure functions, stateless
   - Example: `CombatService::calculate_damage(base, defense) -> i32`
+  - Example: `LootService::select_rarity(rng) -> Rarity`
 - **System** (`engine.rs`): Stateful orchestration
   - Example: `CombatSystem { turn_count, log, combat_service }`
 
@@ -30,67 +41,194 @@ See [ARCHITECTURE.md](../../../ARCHITECTURE.md) for detailed guide.
 
 ### 1. TurnBasedCombatPlugin ✅
 
-Turn-based combat system with:
-- Turn management
-- Damage calculation
-- Combat log
-- Win/lose conditions
+Turn-based combat system with damage calculation and combat logging.
 
-**Status**: Prototype implemented
+**Components**:
+- `CombatService` - Pure damage calculations
+- `CombatSystem` - Turn management, combat log, score tracking
+
+**Features**:
+- Turn counter
+- Damage calculation (Attack - Defense, min 1)
+- Combat log
+- Score tracking
+- Trait-based combatants (`Combatant` trait)
+
+**Status**: ✅ Production ready
 
 **Usage**:
 ```rust
 use issun::prelude::*;
 
-let combat = TurnBasedCombatPlugin::default();
-game_builder.add_plugin(combat);
+// Define your combatants
+#[derive(Debug, Clone)]
+pub struct Player {
+    pub hp: i32,
+    pub attack: i32,
+    pub defense: i32,
+}
+
+impl Combatant for Player {
+    fn attack(&self) -> i32 { self.attack }
+    fn defense(&self) -> i32 { self.defense }
+    fn hp(&self) -> i32 { self.hp }
+    fn is_alive(&self) -> bool { self.hp > 0 }
+    fn take_damage(&mut self, damage: i32) { self.hp -= damage; }
+}
+
+// Register plugin
+let game = GameBuilder::new()
+    .with_plugin(TurnBasedCombatPlugin::default())
+    .build()
+    .await?;
 ```
 
-### 2. InventoryPlugin (TODO)
+**80/20 Split**:
+- **80% Framework**: Damage formula, turn counter, combat log, score tracking
+- **20% Game**: Combatant types, special attacks, status effects
 
-Item and equipment management:
-- Inventory slots
-- Equipment system
-- Item stacking
-- UI integration
+---
 
-**Status**: Planned
+### 2. InventoryPlugin ✅
 
-### 3. LootPlugin (TODO)
+Generic item management system that works with any item type.
 
-Drop generation and collection:
-- Rarity system
-- Drop tables
-- Loot multipliers
-- Collection UI
+**Components**:
+- `InventoryService` - Generic item operations
+- `Item` trait - Auto-implemented for `T: Clone + Send + Sync + 'static`
 
-**Status**: Planned
+**Features**:
+- Transfer items between inventories
+- Generic type support (works with any type)
+- Stack/unstack items
+- Remove/consume items
+- Count items
 
-### 4. DungeonPlugin (TODO)
+**Status**: ✅ Production ready
+
+**Usage**:
+```rust
+use issun::prelude::*;
+
+// Your item type automatically implements Item trait
+#[derive(Debug, Clone)]
+pub struct Weapon {
+    pub name: String,
+    pub attack: i32,
+}
+
+// Use the service
+let mut player_inv = vec![weapon1.clone()];
+let mut chest_inv = vec![weapon2.clone()];
+
+// Transfer item from chest to player
+InventoryService::transfer_item(&mut chest_inv, &mut player_inv, 0);
+
+// Register plugin
+let game = GameBuilder::new()
+    .with_plugin(InventoryPlugin::new())
+    .build()
+    .await?;
+```
+
+**80/20 Split**:
+- **80% Framework**: Item transfer, stack management, generic operations
+- **20% Game**: Specific item types, equipment slots, item effects
+
+---
+
+### 3. LootPlugin ✅
+
+Drop generation and rarity system with weighted random selection.
+
+**Components**:
+- `LootService` - Drop rate calculations, rarity selection
+- `Rarity` enum - 5-tier system (Common → Legendary)
+- `DropConfig` - Configurable drop rates
+
+**Features**:
+- 5-tier rarity system with drop weights
+- Weighted random rarity selection
+- Drop rate calculation with multipliers
+- Multi-source drop counting
+- Configurable DropConfig
+
+**Status**: ✅ Production ready
+
+**Usage**:
+```rust
+use issun::prelude::*;
+
+// Configure drop rates
+let config = DropConfig::new(0.3, 1.5); // 30% base × 1.5 = 45% chance
+let mut rng = rand::thread_rng();
+
+// Check if drop should occur
+if LootService::should_drop(&config, &mut rng) {
+    // Select rarity using weighted random
+    let rarity = LootService::select_rarity(&mut rng);
+
+    // Generate item based on rarity (game-specific)
+    let item = match rarity {
+        Rarity::Common => generate_common_item(),
+        Rarity::Legendary => generate_legendary_item(),
+        // ...
+    };
+}
+
+// Calculate drops from multiple sources
+let dead_enemies = 5;
+let drop_count = LootService::calculate_drop_count(dead_enemies, &config, &mut rng);
+
+// Register plugin
+let game = GameBuilder::new()
+    .with_plugin(LootPlugin::new())
+    .build()
+    .await?;
+```
+
+**Rarity Weights**:
+- `Rarity::Common` - 50.0 (most common)
+- `Rarity::Uncommon` - 25.0
+- `Rarity::Rare` - 15.0
+- `Rarity::Epic` - 7.0
+- `Rarity::Legendary` - 3.0 (rarest)
+
+**80/20 Split**:
+- **80% Framework**: Rarity system, weighted selection, drop rate formula
+- **20% Game**: Loot tables, item generation, rarity display
+
+---
+
+### Future Plugins 🔮
+
+#### DungeonPlugin (Planned)
 
 Floor progression and room generation:
 - Floor management
-- Room generation
+- Room selection mechanics
 - Difficulty scaling
 - Procedural generation hooks
 
 **Status**: Planned
 
-### 5. BuffPlugin (TODO)
+#### BuffPlugin (Planned)
 
 Buff/debuff management:
 - Timed effects
 - Stacking rules
-- Status icons
 - Effect application
+- Status persistence
 
 **Status**: Planned
+
+---
 
 ## Design Principles
 
 ### 1. **80/20 Rule**
 - 80% reusable across projects
-- 20% customization via configuration
+- 20% customization via game-specific logic
 
 ### 2. **Composable**
 - Plugins can depend on other plugins
@@ -103,9 +241,11 @@ Buff/debuff management:
 - Progressive enhancement
 
 ### 4. **Game-agnostic**
-- Generic interfaces (Combatant trait, etc.)
+- Generic interfaces (Combatant trait, Item trait, etc.)
 - Configuration-driven behavior
 - Easy to adapt to different game types
+
+---
 
 ## Creating a Custom Plugin
 
@@ -168,33 +308,133 @@ impl Plugin for MyCustomPlugin {
 }
 ```
 
-## Plugin Dependencies
+---
 
+## Trait Extension Pattern
+
+Games can extend framework types with game-specific functionality:
+
+```rust
+// Framework provides Rarity enum
+use issun::prelude::Rarity;
+use ratatui::style::Color;
+
+// Game extends with UI display methods
+pub trait RarityExt {
+    fn ui_color(&self) -> Color;
+    fn ui_symbol(&self) -> &'static str;
+    fn display_name(&self) -> &'static str;
+}
+
+impl RarityExt for Rarity {
+    fn ui_color(&self) -> Color {
+        match self {
+            Rarity::Common => Color::Gray,
+            Rarity::Legendary => Color::Yellow,
+            // ...
+        }
+    }
+
+    fn ui_symbol(&self) -> &'static str {
+        match self {
+            Rarity::Common => "○",
+            Rarity::Legendary => "❖",
+            // ...
+        }
+    }
+
+    fn display_name(&self) -> &'static str {
+        match self {
+            Rarity::Common => "Common",
+            Rarity::Legendary => "Legendary",
+            // ...
+        }
+    }
+}
+
+// Use both framework and game-specific methods
+let rarity = Rarity::Legendary;
+let weight = rarity.drop_weight();  // Framework method
+let color = rarity.ui_color();      // Game-specific method
 ```
-TurnBasedCombatPlugin
-    ↑
-    ├─ InventoryPlugin (weapon damage calculations)
-    └─ BuffPlugin (combat modifiers)
 
-DungeonPlugin
-    ↑
-    └─ LootPlugin (floor rewards)
+This pattern allows:
+- ✅ Using framework's core logic
+- ✅ Adding game-specific display/UI logic
+- ✅ Keeping framework types clean
+- ✅ Maintaining separation of concerns
+
+---
+
+## Plugin Composition
+
+Combine multiple plugins for rich functionality:
+
+```rust
+use issun::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let game = GameBuilder::new()
+        .with_plugin(TurnBasedCombatPlugin::default())?
+        .with_plugin(InventoryPlugin::new())?
+        .with_plugin(LootPlugin::new())?
+        .build()
+        .await?;
+
+    // All three plugins are now available!
+    // - Combat system for battles
+    // - Inventory for item management
+    // - Loot system for drops
+
+    Ok(())
+}
 ```
 
-## Migration Path
+---
 
-Current junk-bot-game systems → ISSUN plugins:
+## Example: Junk Bot Game
 
-1. **CombatSceneData::process_turn()** → `TurnBasedCombatPlugin`
-2. **GameContext inventory methods** → `InventoryPlugin`
-3. **generate_drops(), LootItem** → `LootPlugin`
-4. **Dungeon, Floor management** → `DungeonPlugin`
-5. **BuffCard, apply_buff_card()** → `BuffPlugin`
+See `examples/junk-bot-game/` for a complete example using all three plugins:
+- Turn-based combat with bots
+- Inventory and weapon switching
+- Loot drops with rarity
+- Room buffs and floor progression
+
+**Run it**:
+```bash
+cargo run --example junk-bot-game
+```
+
+---
+
+## Testing
+
+Each plugin includes comprehensive unit tests:
+
+```bash
+# Test all plugins
+cargo test -p issun
+
+# Test specific plugin
+cargo test -p issun combat
+cargo test -p issun inventory
+cargo test -p issun loot
+```
+
+**Current test coverage**:
+- TurnBasedCombatPlugin: ✅ Fully tested
+- InventoryPlugin: ✅ 8 tests
+- LootPlugin: ✅ 8 tests
+
+---
 
 ## Next Steps
 
-1. Complete TurnBasedCombatPlugin implementation
-2. Extract InventoryPlugin from junk-bot-game
-3. Design plugin configuration API
-4. Add plugin examples
-5. Write integration tests
+1. ✅ Complete TurnBasedCombatPlugin implementation
+2. ✅ Extract InventoryPlugin from junk-bot-game
+3. ✅ Extract LootPlugin from junk-bot-game
+4. 🔄 Design DungeonPlugin
+5. 🔄 Design BuffPlugin
+6. 🔄 Add more plugin examples
+7. 🔄 Publish to crates.io
