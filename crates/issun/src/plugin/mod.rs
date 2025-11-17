@@ -26,7 +26,7 @@ use async_trait::async_trait;
 // Built-in plugins
 pub mod combat;
 pub mod inventory;
-// pub mod loot;       // TODO: Implement
+pub mod loot;
 // pub mod dungeon;    // TODO: Implement
 
 // Re-exports for convenience
@@ -52,6 +52,16 @@ pub use inventory::{
     Item,
     // Plugin
     InventoryPlugin,
+};
+
+pub use loot::{
+    // Service
+    LootService,
+    // Types
+    DropConfig,
+    Rarity,
+    // Plugin
+    LootPlugin,
 };
 
 /// Plugin trait for system composition
