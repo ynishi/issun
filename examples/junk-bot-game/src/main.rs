@@ -33,8 +33,17 @@ async fn main() -> std::io::Result<()> {
         .await
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
+    // Destructure game to obtain contexts
+    let Game {
+        resources,
+        services,
+        systems,
+        context,
+        ..
+    } = game;
+
     // Initialize game context with ISSUN context from GameBuilder
-    let mut ctx = GameContext::new().with_issun_context(game.context);
+    let mut ctx = GameContext::new().with_issun_context(context);
 
     // Register resources (read-only data)
     if let Some(issun_ctx) = ctx.issun_mut() {
@@ -43,7 +52,7 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize SceneDirector with initial scene
     let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());
-    let mut director = SceneDirector::new(initial_scene).await;
+    let mut director = SceneDirector::new(initial_scene, services, systems, resources).await;
 
     let mut last_tick = Instant::now();
 

@@ -2,6 +2,7 @@
 //!
 //! Async-enabled turn-based game loop with non-blocking operations support.
 
+use crate::context::{ResourceContext, ServiceContext, SystemContext};
 use crate::error::Result;
 use crate::scene::{Scene, SceneTransition};
 use crossterm::event::{self, Event, KeyCode};
@@ -42,11 +43,17 @@ impl GameLoop {
         Self { config }
     }
 
-    /// Run the game loop with a scene
+    /// Run the game loop with a scene and contexts
     ///
     /// Returns when SceneTransition::Quit is received
-    pub async fn run<S: Scene>(&self, mut scene: S) -> Result<()> {
-        scene.on_enter().await;
+    pub async fn run<S: Scene>(
+        &self,
+        mut scene: S,
+        services: &ServiceContext,
+        systems: &mut SystemContext,
+        resources: &mut ResourceContext,
+    ) -> Result<()> {
+        scene.on_enter(services, systems, resources).await;
 
         loop {
             // Poll for input
@@ -60,7 +67,7 @@ impl GameLoop {
             }
 
             // Update scene
-            match scene.on_update().await {
+            match scene.on_update(services, systems, resources).await {
                 SceneTransition::Stay => {
                     // Continue current scene
                 }
@@ -76,7 +83,7 @@ impl GameLoop {
             }
         }
 
-        scene.on_exit().await;
+        scene.on_exit(services, systems, resources).await;
         Ok(())
     }
 }
@@ -98,11 +105,21 @@ mod tests {
 
     #[async_trait]
     impl Scene for TestScene {
-        async fn on_enter(&mut self) {
+        async fn on_enter(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) {
             self.update_count = 0;
         }
 
-        async fn on_update(&mut self) -> SceneTransition<Self> {
+        async fn on_update(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) -> SceneTransition<Self> {
             self.update_count += 1;
             if self.update_count >= 3 {
                 SceneTransition::Quit
@@ -111,7 +128,13 @@ mod tests {
             }
         }
 
-        async fn on_exit(&mut self) {}
+        async fn on_exit(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) {
+        }
     }
 
     #[test]

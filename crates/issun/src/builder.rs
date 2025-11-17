@@ -1,13 +1,20 @@
 //! Game builder for ISSUN
 
+use crate::context::ResourceContext;
 use crate::error::{IssunError, Result};
 use crate::plugin::{Plugin, PluginBuilder};
+use crate::service::Service;
+use crate::system::System;
+use std::any::TypeId;
 use std::collections::{HashMap, HashSet};
 
 /// Game builder for composing plugins and configuring the game
 pub struct GameBuilder {
     plugins: Vec<Box<dyn Plugin>>,
     plugin_names: HashSet<String>,
+    runtime_resources: HashMap<TypeId, Box<dyn RuntimeResourceEntry>>,
+    extra_services: Vec<Box<dyn Service>>,
+    extra_systems: Vec<Box<dyn System>>,
 }
 
 impl GameBuilder {
@@ -16,6 +23,9 @@ impl GameBuilder {
         Self {
             plugins: Vec::new(),
             plugin_names: HashSet::new(),
+            runtime_resources: HashMap::new(),
+            extra_services: Vec::new(),
+            extra_systems: Vec::new(),
         }
     }
 
@@ -36,6 +46,27 @@ impl GameBuilder {
         Ok(self)
     }
 
+    /// Register a mutable runtime resource
+    ///
+    /// These resources live in `ResourceContext` and can be mutated by systems.
+    pub fn with_resource<T: 'static + Send + Sync>(mut self, resource: T) -> Self {
+        self.runtime_resources
+            .insert(TypeId::of::<T>(), Box::new(resource));
+        self
+    }
+
+    /// Register an additional stateless service
+    pub fn with_service(mut self, service: impl Service + 'static) -> Self {
+        self.extra_services.push(Box::new(service));
+        self
+    }
+
+    /// Register an additional system
+    pub fn with_system(mut self, system: impl System + 'static) -> Self {
+        self.extra_systems.push(Box::new(system));
+        self
+    }
+
     /// Build and run the game
     pub async fn build(mut self) -> Result<Game> {
         // Initialize plugins first
@@ -52,24 +83,36 @@ impl GameBuilder {
             self.plugins[idx].build(&mut plugin_builder);
         }
 
+        // Combine services/systems from plugins and manual registrations
+        let mut all_services = plugin_builder.services;
+        all_services.extend(self.extra_services.into_iter());
+
+        let mut all_systems = plugin_builder.systems;
+        all_systems.extend(self.extra_systems.into_iter());
+
         // Legacy context (for backward compatibility)
         let mut context = crate::context::Context::new();
 
         // New contexts
-        let resource_context = crate::context::ResourceContext::new();
+        let mut resource_context = crate::context::ResourceContext::new();
         let mut service_context = crate::context::ServiceContext::new();
         let mut system_context = crate::context::SystemContext::new();
 
         // Register services in both contexts (cloned for new architecture)
-        for service in plugin_builder.services {
+        for service in all_services {
             let cloned = service.as_ref().clone_box();
             context.register_service(service);
             service_context.register(cloned);
         }
 
         // Register systems into SystemContext
-        for system in plugin_builder.systems {
+        for system in all_systems {
             system_context.register_boxed(system);
+        }
+
+        // Register runtime resources
+        for (_, entry) in self.runtime_resources.into_iter() {
+            entry.insert(&mut resource_context);
         }
 
         // Register resources from plugins (read-only data)
@@ -144,6 +187,17 @@ impl GameBuilder {
 impl Default for GameBuilder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Trait object wrapper to insert concrete resources into ResourceContext
+trait RuntimeResourceEntry: Send {
+    fn insert(self: Box<Self>, ctx: &mut ResourceContext);
+}
+
+impl<T: 'static + Send + Sync> RuntimeResourceEntry for T {
+    fn insert(self: Box<Self>, ctx: &mut ResourceContext) {
+        ctx.insert(*self);
     }
 }
 

@@ -2,6 +2,22 @@
 
 ISSUN follows Domain-Driven Design (DDD) principles to provide a clean, modular architecture for game development.
 
+## 🔁 Context Trinity
+
+Runtime state is partitioned into three focused contexts that replace the monolithic `GameContext`:
+
+- **`ResourceContext`** – Thread-safe, mutable "world state" shared between scenes (player stats, encounter state, etc.). Only `System`s may mutate it; scenes read from it to render.
+- **`ServiceContext`** – Dependency-injected container for stateless `Service`s. Stored once and shared everywhere.
+- **`SystemContext`** – Owns the stateful `System`s that orchestrate gameplay. They take `&mut ResourceContext` when executing logic.
+
+`SceneDirector` owns these contexts and passes them into every scene lifecycle hook. The data flow is strictly:
+
+```
+Input -> Scene (interpret) -> System (mutate ResourceContext using ServiceContext) -> Scene (render from ResourceContext)
+```
+
+Builders and plugins register resources/services/systems into their respective contexts at startup so games can wire everything declaratively.
+
 ## 📚 Component Types
 
 ### 1. Service (Domain Service)
@@ -160,9 +176,14 @@ pub enum GameScene {
 **SceneDirector Runtime**:
 ```rust
 use issun::scene::{SceneDirector, SceneTransition};
+use issun::prelude::GameBuilder;
 
+let game = GameBuilder::new().build().await?;
 let mut director = SceneDirector::new(
-    GameScene::Title(TitleSceneData::new())
+    GameScene::Title(TitleSceneData::new()),
+    game.services,
+    game.systems,
+    game.resources,
 ).await;
 
 loop {

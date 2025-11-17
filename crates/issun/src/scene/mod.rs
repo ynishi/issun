@@ -2,6 +2,7 @@
 //!
 //! Scenes represent distinct game states with their own data and lifecycle.
 
+use crate::context::{ResourceContext, ServiceContext, SystemContext};
 use async_trait::async_trait;
 
 // Sub-modules
@@ -64,10 +65,16 @@ pub trait Scene: Send + Sized {
     /// Called when entering this scene
     ///
     /// This is called when:
-    /// - Scene is first created (via `SceneDirector::new()`)
+    /// - Scene is first created (via `SceneDirector::new(..)` with contexts)
     /// - Scene is pushed onto the stack (via `Push`)
     /// - Scene is switched to (via `Switch`)
-    async fn on_enter(&mut self) {}
+    async fn on_enter(
+        &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
+    ) {
+    }
 
     /// Called when leaving this scene permanently
     ///
@@ -75,7 +82,13 @@ pub trait Scene: Send + Sized {
     /// - Scene is popped from the stack (via `Pop`)
     /// - Scene is replaced (via `Switch`)
     /// - Application quits (via `Quit`)
-    async fn on_exit(&mut self) {}
+    async fn on_exit(
+        &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
+    ) {
+    }
 
     /// Called when another scene is pushed on top of this scene
     ///
@@ -84,7 +97,13 @@ pub trait Scene: Send + Sized {
     /// stop timers, etc.
     ///
     /// Default: do nothing (Phase 1 compatibility)
-    async fn on_suspend(&mut self) {}
+    async fn on_suspend(
+        &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
+    ) {
+    }
 
     /// Called when the scene on top is popped, revealing this scene again
     ///
@@ -93,7 +112,13 @@ pub trait Scene: Send + Sized {
     /// timers, etc.
     ///
     /// Default: do nothing (Phase 1 compatibility)
-    async fn on_resume(&mut self) {}
+    async fn on_resume(
+        &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
+    ) {
+    }
 
     /// Called every frame, returns transition decision
     ///
@@ -102,7 +127,12 @@ pub trait Scene: Send + Sized {
     /// # Example
     ///
     /// ```ignore
-    /// async fn on_update(&mut self) -> SceneTransition<Self> {
+    /// async fn on_update(
+    ///     &mut self,
+    ///     services: &ServiceContext,
+    ///     systems: &mut SystemContext,
+    ///     resources: &mut ResourceContext,
+    /// ) -> SceneTransition<Self> {
     ///     if self.should_quit {
     ///         SceneTransition::Quit
     ///     } else if self.should_go_to_combat {
@@ -112,7 +142,12 @@ pub trait Scene: Send + Sized {
     ///     }
     /// }
     /// ```
-    async fn on_update(&mut self) -> SceneTransition<Self> {
+    async fn on_update(
+        &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
+    ) -> SceneTransition<Self> {
         SceneTransition::Stay
     }
 }
@@ -134,14 +169,32 @@ mod tests {
         let mut scene = TestScene { entered: false };
 
         // Default on_enter should work
-        scene.on_enter().await;
+        scene
+            .on_enter(
+                &crate::context::ServiceContext::new(),
+                &mut crate::context::SystemContext::new(),
+                &mut crate::context::ResourceContext::new(),
+            )
+            .await;
 
         // Default on_update should return Stay
-        let transition = scene.on_update().await;
+        let transition = scene
+            .on_update(
+                &crate::context::ServiceContext::new(),
+                &mut crate::context::SystemContext::new(),
+                &mut crate::context::ResourceContext::new(),
+            )
+            .await;
         assert!(matches!(transition, SceneTransition::Stay));
 
         // Default on_exit should work
-        scene.on_exit().await;
+        scene
+            .on_exit(
+                &crate::context::ServiceContext::new(),
+                &mut crate::context::SystemContext::new(),
+                &mut crate::context::ResourceContext::new(),
+            )
+            .await;
     }
 
     #[derive(Scene)]
@@ -154,9 +207,27 @@ mod tests {
     async fn test_derived_enum_scene() {
         let mut scene = GameScene::Title;
 
-        scene.on_enter().await;
-        let transition = scene.on_update().await;
+        scene
+            .on_enter(
+                &crate::context::ServiceContext::new(),
+                &mut crate::context::SystemContext::new(),
+                &mut crate::context::ResourceContext::new(),
+            )
+            .await;
+        let transition = scene
+            .on_update(
+                &crate::context::ServiceContext::new(),
+                &mut crate::context::SystemContext::new(),
+                &mut crate::context::ResourceContext::new(),
+            )
+            .await;
         assert!(matches!(transition, SceneTransition::Stay));
-        scene.on_exit().await;
+        scene
+            .on_exit(
+                &crate::context::ServiceContext::new(),
+                &mut crate::context::SystemContext::new(),
+                &mut crate::context::ResourceContext::new(),
+            )
+            .await;
     }
 }

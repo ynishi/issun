@@ -5,6 +5,7 @@
 //! - Scene transitions (switching, pushing, popping)
 //! - Scene stack management
 //! - Quit state management
+//! - Ownership and distribution of Service/System/Resource contexts
 //!
 //! # Example
 //!
@@ -18,7 +19,13 @@
 //!     PauseMenu(PauseData),
 //! }
 //!
-//! let mut director = SceneDirector::new(GameScene::Title(TitleData::new())).await;
+//! let game = GameBuilder::new().build().await?;
+//! let mut director = SceneDirector::new(
+//!     GameScene::Title(TitleData::new()),
+//!     game.services,
+//!     game.systems,
+//!     game.resources,
+//! ).await;
 //!
 //! loop {
 //!     let transition = director.update().await;
@@ -41,6 +48,7 @@
 //! ```
 
 use super::{Scene, SceneTransition};
+use crate::context::{ResourceContext, ServiceContext, SystemContext};
 use crate::error::Result;
 
 /// Scene Director manages scene lifecycle and transitions
@@ -51,6 +59,9 @@ pub struct SceneDirector<S> {
     stack: Vec<S>,
     /// Whether the application should quit
     should_quit: bool,
+    services: ServiceContext,
+    systems: SystemContext,
+    resources: ResourceContext,
 }
 
 impl<S: Scene> SceneDirector<S> {
@@ -61,15 +72,30 @@ impl<S: Scene> SceneDirector<S> {
     /// # Example
     ///
     /// ```ignore
-    /// let director = SceneDirector::new(GameScene::Title(TitleData::new())).await;
+    /// let director = SceneDirector::new(
+    ///     GameScene::Title(TitleData::new()),
+    ///     ServiceContext::new(),
+    ///     SystemContext::new(),
+    ///     ResourceContext::new(),
+    /// ).await;
     /// ```
-    pub async fn new(mut initial_scene: S) -> Self {
+    pub async fn new(
+        mut initial_scene: S,
+        services: ServiceContext,
+        mut systems: SystemContext,
+        mut resources: ResourceContext,
+    ) -> Self {
         // Call on_enter for the initial scene
-        initial_scene.on_enter().await;
+        initial_scene
+            .on_enter(&services, &mut systems, &mut resources)
+            .await;
 
         Self {
             stack: vec![initial_scene],
             should_quit: false,
+            services,
+            systems,
+            resources,
         }
     }
 
@@ -82,7 +108,9 @@ impl<S: Scene> SceneDirector<S> {
     /// The SceneTransition<S> indicating what should happen next.
     pub async fn update(&mut self) -> SceneTransition<S> {
         if let Some(current) = self.stack.last_mut() {
-            current.on_update().await
+            current
+                .on_update(&self.services, &mut self.systems, &mut self.resources)
+                .await
         } else {
             SceneTransition::Quit // Empty stack = quit
         }
@@ -103,11 +131,14 @@ impl<S: Scene> SceneDirector<S> {
     pub async fn switch_to(&mut self, mut next: S) {
         if let Some(mut current) = self.stack.pop() {
             // Exit current scene
-            current.on_exit().await;
+            current
+                .on_exit(&self.services, &mut self.systems, &mut self.resources)
+                .await;
         }
 
         // Enter new scene
-        next.on_enter().await;
+        next.on_enter(&self.services, &mut self.systems, &mut self.resources)
+            .await;
 
         // Push new scene onto stack
         self.stack.push(next);
@@ -130,11 +161,14 @@ impl<S: Scene> SceneDirector<S> {
     pub async fn push(&mut self, mut next: S) {
         // Suspend current scene (if any)
         if let Some(current) = self.stack.last_mut() {
-            current.on_suspend().await;
+            current
+                .on_suspend(&self.services, &mut self.systems, &mut self.resources)
+                .await;
         }
 
         // Enter new scene
-        next.on_enter().await;
+        next.on_enter(&self.services, &mut self.systems, &mut self.resources)
+            .await;
 
         // Push onto stack
         self.stack.push(next);
@@ -159,11 +193,15 @@ impl<S: Scene> SceneDirector<S> {
     pub async fn pop(&mut self) -> bool {
         if let Some(mut popped) = self.stack.pop() {
             // Exit popped scene
-            popped.on_exit().await;
+            popped
+                .on_exit(&self.services, &mut self.systems, &mut self.resources)
+                .await;
 
             // Resume scene below (if any)
             if let Some(current) = self.stack.last_mut() {
-                current.on_resume().await;
+                current
+                    .on_resume(&self.services, &mut self.systems, &mut self.resources)
+                    .await;
             }
 
             true
@@ -193,7 +231,9 @@ impl<S: Scene> SceneDirector<S> {
     pub async fn quit(&mut self) {
         // Exit all scenes in reverse order (top to bottom)
         while let Some(mut scene) = self.stack.pop() {
-            scene.on_exit().await;
+            scene
+                .on_exit(&self.services, &mut self.systems, &mut self.resources)
+                .await;
         }
 
         self.should_quit = true;
@@ -281,6 +321,31 @@ impl<S: Scene> SceneDirector<S> {
         self.stack.iter().enumerate()
     }
 
+    /// Access immutable service context
+    pub fn services(&self) -> &ServiceContext {
+        &self.services
+    }
+
+    /// Access immutable system context
+    pub fn systems(&self) -> &SystemContext {
+        &self.systems
+    }
+
+    /// Access mutable system context
+    pub fn systems_mut(&mut self) -> &mut SystemContext {
+        &mut self.systems
+    }
+
+    /// Access immutable resource context
+    pub fn resources(&self) -> &ResourceContext {
+        &self.resources
+    }
+
+    /// Access mutable resource context
+    pub fn resources_mut(&mut self) -> &mut ResourceContext {
+        &mut self.resources
+    }
+
     /// Handle a scene transition returned from update()
     ///
     /// This is the primary method for processing scene transitions.
@@ -323,6 +388,7 @@ impl<S: Scene> SceneDirector<S> {
 mod tests {
     use super::*;
     use async_trait::async_trait;
+    use crate::context::{ResourceContext, ServiceContext, SystemContext};
 
     // Test scene that tracks lifecycle calls
     #[derive(Debug, Clone, PartialEq)]
@@ -365,11 +431,21 @@ mod tests {
 
     #[async_trait]
     impl Scene for TestScene {
-        async fn on_enter(&mut self) {
+        async fn on_enter(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) {
             self.enter_count += 1;
         }
 
-        async fn on_update(&mut self) -> SceneTransition<Self> {
+        async fn on_update(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) -> SceneTransition<Self> {
             self.update_count += 1;
 
             if self.should_quit {
@@ -381,23 +457,48 @@ mod tests {
             }
         }
 
-        async fn on_exit(&mut self) {
+        async fn on_exit(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) {
             self.exit_count += 1;
         }
 
-        async fn on_suspend(&mut self) {
+        async fn on_suspend(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) {
             self.suspend_count += 1;
         }
 
-        async fn on_resume(&mut self) {
+        async fn on_resume(
+            &mut self,
+            _services: &ServiceContext,
+            _systems: &mut SystemContext,
+            _resources: &mut ResourceContext,
+        ) {
             self.resume_count += 1;
         }
+    }
+
+    async fn director_with_scene(scene: TestScene) -> SceneDirector<TestScene> {
+        SceneDirector::new(
+            scene,
+            ServiceContext::new(),
+            SystemContext::new(),
+            ResourceContext::new(),
+        )
+        .await
     }
 
     #[tokio::test]
     async fn test_new_calls_on_enter() {
         let scene = TestScene::new("test");
-        let director = SceneDirector::new(scene).await;
+        let director = director_with_scene(scene).await;
 
         assert_eq!(director.depth(), 1);
         assert_eq!(director.current().unwrap().enter_count, 1);
@@ -408,7 +509,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_calls_on_update() {
         let scene = TestScene::new("test");
-        let mut director = SceneDirector::new(scene).await;
+        let mut director = director_with_scene(scene).await;
 
         let transition = director.update().await;
         assert_eq!(transition, SceneTransition::Stay);
@@ -418,7 +519,7 @@ mod tests {
     #[tokio::test]
     async fn test_switch_to_calls_lifecycle() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         // Switch to scene2
         let scene2 = TestScene::new("scene2");
@@ -435,7 +536,7 @@ mod tests {
     #[tokio::test]
     async fn test_push_calls_suspend_and_enter() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         // Push scene2 on top
         let scene2 = TestScene::new("scene2");
@@ -451,7 +552,7 @@ mod tests {
     #[tokio::test]
     async fn test_pop_calls_exit_and_resume() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         let scene2 = TestScene::new("scene2");
         director.push(scene2).await;
@@ -470,7 +571,7 @@ mod tests {
     #[tokio::test]
     async fn test_quit_calls_on_exit_for_all() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         let scene2 = TestScene::new("scene2");
         director.push(scene2).await;
@@ -488,7 +589,7 @@ mod tests {
     #[tokio::test]
     async fn test_should_quit_returns_transition() {
         let scene = TestScene::new("test").with_quit();
-        let mut director = SceneDirector::new(scene).await;
+        let mut director = director_with_scene(scene).await;
 
         let transition = director.update().await;
         assert!(matches!(transition, SceneTransition::Quit));
@@ -497,7 +598,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_switch() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         let transition = SceneTransition::Switch(TestScene::new("scene2"));
         director.handle(transition).await.unwrap();
@@ -509,7 +610,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_push_pop() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         // Push scene2
         let transition = SceneTransition::Push(TestScene::new("scene2"));
@@ -527,7 +628,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_quit() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         let transition = SceneTransition::Quit;
         director.handle(transition).await.unwrap();
@@ -539,7 +640,7 @@ mod tests {
     #[tokio::test]
     async fn test_multiple_pushes_and_pops() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         // Push scene2, scene3
         director.push(TestScene::new("scene2")).await;
@@ -562,7 +663,7 @@ mod tests {
     #[tokio::test]
     async fn test_empty_stack_after_pop() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         director.pop().await;
 
@@ -573,7 +674,7 @@ mod tests {
     #[tokio::test]
     async fn test_backward_compatibility_transition_to() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
 
         // transition_to should work like switch_to
         director.transition_to(TestScene::new("scene2")).await;
@@ -585,7 +686,7 @@ mod tests {
     #[tokio::test]
     async fn test_iter_scenes() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
         director.push(TestScene::new("scene2")).await;
         director.push(TestScene::new("scene3")).await;
 
@@ -596,7 +697,7 @@ mod tests {
     #[tokio::test]
     async fn test_iter_scenes_rev() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
         director.push(TestScene::new("scene2")).await;
         director.push(TestScene::new("scene3")).await;
 
@@ -610,7 +711,7 @@ mod tests {
     #[tokio::test]
     async fn test_iter_with_depth() {
         let scene1 = TestScene::new("scene1");
-        let mut director = SceneDirector::new(scene1).await;
+        let mut director = director_with_scene(scene1).await;
         director.push(TestScene::new("scene2")).await;
 
         let items: Vec<_> = director

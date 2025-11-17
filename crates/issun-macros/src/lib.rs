@@ -56,17 +56,48 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
     let scene_impl = quote! {
         #[::async_trait::async_trait]
         impl #crate_name::scene::Scene for #scene_name {
-            async fn on_enter(&mut self) {
+            async fn on_enter(
+                &mut self,
+                _services: &#crate_name::context::ServiceContext,
+                _systems: &mut #crate_name::context::SystemContext,
+                _resources: &mut #crate_name::context::ResourceContext,
+            ) {
                 // Default implementation: do nothing
             }
 
-            async fn on_update(&mut self) -> #crate_name::scene::SceneTransition<Self> {
+            async fn on_update(
+                &mut self,
+                _services: &#crate_name::context::ServiceContext,
+                _systems: &mut #crate_name::context::SystemContext,
+                _resources: &mut #crate_name::context::ResourceContext,
+            ) -> #crate_name::scene::SceneTransition<Self> {
                 // Default implementation: stay in current scene
                 #crate_name::scene::SceneTransition::Stay
             }
 
-            async fn on_exit(&mut self) {
+            async fn on_exit(
+                &mut self,
+                _services: &#crate_name::context::ServiceContext,
+                _systems: &mut #crate_name::context::SystemContext,
+                _resources: &mut #crate_name::context::ResourceContext,
+            ) {
                 // Default implementation: do nothing
+            }
+
+            async fn on_suspend(
+                &mut self,
+                _services: &#crate_name::context::ServiceContext,
+                _systems: &mut #crate_name::context::SystemContext,
+                _resources: &mut #crate_name::context::ResourceContext,
+            ) {
+            }
+
+            async fn on_resume(
+                &mut self,
+                _services: &#crate_name::context::ServiceContext,
+                _systems: &mut #crate_name::context::SystemContext,
+                _resources: &mut #crate_name::context::ResourceContext,
+            ) {
             }
         }
     };
