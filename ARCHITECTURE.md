@@ -19,7 +19,8 @@ ISSUN follows Domain-Driven Design (DDD) principles to provide a clean, modular 
 **Examples**:
 - `CombatService` - Damage calculation, defense mechanics
 - `InventoryService` - Item transfer, equipment swapping
-- `PathfindingService` - A* algorithm, distance calculation
+- `LootService` - Drop rate calculations, weighted rarity selection
+- `PathfindingService` - A* algorithm, distance calculation (future)
 
 **Usage**:
 ```rust
@@ -164,8 +165,8 @@ impl Scene for GameScene {
 
 **Examples**:
 - `TurnBasedCombatPlugin` - Bundles CombatSystem + CombatService
-- `InventoryPlugin` - Bundles InventoryService
-- `LootPlugin` - Bundles LootSystem + LootService (future)
+- `InventoryPlugin` - Bundles InventoryService (generic item management)
+- `LootPlugin` - Bundles LootService (drop rates, rarity selection)
 
 **Usage**:
 ```rust
@@ -418,3 +419,204 @@ fn main() {
 3. **Explicitness**: Clear separation between logic (Service) and state (System)
 4. **Testability**: Pure services are easy to unit test
 5. **Flexibility**: Mix and match plugins as needed
+
+---
+
+## 🎮 Built-in Plugins
+
+ISSUN provides production-ready plugins following the **80/20 pattern**. Each plugin provides 80% reusable functionality, leaving 20% for game-specific customization.
+
+### ⚔️ TurnBasedCombatPlugin
+
+**Components**:
+- `CombatService` - Pure damage calculations, defense mechanics
+- `CombatSystem` - Turn management, combat log, score tracking
+
+**80% Framework provides**:
+- Damage = (Attack - Defense), min damage 1
+- Turn counter
+- Combat log
+- Score accumulation
+- Trait-based combatants (`Combatant` trait)
+
+**20% Game customizes**:
+- Specific combatant types (Player, Enemy, Bot)
+- Special attack effects
+- Critical hit mechanics
+- Status effects
+
+**Usage**:
+```rust
+use issun::prelude::*;
+
+// Define your combatants
+#[derive(Debug, Clone)]
+pub struct Player {
+    pub hp: i32,
+    pub attack: i32,
+    pub defense: i32,
+}
+
+impl Combatant for Player {
+    fn attack(&self) -> i32 { self.attack }
+    fn defense(&self) -> i32 { self.defense }
+    fn hp(&self) -> i32 { self.hp }
+    fn is_alive(&self) -> bool { self.hp > 0 }
+    fn take_damage(&mut self, damage: i32) { self.hp -= damage; }
+}
+
+// Use in game
+let game = GameBuilder::new()
+    .with_plugin(TurnBasedCombatPlugin::default())
+    .build()
+    .await?;
+```
+
+---
+
+### 🎒 InventoryPlugin
+
+**Components**:
+- `InventoryService` - Generic item management
+
+**80% Framework provides**:
+- Generic `Item` trait (works with any type: `T: Clone + Send + Sync + 'static`)
+- Transfer items between inventories
+- Stack/unstack items
+- Remove/consume items
+- Count items
+
+**20% Game customizes**:
+- Specific item types (Weapon, Armor, Consumable)
+- Item effects
+- Equipment slots
+- Item constraints (weight, rarity, etc.)
+
+**Usage**:
+```rust
+use issun::prelude::*;
+
+// Your item type automatically implements Item trait
+#[derive(Debug, Clone)]
+pub struct Weapon {
+    pub name: String,
+    pub attack: i32,
+}
+
+// Use the service
+let mut player_inv = vec![weapon1.clone()];
+let mut chest_inv = vec![weapon2.clone()];
+
+InventoryService::transfer_item(&mut chest_inv, &mut player_inv, 0);
+```
+
+---
+
+### 🎁 LootPlugin
+
+**Components**:
+- `LootService` - Drop calculations and rarity selection
+- `Rarity` enum - 5-tier rarity system
+- `DropConfig` - Configurable drop rates
+
+**80% Framework provides**:
+- Rarity tiers (Common → Legendary) with drop weights
+- Weighted random rarity selection algorithm
+- Drop rate calculation with multipliers: `(base_rate × multiplier).min(1.0)`
+- Multi-source drop counting
+- Configurable DropConfig
+
+**20% Game customizes**:
+- Specific loot tables (which items per rarity)
+- Item generation rules
+- Special drop conditions
+- Rarity display (colors, symbols)
+
+**Usage**:
+```rust
+use issun::prelude::*;
+
+// Configure drop rates
+let config = DropConfig::new(0.3, 1.5); // 30% base × 1.5 multiplier = 45% chance
+let mut rng = rand::thread_rng();
+
+// Check if drop should occur
+if LootService::should_drop(&config, &mut rng) {
+    // Select rarity
+    let rarity = LootService::select_rarity(&mut rng);
+
+    // Generate item based on rarity (game-specific)
+    let item = match rarity {
+        Rarity::Common => generate_common_item(),
+        Rarity::Legendary => generate_legendary_item(),
+        // ...
+    };
+}
+
+// Calculate drops from multiple sources
+let dead_enemies = 5;
+let drop_count = LootService::calculate_drop_count(dead_enemies, &config, &mut rng);
+```
+
+**Rarity System**:
+- `Rarity::Common` - 50.0 weight (most common)
+- `Rarity::Uncommon` - 25.0 weight
+- `Rarity::Rare` - 15.0 weight
+- `Rarity::Epic` - 7.0 weight
+- `Rarity::Legendary` - 3.0 weight (rarest)
+
+---
+
+### 🔮 Extending Plugins (Trait Extension Pattern)
+
+Games can extend framework types with game-specific functionality using trait extensions:
+
+```rust
+// Framework provides Rarity enum
+use issun::prelude::Rarity;
+use ratatui::style::Color;
+
+// Game extends with UI display methods
+pub trait RarityExt {
+    fn ui_color(&self) -> Color;
+    fn ui_symbol(&self) -> &'static str;
+    fn display_name(&self) -> &'static str;
+}
+
+impl RarityExt for Rarity {
+    fn ui_color(&self) -> Color {
+        match self {
+            Rarity::Common => Color::Gray,
+            Rarity::Legendary => Color::Yellow,
+            // ...
+        }
+    }
+
+    fn ui_symbol(&self) -> &'static str {
+        match self {
+            Rarity::Common => "○",
+            Rarity::Legendary => "❖",
+            // ...
+        }
+    }
+
+    fn display_name(&self) -> &'static str {
+        match self {
+            Rarity::Common => "Common",
+            Rarity::Legendary => "Legendary",
+            // ...
+        }
+    }
+}
+
+// Use in UI code
+let rarity = Rarity::Legendary;
+let color = rarity.ui_color();  // From RarityExt
+let weight = rarity.drop_weight();  // From framework's Rarity
+```
+
+This pattern allows games to:
+- ✅ Use framework's core logic (drop weights, selection)
+- ✅ Add game-specific display/UI logic
+- ✅ Keep framework types clean and minimal
+- ✅ Maintain clear separation of concerns
