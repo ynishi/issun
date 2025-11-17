@@ -7,7 +7,7 @@ use super::entities::{Enemy, LootItem, generate_random_loot};
 use issun::prelude::SceneTransition;
 
 /// Proceed to next floor in dungeon
-pub fn proceed_to_next_floor(ctx: &mut GameContext) -> (GameScene, SceneTransition) {
+pub fn proceed_to_next_floor(ctx: &mut GameContext) -> SceneTransition<GameScene> {
     let (advanced, current_floor, needs_floor4, next_room) = {
         if let Some(dungeon) = ctx.get_dungeon_mut() {
             // Advance to next floor
@@ -17,13 +17,13 @@ pub fn proceed_to_next_floor(ctx: &mut GameContext) -> (GameScene, SceneTransiti
             let next_room = dungeon.get_current_room().cloned();
             (advanced, current_floor, needs_floor4, next_room)
         } else {
-            return (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay);
+            return SceneTransition::Switch(GameScene::Title(TitleSceneData::new()));
         }
     };
 
     if !advanced {
         // Dungeon complete! Victory!
-        return (GameScene::Result(ResultSceneData::new(true, ctx.score)), SceneTransition::Stay);
+        return SceneTransition::Switch(GameScene::Result(ResultSceneData::new(true, ctx.score)));
     }
 
     // Update floor number
@@ -31,16 +31,16 @@ pub fn proceed_to_next_floor(ctx: &mut GameContext) -> (GameScene, SceneTransiti
 
     // Check if we need floor 4 selection
     if needs_floor4 {
-        return (GameScene::Floor4Choice(Floor4ChoiceSceneData::new()), SceneTransition::Stay);
+        return SceneTransition::Switch(GameScene::Floor4Choice(Floor4ChoiceSceneData::new()));
     }
 
     // Get next room and start combat
     if let Some(room) = next_room {
-        return (GameScene::Combat(CombatSceneData::from_room(room)), SceneTransition::Stay);
+        return SceneTransition::Switch(GameScene::Combat(CombatSceneData::from_room(room)));
     }
 
     // Fallback: return to title
-    (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay)
+    SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
 }
 
 /// Generate loot drops from defeated enemies

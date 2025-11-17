@@ -44,18 +44,18 @@ impl Floor4ChoiceSceneData {
     }
 
     pub fn handle_input(
-        mut self,
+        &mut self,
         ctx: &mut GameContext,
         input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
+    ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Up => {
                 self.cursor_up();
-                (GameScene::Floor4Choice(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Down => {
                 self.cursor_down();
-                (GameScene::Floor4Choice(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Select => {
                 // Apply floor 4 choice
@@ -64,16 +64,16 @@ impl Floor4ChoiceSceneData {
                     dungeon.set_floor4_choice(choice);
                     // Get the room and start combat
                     if let Some(room) = dungeon.get_current_room() {
-                        return (GameScene::Combat(CombatSceneData::from_room(room.clone())), SceneTransition::Stay);
+                        return SceneTransition::Switch(GameScene::Combat(CombatSceneData::from_room(room.clone())));
                     }
                 }
-                (GameScene::Floor4Choice(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Cancel => {
                 // Go back to title
-                (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay)
+                SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
             }
-            _ => (GameScene::Floor4Choice(self), SceneTransition::Stay)
+            _ => SceneTransition::Stay
         }
     }
 }

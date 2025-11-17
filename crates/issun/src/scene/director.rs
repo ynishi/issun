@@ -79,8 +79,8 @@ impl<S: Scene> SceneDirector<S> {
     ///
     /// # Returns
     ///
-    /// The SceneTransition indicating what should happen next.
-    pub async fn update(&mut self) -> SceneTransition {
+    /// The SceneTransition<S> indicating what should happen next.
+    pub async fn update(&mut self) -> SceneTransition<S> {
         if let Some(current) = self.stack.last_mut() {
             current.on_update().await
         } else {
@@ -242,39 +242,33 @@ impl<S: Scene> SceneDirector<S> {
 
     /// Handle a scene transition returned from update()
     ///
-    /// This is a convenience method that interprets SceneTransition
-    /// and calls the appropriate methods.
-    ///
-    /// Note: This only handles Stay, Transition, and Quit.
-    /// The actual scene switching must be done by the caller
-    /// since we don't have the next scene data here.
+    /// This is the primary method for processing scene transitions.
+    /// It automatically calls the appropriate lifecycle methods based on the transition type.
     ///
     /// # Example
     ///
     /// ```ignore
+    /// // Simple one-liner usage
     /// let transition = director.update().await;
-    /// match transition {
-    ///     SceneTransition::Transition => {
-    ///         // Caller decides what scene to transition to
-    ///         let next = determine_next_scene();
-    ///         director.switch_to(next).await;
-    ///     }
-    ///     SceneTransition::Quit => {
-    ///         director.quit().await;
-    ///     }
-    ///     SceneTransition::Stay => {
-    ///         // Do nothing
-    ///     }
-    /// }
+    /// director.handle(transition).await?;
+    ///
+    /// // Or in a single call
+    /// let transition = scene.handle_input(input);
+    /// director.handle(transition).await?;
     /// ```
-    pub async fn handle_transition_simple(&mut self, transition: SceneTransition) -> Result<()> {
+    pub async fn handle(&mut self, transition: SceneTransition<S>) -> Result<()> {
         match transition {
             SceneTransition::Stay => {
                 // Do nothing
             }
-            SceneTransition::Transition => {
-                // Transition requested, but we don't know the target scene
-                // This should be handled by the caller
+            SceneTransition::Switch(next) => {
+                self.switch_to(next).await;
+            }
+            SceneTransition::Push(next) => {
+                self.push(next).await;
+            }
+            SceneTransition::Pop => {
+                self.pop().await;
             }
             SceneTransition::Quit => {
                 self.quit().await;
@@ -290,7 +284,7 @@ mod tests {
     use async_trait::async_trait;
 
     // Test scene that tracks lifecycle calls
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     struct TestScene {
         name: String,
         enter_count: usize,
@@ -334,13 +328,13 @@ mod tests {
             self.enter_count += 1;
         }
 
-        async fn on_update(&mut self) -> SceneTransition {
+        async fn on_update(&mut self) -> SceneTransition<Self> {
             self.update_count += 1;
 
             if self.should_quit {
                 SceneTransition::Quit
             } else if self.should_transition {
-                SceneTransition::Transition
+                SceneTransition::Switch(TestScene::new("next"))
             } else {
                 SceneTransition::Stay
             }
@@ -456,7 +450,49 @@ mod tests {
         let mut director = SceneDirector::new(scene).await;
 
         let transition = director.update().await;
-        assert_eq!(transition, SceneTransition::Quit);
+        assert!(matches!(transition, SceneTransition::Quit));
+    }
+
+    #[tokio::test]
+    async fn test_handle_switch() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+
+        let transition = SceneTransition::Switch(TestScene::new("scene2"));
+        director.handle(transition).await.unwrap();
+
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().name, "scene2");
+    }
+
+    #[tokio::test]
+    async fn test_handle_push_pop() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+
+        // Push scene2
+        let transition = SceneTransition::Push(TestScene::new("scene2"));
+        director.handle(transition).await.unwrap();
+        assert_eq!(director.depth(), 2);
+        assert_eq!(director.current().unwrap().name, "scene2");
+
+        // Pop back to scene1
+        let transition = SceneTransition::Pop;
+        director.handle(transition).await.unwrap();
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().name, "scene1");
+    }
+
+    #[tokio::test]
+    async fn test_handle_quit() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+
+        let transition = SceneTransition::Quit;
+        director.handle(transition).await.unwrap();
+
+        assert!(director.should_quit());
+        assert_eq!(director.depth(), 0);
     }
 
     #[tokio::test]

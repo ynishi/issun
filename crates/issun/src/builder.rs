@@ -65,7 +65,6 @@ impl GameBuilder {
             context,
             entities: plugin_builder.entities,
             systems: plugin_builder.systems,
-            scenes: plugin_builder.scenes,
             assets: plugin_builder.assets,
         })
     }
@@ -137,7 +136,7 @@ struct DefaultPluginBuilder {
     entities: HashMap<String, Box<dyn crate::entity::Entity>>,
     services: Vec<Box<dyn crate::service::Service>>,
     systems: Vec<Box<dyn crate::system::System>>,
-    scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
+    // scenes: Removed - use SceneDirector instead
     assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
     resources: crate::resources::Resources,
 }
@@ -148,7 +147,6 @@ impl DefaultPluginBuilder {
             entities: HashMap::new(),
             services: Vec::new(),
             systems: Vec::new(),
-            scenes: HashMap::new(),
             assets: HashMap::new(),
             resources: crate::resources::Resources::default(),
         }
@@ -168,9 +166,7 @@ impl PluginBuilder for DefaultPluginBuilder {
         self.systems.push(system);
     }
 
-    fn register_scene(&mut self, name: &str, scene: Box<dyn crate::scene::Scene>) {
-        self.scenes.insert(name.to_string(), scene);
-    }
+    // register_scene removed - use SceneDirector instead
 
     fn register_asset(&mut self, name: &str, asset: Box<dyn std::any::Any + Send + Sync>) {
         self.assets.insert(name.to_string(), asset);
@@ -189,8 +185,7 @@ pub struct Game {
     pub entities: HashMap<String, Box<dyn crate::entity::Entity>>,
     /// Registered systems from plugins (Application Logic)
     pub systems: Vec<Box<dyn crate::system::System>>,
-    /// Registered scenes from plugins
-    pub scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
+    // scenes: Removed - use SceneDirector instead
     /// Registered assets from plugins
     pub assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
 }

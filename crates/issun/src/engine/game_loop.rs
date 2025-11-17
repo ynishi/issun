@@ -64,9 +64,9 @@ impl GameLoop {
                 SceneTransition::Stay => {
                     // Continue current scene
                 }
-                SceneTransition::Transition => {
+                SceneTransition::Switch(_) | SceneTransition::Push(_) | SceneTransition::Pop => {
                     // Scene requests transition
-                    // TODO: Handle scene transitions
+                    // TODO: Handle scene transitions with SceneDirector
                     break;
                 }
                 SceneTransition::Quit => {
@@ -102,7 +102,7 @@ mod tests {
             self.update_count = 0;
         }
 
-        async fn on_update(&mut self) -> SceneTransition {
+        async fn on_update(&mut self) -> SceneTransition<Self> {
             self.update_count += 1;
             if self.update_count >= 3 {
                 SceneTransition::Quit

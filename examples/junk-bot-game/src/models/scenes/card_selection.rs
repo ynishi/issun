@@ -51,18 +51,18 @@ impl CardSelectionSceneData {
     }
 
     pub fn handle_input(
-        mut self,
+        &mut self,
         ctx: &mut GameContext,
         input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
+    ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Up => {
                 self.cursor_up();
-                (GameScene::CardSelection(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Down => {
                 self.cursor_down();
-                (GameScene::CardSelection(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Select => {
                 // Select card and apply buff
@@ -77,7 +77,7 @@ impl CardSelectionSceneData {
                 // Skip card selection, proceed to next floor
                 proceed_to_next_floor(ctx)
             }
-            _ => (GameScene::CardSelection(self), SceneTransition::Stay)
+            _ => SceneTransition::Stay
         }
     }
 }

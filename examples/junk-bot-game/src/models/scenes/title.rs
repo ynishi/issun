@@ -16,25 +16,25 @@ impl TitleSceneData {
     }
 
     pub fn handle_input(
-        mut self,
+        &mut self,
         ctx: &mut GameContext,
         input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
+    ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Cancel => {
-                (GameScene::Title(self), SceneTransition::Quit)
+                SceneTransition::Quit
             }
             InputEvent::Up => {
                 if self.selected_index > 0 {
                     self.selected_index -= 1;
                 }
-                (GameScene::Title(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Down => {
                 if self.selected_index < 1 {
                     self.selected_index += 1;
                 }
-                (GameScene::Title(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Select => {
                 match self.selected_index {
@@ -45,22 +45,22 @@ impl TitleSceneData {
                         // Get first room from dungeon
                         if let Some(dungeon) = ctx.get_dungeon() {
                             if let Some(room) = dungeon.get_current_room() {
-                                (GameScene::Combat(CombatSceneData::from_room(room.clone())), SceneTransition::Stay)
+                                SceneTransition::Switch(GameScene::Combat(CombatSceneData::from_room(room.clone())))
                             } else {
-                                (GameScene::Title(self), SceneTransition::Stay)
+                                SceneTransition::Stay
                             }
                         } else {
-                            (GameScene::Title(self), SceneTransition::Stay)
+                            SceneTransition::Stay
                         }
                     }
                     1 => {
                         // Quit
-                        (GameScene::Title(self), SceneTransition::Quit)
+                        SceneTransition::Quit
                     }
-                    _ => (GameScene::Title(self), SceneTransition::Stay)
+                    _ => SceneTransition::Stay
                 }
             }
-            _ => (GameScene::Title(self), SceneTransition::Stay)
+            _ => SceneTransition::Stay
         }
     }
 }

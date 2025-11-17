@@ -43,10 +43,10 @@ impl RoomSelectionSceneData {
 
     /// Room selection is no longer used in dungeon mode, redirect to title
     pub fn handle_input(
-        self,
+        &mut self,
         _ctx: &mut GameContext,
         _input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
-        (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay)
+    ) -> SceneTransition<GameScene> {
+        SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
     }
 }

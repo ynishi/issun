@@ -60,7 +60,7 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
                 // Default implementation: do nothing
             }
 
-            async fn on_update(&mut self) -> #crate_name::scene::SceneTransition {
+            async fn on_update(&mut self) -> #crate_name::scene::SceneTransition<Self> {
                 // Default implementation: stay in current scene
                 #crate_name::scene::SceneTransition::Stay
             }
@@ -131,7 +131,7 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
             .as_ref()
             .map(|r| r.parse::<proc_macro2::TokenStream>().unwrap())
             .unwrap_or_else(|| {
-                quote! { (#scene_name, ::issun::scene::SceneTransition) }
+                quote! { (#scene_name, ::issun::scene::SceneTransition<#scene_name>) }
             });
 
         // Extract variants from enum
@@ -151,10 +151,12 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
 
         quote! {
             /// Auto-generated scene input handler dispatcher
+            ///
+            /// Takes a mutable reference to the scene and returns a transition.
             pub fn handle_scene_input(
-                scene: #scene_name,
+                scene: &mut #scene_name,
                 #params_tokens,
-            ) -> #return_type {
+            ) -> ::issun::scene::SceneTransition<#scene_name> {
                 match scene {
                     #(#match_arms),*
                 }

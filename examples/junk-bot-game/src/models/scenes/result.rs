@@ -28,17 +28,17 @@ impl ResultSceneData {
     }
 
     pub fn handle_input(
-        self,
+        &mut self,
         ctx: &mut GameContext,
         input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
+    ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Select | InputEvent::Char(' ') => {
                 // Return to title and reset context
                 *ctx = GameContext::new();
-                (GameScene::Title(TitleSceneData::new()), SceneTransition::Stay)
+                SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
             }
-            _ => (GameScene::Result(self), SceneTransition::Stay)
+            _ => SceneTransition::Stay
         }
     }
 }

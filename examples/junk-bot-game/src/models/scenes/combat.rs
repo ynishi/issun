@@ -120,18 +120,18 @@ impl CombatSceneData {
     }
 
     pub fn handle_input(
-        mut self,
+        &mut self,
         ctx: &mut GameContext,
         input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
+    ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Cancel => {
-                (GameScene::Combat(self), SceneTransition::Quit)
+                SceneTransition::Quit
             }
             InputEvent::Char('i') | InputEvent::Char('I') => {
                 // Toggle inventory
                 self.toggle_inventory();
-                (GameScene::Combat(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Tab => {
                 // Cycle equip target when inventory is shown
@@ -139,19 +139,19 @@ impl CombatSceneData {
                     let bot_count = ctx.bots.iter().filter(|b| b.is_alive()).count();
                     self.cycle_equip_target(bot_count);
                 }
-                (GameScene::Combat(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Up => {
                 if self.show_inventory {
                     self.move_inventory_up();
                 }
-                (GameScene::Combat(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Down => {
                 if self.show_inventory {
                     self.move_inventory_down(ctx.inventory.len());
                 }
-                (GameScene::Combat(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Select => {
                 // Equip weapon when inventory is shown
@@ -163,7 +163,7 @@ impl CombatSceneData {
                     }
                     self.show_inventory = false;
                 }
-                (GameScene::Combat(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Char(' ') => {
                 // Process combat turn
@@ -182,15 +182,15 @@ impl CombatSceneData {
                         proceed_to_next_floor(ctx)
                     } else {
                         // Show drop collection scene
-                        (GameScene::DropCollection(DropCollectionSceneData::new(drops)), SceneTransition::Stay)
+                        SceneTransition::Switch(GameScene::DropCollection(DropCollectionSceneData::new(drops)))
                     }
                 } else if party_dead {
-                    (GameScene::Result(ResultSceneData::new(false, ctx.score)), SceneTransition::Stay)
+                    SceneTransition::Switch(GameScene::Result(ResultSceneData::new(false, ctx.score)))
                 } else {
-                    (GameScene::Combat(self), SceneTransition::Stay)
+                    SceneTransition::Stay
                 }
             }
-            _ => (GameScene::Combat(self), SceneTransition::Stay)
+            _ => SceneTransition::Stay
         }
     }
 

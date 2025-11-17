@@ -125,8 +125,8 @@ pub trait PluginBuilder {
     /// Register a system (Application Logic - orchestration)
     fn register_system(&mut self, system: Box<dyn crate::system::System>);
 
-    /// Register a scene
-    fn register_scene(&mut self, name: &str, scene: Box<dyn crate::scene::Scene>);
+    // Note: Scene registration removed in favor of SceneDirector-based architecture
+    // Scenes are now managed directly by SceneDirector, not through plugins
 
     /// Register an asset
     fn register_asset(&mut self, name: &str, asset: Box<dyn std::any::Any + Send + Sync>);

@@ -62,18 +62,18 @@ impl DropCollectionSceneData {
     }
 
     pub fn handle_input(
-        mut self,
+        &mut self,
         ctx: &mut GameContext,
         input: InputEvent,
-    ) -> (GameScene, SceneTransition) {
+    ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Up => {
                 self.move_up();
-                (GameScene::DropCollection(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Down => {
                 self.move_down();
-                (GameScene::DropCollection(self), SceneTransition::Stay)
+                SceneTransition::Stay
             }
             InputEvent::Select => {
                 // Take selected item
@@ -84,9 +84,9 @@ impl DropCollectionSceneData {
                 // If no more items, transition to card selection
                 if !self.has_drops() {
                     let cards = generate_random_cards(3);
-                    (GameScene::CardSelection(CardSelectionSceneData::new(cards)), SceneTransition::Stay)
+                    SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
                 } else {
-                    (GameScene::DropCollection(self), SceneTransition::Stay)
+                    SceneTransition::Stay
                 }
             }
             InputEvent::Char(' ') => {
@@ -96,14 +96,14 @@ impl DropCollectionSceneData {
                 }
                 // Transition to card selection after taking all
                 let cards = generate_random_cards(3);
-                (GameScene::CardSelection(CardSelectionSceneData::new(cards)), SceneTransition::Stay)
+                SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
             }
             InputEvent::Cancel => {
                 // Skip all items, transition to card selection
                 let cards = generate_random_cards(3);
-                (GameScene::CardSelection(CardSelectionSceneData::new(cards)), SceneTransition::Stay)
+                SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
             }
-            _ => (GameScene::DropCollection(self), SceneTransition::Stay)
+            _ => SceneTransition::Stay
         }
     }
 }

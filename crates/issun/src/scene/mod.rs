@@ -12,15 +12,32 @@ pub use director::SceneDirector;
 
 /// Scene transition result
 ///
-/// Note: This is a simple enum without data.
-/// Actual scene transitions are handled by the game-specific enum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SceneTransition {
+/// Generic over the scene type S to allow transitions to carry scene data.
+/// This enables type-safe scene transitions without manual coupling.
+///
+/// # Example
+///
+/// ```ignore
+/// enum GameScene {
+///     Title(TitleData),
+///     Combat(CombatData),
+/// }
+///
+/// // Return a transition with scene data
+/// fn handle_input(&mut self) -> SceneTransition<GameScene> {
+///     SceneTransition::Switch(GameScene::Combat(CombatData::new()))
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneTransition<S> {
     /// Stay in current scene
     Stay,
-    /// Request transition to a different scene
-    /// (The actual target scene is determined by game logic)
-    Transition,
+    /// Switch to a new scene (replaces current)
+    Switch(S),
+    /// Push a new scene on top of the stack
+    Push(S),
+    /// Pop the current scene from the stack
+    Pop,
     /// Quit the game
     Quit,
 }
@@ -37,8 +54,13 @@ pub enum SceneTransition {
 /// - `on_suspend()`: Called when another scene is pushed on top (Phase 2+)
 /// - `on_resume()`: Called when the scene on top is popped (Phase 2+)
 /// - `on_update()`: Called every frame while active
+///
+/// # Sized Requirement
+///
+/// This trait requires `Sized` because `SceneTransition<Self>` needs to know
+/// the size of the scene type at compile time.
 #[async_trait]
-pub trait Scene: Send {
+pub trait Scene: Send + Sized {
     /// Called when entering this scene
     ///
     /// This is called when:
@@ -76,7 +98,21 @@ pub trait Scene: Send {
     /// Called every frame, returns transition decision
     ///
     /// Return `SceneTransition::Stay` to continue in current scene.
-    async fn on_update(&mut self) -> SceneTransition {
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// async fn on_update(&mut self) -> SceneTransition<Self> {
+    ///     if self.should_quit {
+    ///         SceneTransition::Quit
+    ///     } else if self.should_go_to_combat {
+    ///         SceneTransition::Switch(GameScene::Combat(CombatData::new()))
+    ///     } else {
+    ///         SceneTransition::Stay
+    ///     }
+    /// }
+    /// ```
+    async fn on_update(&mut self) -> SceneTransition<Self> {
         SceneTransition::Stay
     }
 }
@@ -102,7 +138,7 @@ mod tests {
 
         // Default on_update should return Stay
         let transition = scene.on_update().await;
-        assert_eq!(transition, SceneTransition::Stay);
+        assert!(matches!(transition, SceneTransition::Stay));
 
         // Default on_exit should work
         scene.on_exit().await;
@@ -120,7 +156,7 @@ mod tests {
 
         scene.on_enter().await;
         let transition = scene.on_update().await;
-        assert_eq!(transition, SceneTransition::Stay);
+        assert!(matches!(transition, SceneTransition::Stay));
         scene.on_exit().await;
     }
 }

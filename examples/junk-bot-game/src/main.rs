@@ -79,25 +79,10 @@ async fn game_loop(
 
         // Handle input and scene transitions
         if input != InputEvent::Other {
-            if let Some(current_scene) = director.current() {
-                let (next_scene, transition) = handle_scene_input(
-                    current_scene.clone(),
-                    ctx,
-                    input,
-                );
-
-                match transition {
-                    SceneTransition::Quit => {
-                        director.quit().await;
-                    }
-                    SceneTransition::Transition => {
-                        // Scene changed - use SceneDirector to manage lifecycle
-                        director.switch_to(next_scene).await;
-                    }
-                    SceneTransition::Stay => {
-                        // Continue in current scene, no transition needed
-                    }
-                }
+            if let Some(current_scene) = director.current_mut() {
+                let transition = handle_scene_input(current_scene, ctx, input);
+                // SceneDirector.handle() automatically manages all lifecycle hooks
+                director.handle(transition).await.ok();
             }
         }
 
