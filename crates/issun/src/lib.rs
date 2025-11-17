@@ -26,7 +26,7 @@
 //! - **Built-in Save/Load**: Automatic serialization with Serde
 
 // Re-export macros
-pub use issun_macros::{Asset, Entity, Scene, Service, System};
+pub use issun_macros::{Asset, Entity, Resource, Scene, Service, System};
 
 // Re-export async-trait for macros
 pub use async_trait;
@@ -39,6 +39,7 @@ pub mod engine;
 pub mod entity;
 pub mod error;
 pub mod plugin;
+pub mod resources;
 pub mod scene;
 pub mod service;
 pub mod storage;
@@ -51,6 +52,7 @@ pub mod prelude {
     pub use crate::asset::Asset;
     pub use crate::builder::GameBuilder;
     pub use crate::context::{Context, GameContext};
+    pub use crate::resources::{Resource, Resources};
     pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
     pub use crate::plugin::{

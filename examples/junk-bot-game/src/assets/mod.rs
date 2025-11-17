@@ -43,7 +43,28 @@ pub struct BuffCardAsset {
     pub rarity: Rarity,
 }
 
-/// All available buff cards
+/// Buff card database (for Resources)
+#[derive(Debug, Clone)]
+pub struct BuffCardDatabase {
+    pub cards: Vec<BuffCardAsset>,
+}
+
+impl BuffCardDatabase {
+    /// Create database from const data
+    pub fn new() -> Self {
+        Self {
+            cards: BUFF_CARDS.to_vec(),
+        }
+    }
+}
+
+impl Default for BuffCardDatabase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// All available buff cards (const data)
 pub const BUFF_CARDS: &[BuffCardAsset] = &[
     BuffCardAsset {
         name: "Rusty Blade",

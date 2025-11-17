@@ -35,6 +35,10 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize game state with ISSUN context from GameBuilder
     let mut state = GameState::new_with_context(game.context);
+
+    // Register resources (read-only data)
+    state.ctx.resources_mut().insert(assets::BuffCardDatabase::new());
+
     let mut last_tick = Instant::now();
 
     // Main game loop

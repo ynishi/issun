@@ -528,3 +528,39 @@ pub fn derive_asset(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+/// Derive macro for Resource trait
+///
+/// Automatically implements the `Resource` marker trait for types that
+/// can be stored in the global resource registry.
+///
+/// # Example
+/// ```ignore
+/// use issun::prelude::*;
+///
+/// #[derive(Resource)]
+/// pub struct GameConfig {
+///     pub fps: u32,
+///     pub difficulty: f32,
+/// }
+///
+/// #[derive(Resource)]
+/// pub struct EnemyDatabase {
+///     pub enemies: Vec<EnemyAsset>,
+/// }
+/// ```
+#[proc_macro_derive(Resource)]
+pub fn derive_resource(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = &input.ident;
+    let crate_name = get_crate_name();
+
+    let expanded = quote! {
+        impl #crate_name::resources::Resource for #name {
+            // Uses default implementation from trait
+        }
+    };
+
+    TokenStream::from(expanded)
+}

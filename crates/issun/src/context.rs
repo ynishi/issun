@@ -2,6 +2,7 @@
 //!
 //! GameContext holds persistent data that survives scene transitions.
 
+use crate::resources::Resources;
 use crate::service::Service;
 use std::any::Any;
 use std::collections::HashMap;
@@ -18,10 +19,11 @@ pub trait GameContext: Send + Sync {
 
 /// Default context implementation
 ///
-/// Provides a simple key-value store for game data and service registry
+/// Provides a simple key-value store for game data, service registry, and resources
 pub struct Context {
     data: HashMap<String, Box<dyn Any + Send + Sync>>,
     services: HashMap<&'static str, Box<dyn Service>>,
+    resources: Resources,
 }
 
 impl Default for Context {
@@ -36,6 +38,7 @@ impl Context {
         Self {
             data: HashMap::new(),
             services: HashMap::new(),
+            resources: Resources::new(),
         }
     }
 
@@ -128,6 +131,36 @@ impl Context {
     /// Get all registered service names
     pub fn service_names(&self) -> Vec<&'static str> {
         self.services.keys().copied().collect()
+    }
+
+    /// Get immutable reference to Resources
+    ///
+    /// Resources contain read-only data like asset databases and configuration.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Access resource
+    /// if let Some(enemy_db) = ctx.resources().get::<EnemyDatabase>() {
+    ///     println!("Loaded {} enemies", enemy_db.enemies.len());
+    /// }
+    /// ```
+    pub fn resources(&self) -> &Resources {
+        &self.resources
+    }
+
+    /// Get mutable reference to Resources
+    ///
+    /// Use this to register resources during game initialization.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Register resource
+    /// ctx.resources_mut().insert(EnemyDatabase::from_file("enemies.ron"));
+    /// ```
+    pub fn resources_mut(&mut self) -> &mut Resources {
+        &mut self.resources
     }
 }
 
