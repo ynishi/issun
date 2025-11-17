@@ -282,17 +282,19 @@ impl<S: Scene> SceneDirector<S> {
         }
     }
 
-    /// Apply an async closure to the current scene with contexts
-    pub async fn with_current_mut_async<R, F, Fut>(&mut self, f: F) -> Option<R>
+    /// Apply an async handler to the current scene with contexts
+    pub async fn with_current_async<R, H>(&mut self, handler: H) -> Option<R>
     where
-        F: FnOnce(&mut S, &ServiceContext, &mut SystemContext, &mut ResourceContext) -> Fut,
-        Fut: Future<Output = R>,
+        H: SceneHandler<S, R>,
     {
         if let Some(scene) = self.stack.last_mut() {
-            let services = &self.services;
-            let systems = &mut self.systems;
-            let resources = &mut self.resources;
-            Some(f(scene, services, systems, resources).await)
+            let fut = handler.call(
+                scene,
+                &self.services,
+                &mut self.systems,
+                &mut self.resources,
+            );
+            Some(fut.await)
         } else {
             None
         }
@@ -413,6 +415,37 @@ impl<S: Scene> SceneDirector<S> {
             }
         }
         Ok(())
+    }
+}
+
+/// Async scene handler abstraction (similar to axum::Handler)
+pub trait SceneHandler<S, R> {
+    type Future: Future<Output = R>;
+
+    fn call(
+        self,
+        scene: &mut S,
+        services: &ServiceContext,
+        systems: &mut SystemContext,
+        resources: &mut ResourceContext,
+    ) -> Self::Future;
+}
+
+impl<S, R, F, Fut> SceneHandler<S, R> for F
+where
+    F: FnOnce(&mut S, &ServiceContext, &mut SystemContext, &mut ResourceContext) -> Fut,
+    Fut: Future<Output = R>,
+{
+    type Future = Fut;
+
+    fn call(
+        self,
+        scene: &mut S,
+        services: &ServiceContext,
+        systems: &mut SystemContext,
+        resources: &mut ResourceContext,
+    ) -> Self::Future {
+        self(scene, services, systems, resources)
     }
 }
 

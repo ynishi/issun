@@ -88,7 +88,7 @@ async fn game_loop(
         // Handle input and scene transitions
         if input != InputEvent::Other {
             if let Some(transition) = director
-                .with_current_mut_async(|scene, services, systems, resources| async move {
+                .with_current_async(|scene, services, systems, resources| async move {
                     handle_scene_input(scene, services, systems, resources, input).await
                 })
                 .await

@@ -469,6 +469,26 @@ impl ResourceContext {
         })
     }
 
+    /// Try to get immutable reference to a resource without awaiting
+    pub fn try_get<T: 'static + Send + Sync>(&self) -> Option<ResourceReadGuard<T>> {
+        let resource = self.resources.get(&TypeId::of::<T>())?.clone();
+        let guard = resource.try_read_owned().ok()?;
+        Some(ResourceReadGuard {
+            guard,
+            _marker: PhantomData,
+        })
+    }
+
+    /// Try to get mutable reference to a resource without awaiting
+    pub fn try_get_mut<T: 'static + Send + Sync>(&self) -> Option<ResourceWriteGuard<T>> {
+        let resource = self.resources.get(&TypeId::of::<T>())?.clone();
+        let guard = resource.try_write_owned().ok()?;
+        Some(ResourceWriteGuard {
+            guard,
+            _marker: PhantomData,
+        })
+    }
+
     /// Check if a resource exists
     pub fn contains<T: 'static>(&self) -> bool {
         self.resources.contains_key(&TypeId::of::<T>())
