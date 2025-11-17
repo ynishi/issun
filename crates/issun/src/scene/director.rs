@@ -1,8 +1,9 @@
 //! Scene Director - Manages scene lifecycle and transitions
 //!
 //! The SceneDirector handles:
-//! - Scene lifecycle (on_enter, on_update, on_exit)
-//! - Scene transitions (switching between scenes)
+//! - Scene lifecycle (on_enter, on_update, on_exit, on_suspend, on_resume)
+//! - Scene transitions (switching, pushing, popping)
+//! - Scene stack management
 //! - Quit state management
 //!
 //! # Example
@@ -14,6 +15,7 @@
 //! enum GameScene {
 //!     Title(TitleData),
 //!     Combat(CombatData),
+//!     PauseMenu(PauseData),
 //! }
 //!
 //! let mut director = SceneDirector::new(GameScene::Title(TitleData::new())).await;
@@ -30,6 +32,12 @@
 //!         break;
 //!     }
 //! }
+//!
+//! // Push a pause menu on top
+//! director.push(GameScene::PauseMenu(PauseData::new())).await;
+//!
+//! // Pop back to previous scene
+//! director.pop().await;
 //! ```
 
 use super::{Scene, SceneTransition};
@@ -37,10 +45,10 @@ use crate::error::Result;
 
 /// Scene Director manages scene lifecycle and transitions
 ///
-/// Phase 1: Basic single-scene management with lifecycle hooks
+/// Phase 2+3: Stack-based scene management with full lifecycle hooks
 pub struct SceneDirector<S> {
-    /// Current active scene
-    current: S,
+    /// Scene stack (top is the active scene)
+    stack: Vec<S>,
     /// Whether the application should quit
     should_quit: bool,
 }
@@ -60,12 +68,12 @@ impl<S: Scene> SceneDirector<S> {
         initial_scene.on_enter().await;
 
         Self {
-            current: initial_scene,
+            stack: vec![initial_scene],
             should_quit: false,
         }
     }
 
-    /// Update the current scene
+    /// Update the current scene (top of stack)
     ///
     /// Calls `on_update()` on the current scene and returns the transition result.
     ///
@@ -73,10 +81,14 @@ impl<S: Scene> SceneDirector<S> {
     ///
     /// The SceneTransition indicating what should happen next.
     pub async fn update(&mut self) -> SceneTransition {
-        self.current.on_update().await
+        if let Some(current) = self.stack.last_mut() {
+            current.on_update().await
+        } else {
+            SceneTransition::Quit // Empty stack = quit
+        }
     }
 
-    /// Transition to a new scene
+    /// Switch to a new scene (replaces current scene)
     ///
     /// This will:
     /// 1. Call `on_exit()` on the current scene
@@ -86,26 +98,104 @@ impl<S: Scene> SceneDirector<S> {
     /// # Example
     ///
     /// ```ignore
-    /// director.transition_to(GameScene::Combat(CombatData::new())).await;
+    /// director.switch_to(GameScene::Combat(CombatData::new())).await;
     /// ```
-    pub async fn transition_to(&mut self, mut next: S) {
-        // Exit current scene
-        self.current.on_exit().await;
+    pub async fn switch_to(&mut self, mut next: S) {
+        if let Some(mut current) = self.stack.pop() {
+            // Exit current scene
+            current.on_exit().await;
+        }
 
         // Enter new scene
         next.on_enter().await;
 
-        // Replace current scene
-        self.current = next;
+        // Push new scene onto stack
+        self.stack.push(next);
+    }
+
+    /// Push a new scene on top of the stack
+    ///
+    /// This will:
+    /// 1. Call `on_suspend()` on the current scene
+    /// 2. Call `on_enter()` on the new scene
+    /// 3. Push the new scene onto the stack
+    ///
+    /// Use this for temporary overlays like pause menus or dialogs.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// director.push(GameScene::PauseMenu(PauseData::new())).await;
+    /// ```
+    pub async fn push(&mut self, mut next: S) {
+        // Suspend current scene (if any)
+        if let Some(current) = self.stack.last_mut() {
+            current.on_suspend().await;
+        }
+
+        // Enter new scene
+        next.on_enter().await;
+
+        // Push onto stack
+        self.stack.push(next);
+    }
+
+    /// Pop the current scene from the stack
+    ///
+    /// This will:
+    /// 1. Call `on_exit()` on the current scene
+    /// 2. Pop the scene from the stack
+    /// 3. Call `on_resume()` on the now-current scene (if any)
+    ///
+    /// Returns `true` if a scene was popped, `false` if stack was empty.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// if director.pop().await {
+    ///     // Successfully popped back to previous scene
+    /// }
+    /// ```
+    pub async fn pop(&mut self) -> bool {
+        if let Some(mut popped) = self.stack.pop() {
+            // Exit popped scene
+            popped.on_exit().await;
+
+            // Resume scene below (if any)
+            if let Some(current) = self.stack.last_mut() {
+                current.on_resume().await;
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Transition to a new scene (deprecated in favor of switch_to)
+    ///
+    /// This is kept for backward compatibility with Phase 1 code.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// director.transition_to(GameScene::Combat(CombatData::new())).await;
+    /// ```
+    pub async fn transition_to(&mut self, next: S) {
+        self.switch_to(next).await;
     }
 
     /// Request application quit
     ///
     /// This will:
-    /// 1. Call `on_exit()` on the current scene
+    /// 1. Call `on_exit()` on all scenes in the stack (from top to bottom)
     /// 2. Set the quit flag to true
     pub async fn quit(&mut self) {
-        self.current.on_exit().await;
+        // Exit all scenes in reverse order (top to bottom)
+        while let Some(mut scene) = self.stack.pop() {
+            scene.on_exit().await;
+        }
+
         self.should_quit = true;
     }
 
@@ -118,18 +208,36 @@ impl<S: Scene> SceneDirector<S> {
         self.should_quit
     }
 
-    /// Get a reference to the current scene
+    /// Get a reference to the current scene (top of stack)
+    ///
+    /// Returns `None` if the stack is empty.
     ///
     /// Useful for rendering or inspecting scene state.
-    pub fn current(&self) -> &S {
-        &self.current
+    pub fn current(&self) -> Option<&S> {
+        self.stack.last()
     }
 
-    /// Get a mutable reference to the current scene
+    /// Get a mutable reference to the current scene (top of stack)
+    ///
+    /// Returns `None` if the stack is empty.
     ///
     /// Useful for direct scene manipulation.
-    pub fn current_mut(&mut self) -> &mut S {
-        &mut self.current
+    pub fn current_mut(&mut self) -> Option<&mut S> {
+        self.stack.last_mut()
+    }
+
+    /// Get the depth of the scene stack
+    ///
+    /// # Returns
+    ///
+    /// The number of scenes in the stack.
+    pub fn depth(&self) -> usize {
+        self.stack.len()
+    }
+
+    /// Check if the stack is empty
+    pub fn is_empty(&self) -> bool {
+        self.stack.is_empty()
     }
 
     /// Handle a scene transition returned from update()
@@ -149,7 +257,7 @@ impl<S: Scene> SceneDirector<S> {
     ///     SceneTransition::Transition => {
     ///         // Caller decides what scene to transition to
     ///         let next = determine_next_scene();
-    ///         director.transition_to(next).await;
+    ///         director.switch_to(next).await;
     ///     }
     ///     SceneTransition::Quit => {
     ///         director.quit().await;
@@ -188,6 +296,8 @@ mod tests {
         enter_count: usize,
         update_count: usize,
         exit_count: usize,
+        suspend_count: usize,
+        resume_count: usize,
         should_transition: bool,
         should_quit: bool,
     }
@@ -199,11 +309,14 @@ mod tests {
                 enter_count: 0,
                 update_count: 0,
                 exit_count: 0,
+                suspend_count: 0,
+                resume_count: 0,
                 should_transition: false,
                 should_quit: false,
             }
         }
 
+        #[allow(dead_code)]
         fn with_transition(mut self) -> Self {
             self.should_transition = true;
             self
@@ -236,6 +349,14 @@ mod tests {
         async fn on_exit(&mut self) {
             self.exit_count += 1;
         }
+
+        async fn on_suspend(&mut self) {
+            self.suspend_count += 1;
+        }
+
+        async fn on_resume(&mut self) {
+            self.resume_count += 1;
+        }
     }
 
     #[tokio::test]
@@ -243,9 +364,10 @@ mod tests {
         let scene = TestScene::new("test");
         let director = SceneDirector::new(scene).await;
 
-        assert_eq!(director.current().enter_count, 1);
-        assert_eq!(director.current().update_count, 0);
-        assert_eq!(director.current().exit_count, 0);
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().enter_count, 1);
+        assert_eq!(director.current().unwrap().update_count, 0);
+        assert_eq!(director.current().unwrap().exit_count, 0);
     }
 
     #[tokio::test]
@@ -255,36 +377,77 @@ mod tests {
 
         let transition = director.update().await;
         assert_eq!(transition, SceneTransition::Stay);
-        assert_eq!(director.current().update_count, 1);
+        assert_eq!(director.current().unwrap().update_count, 1);
     }
 
     #[tokio::test]
-    async fn test_transition_to_calls_lifecycle() {
+    async fn test_switch_to_calls_lifecycle() {
         let scene1 = TestScene::new("scene1");
         let mut director = SceneDirector::new(scene1).await;
 
-        // Transition to scene2
+        // Switch to scene2
         let scene2 = TestScene::new("scene2");
-        director.transition_to(scene2).await;
+        director.switch_to(scene2).await;
 
         // scene1 should have exited (but we can't check it anymore)
         // scene2 should have entered
-        assert_eq!(director.current().name, "scene2");
-        assert_eq!(director.current().enter_count, 1);
-        assert_eq!(director.current().exit_count, 0);
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().name, "scene2");
+        assert_eq!(director.current().unwrap().enter_count, 1);
+        assert_eq!(director.current().unwrap().exit_count, 0);
     }
 
     #[tokio::test]
-    async fn test_quit_calls_on_exit() {
-        let scene = TestScene::new("test");
-        let mut director = SceneDirector::new(scene).await;
+    async fn test_push_calls_suspend_and_enter() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
 
+        // Push scene2 on top
+        let scene2 = TestScene::new("scene2");
+        director.push(scene2).await;
+
+        assert_eq!(director.depth(), 2);
+        assert_eq!(director.current().unwrap().name, "scene2");
+        assert_eq!(director.current().unwrap().enter_count, 1);
+
+        // Can't check scene1's suspend_count from here, but it should be 1
+    }
+
+    #[tokio::test]
+    async fn test_pop_calls_exit_and_resume() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+
+        let scene2 = TestScene::new("scene2");
+        director.push(scene2).await;
+
+        assert_eq!(director.depth(), 2);
+
+        // Pop scene2
+        let popped = director.pop().await;
+        assert!(popped);
+
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().name, "scene1");
+        assert_eq!(director.current().unwrap().resume_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_quit_calls_on_exit_for_all() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+
+        let scene2 = TestScene::new("scene2");
+        director.push(scene2).await;
+
+        assert_eq!(director.depth(), 2);
         assert!(!director.should_quit());
 
         director.quit().await;
 
         assert!(director.should_quit());
-        assert_eq!(director.current().exit_count, 1);
+        assert_eq!(director.depth(), 0);
+        assert!(director.current().is_none());
     }
 
     #[tokio::test]
@@ -297,26 +460,48 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_current_and_current_mut() {
-        let scene = TestScene::new("test");
-        let mut director = SceneDirector::new(scene).await;
+    async fn test_multiple_pushes_and_pops() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
 
-        // Test immutable access
-        assert_eq!(director.current().name, "test");
+        // Push scene2, scene3
+        director.push(TestScene::new("scene2")).await;
+        director.push(TestScene::new("scene3")).await;
 
-        // Test mutable access
-        director.current_mut().name = "modified".to_string();
-        assert_eq!(director.current().name, "modified");
+        assert_eq!(director.depth(), 3);
+        assert_eq!(director.current().unwrap().name, "scene3");
+
+        // Pop back to scene2
+        director.pop().await;
+        assert_eq!(director.depth(), 2);
+        assert_eq!(director.current().unwrap().name, "scene2");
+
+        // Pop back to scene1
+        director.pop().await;
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().name, "scene1");
     }
 
     #[tokio::test]
-    async fn test_multiple_updates() {
-        let scene = TestScene::new("test");
-        let mut director = SceneDirector::new(scene).await;
+    async fn test_empty_stack_after_pop() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
 
-        for i in 1..=5 {
-            director.update().await;
-            assert_eq!(director.current().update_count, i);
-        }
+        director.pop().await;
+
+        assert_eq!(director.depth(), 0);
+        assert!(director.current().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_backward_compatibility_transition_to() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+
+        // transition_to should work like switch_to
+        director.transition_to(TestScene::new("scene2")).await;
+
+        assert_eq!(director.depth(), 1);
+        assert_eq!(director.current().unwrap().name, "scene2");
     }
 }

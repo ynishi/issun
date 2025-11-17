@@ -3,7 +3,7 @@
 //! Static/const data or data loaded from files
 
 use issun::prelude::*;
-use issun::Asset; // Import derive macro
+use issun::{Asset, Resource}; // Import derive macros
 
 use crate::models::entities::{BuffType, Rarity};
 
@@ -44,7 +44,7 @@ pub struct BuffCardAsset {
 }
 
 /// Buff card database (for Resources)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct BuffCardDatabase {
     pub cards: Vec<BuffCardAsset>,
 }

@@ -6,12 +6,12 @@
 mod models;
 mod systems;
 mod assets;
-mod game;
+// mod game; // Removed - not needed with SceneDirector
 mod ui;
 
 use issun::prelude::*;
 use issun::ui::{Tui, InputEvent};
-use models::{GameState, GameScene, handle_scene_input};
+use models::{GameContext, GameScene, handle_scene_input};
 use std::time::{Duration, Instant};
 
 const TICK_RATE: Duration = Duration::from_millis(33); // 30 FPS
@@ -33,31 +33,40 @@ async fn main() -> std::io::Result<()> {
         .await
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
-    // Initialize game state with ISSUN context from GameBuilder
-    let mut state = GameState::new_with_context(game.context);
+    // Initialize game context with ISSUN context from GameBuilder
+    let mut ctx = GameContext::new().with_issun_context(game.context);
 
     // Register resources (read-only data)
-    state.ctx.resources_mut().insert(assets::BuffCardDatabase::new());
+    if let Some(issun_ctx) = ctx.issun_mut() {
+        issun_ctx.resources_mut().register(assets::BuffCardDatabase::new());
+    }
+
+    // Initialize SceneDirector with initial scene
+    let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());
+    let mut director = SceneDirector::new(initial_scene).await;
 
     let mut last_tick = Instant::now();
 
     // Main game loop
-    let result = game_loop(&mut tui, &mut state, &mut last_tick);
+    let result = game_loop(&mut tui, &mut director, &mut ctx, &mut last_tick).await;
 
     // Cleanup
     tui.restore()?;
     result
 }
 
-fn game_loop(
+async fn game_loop(
     tui: &mut Tui,
-    state: &mut GameState,
+    director: &mut SceneDirector<GameScene>,
+    ctx: &mut GameContext,
     last_tick: &mut Instant,
 ) -> std::io::Result<()> {
     loop {
         // Draw UI based on current scene
         tui.terminal().draw(|f| {
-            render_scene(f, &state.scene, &state.ctx);
+            if let Some(current_scene) = director.current() {
+                render_scene(f, current_scene, ctx);
+            }
         })?;
 
         // Calculate timeout for next tick
@@ -70,23 +79,24 @@ fn game_loop(
 
         // Handle input and scene transitions
         if input != InputEvent::Other {
-            let (next_scene, transition) = handle_scene_input(
-                state.scene.clone(),
-                &mut state.ctx,
-                input,
-            );
+            if let Some(current_scene) = director.current() {
+                let (next_scene, transition) = handle_scene_input(
+                    current_scene.clone(),
+                    ctx,
+                    input,
+                );
 
-            state.scene = next_scene;
-
-            match transition {
-                SceneTransition::Quit => {
-                    state.should_quit = true;
-                }
-                SceneTransition::Transition => {
-                    // Scene changed, handled by handle_scene_input
-                }
-                SceneTransition::Stay => {
-                    // Continue in current scene
+                match transition {
+                    SceneTransition::Quit => {
+                        director.quit().await;
+                    }
+                    SceneTransition::Transition => {
+                        // Scene changed - use SceneDirector to manage lifecycle
+                        director.switch_to(next_scene).await;
+                    }
+                    SceneTransition::Stay => {
+                        // Continue in current scene, no transition needed
+                    }
                 }
             }
         }
@@ -96,8 +106,8 @@ fn game_loop(
             *last_tick = Instant::now();
         }
 
-        // Exit condition
-        if state.should_quit {
+        // Exit condition - SceneDirector manages quit state
+        if director.should_quit() || director.is_empty() {
             break;
         }
     }
