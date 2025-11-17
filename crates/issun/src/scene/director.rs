@@ -50,7 +50,7 @@
 use super::{Scene, SceneTransition};
 use crate::context::{ResourceContext, ServiceContext, SystemContext};
 use crate::error::Result;
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
 /// Scene Director manages scene lifecycle and transitions
 ///
@@ -283,18 +283,25 @@ impl<S: Scene> SceneDirector<S> {
     }
 
     /// Apply an async handler to the current scene with contexts
-    pub async fn with_current_async<R, H>(&mut self, handler: H) -> Option<R>
-    where
-        H: SceneHandler<S, R>,
-    {
+    pub async fn with_current_async<R>(
+        &mut self,
+        mut handler: impl for<'a> FnMut(
+            &'a mut S,
+            &'a ServiceContext,
+            &'a mut SystemContext,
+            &'a mut ResourceContext,
+        ) -> Pin<Box<dyn Future<Output = R> + 'a>>,
+    ) -> Option<R> {
         if let Some(scene) = self.stack.last_mut() {
-            let fut = handler.call(
-                scene,
-                &self.services,
-                &mut self.systems,
-                &mut self.resources,
-            );
-            Some(fut.await)
+            Some(
+                handler(
+                    scene,
+                    &self.services,
+                    &mut self.systems,
+                    &mut self.resources,
+                )
+                .await,
+            )
         } else {
             None
         }
@@ -415,37 +422,6 @@ impl<S: Scene> SceneDirector<S> {
             }
         }
         Ok(())
-    }
-}
-
-/// Async scene handler abstraction (similar to axum::Handler)
-pub trait SceneHandler<S, R> {
-    type Future: Future<Output = R>;
-
-    fn call(
-        self,
-        scene: &mut S,
-        services: &ServiceContext,
-        systems: &mut SystemContext,
-        resources: &mut ResourceContext,
-    ) -> Self::Future;
-}
-
-impl<S, R, F, Fut> SceneHandler<S, R> for F
-where
-    F: FnOnce(&mut S, &ServiceContext, &mut SystemContext, &mut ResourceContext) -> Fut,
-    Fut: Future<Output = R>,
-{
-    type Future = Fut;
-
-    fn call(
-        self,
-        scene: &mut S,
-        services: &ServiceContext,
-        systems: &mut SystemContext,
-        resources: &mut ResourceContext,
-    ) -> Self::Future {
-        self(scene, services, systems, resources)
     }
 }
 

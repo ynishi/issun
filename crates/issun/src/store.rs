@@ -27,11 +27,11 @@ use std::hash::Hash;
 ///     hp: i32,
 /// }
 ///
-/// let mut enemies = Store::new();
-/// enemies.insert("goblin", Enemy { name: "Goblin".into(), hp: 30 });
-/// enemies.insert("orc", Enemy { name: "Orc".into(), hp: 50 });
+/// let mut enemies: Store<String, Enemy> = Store::new();
+/// enemies.insert("goblin".to_string(), Enemy { name: "Goblin".into(), hp: 30 });
+/// enemies.insert("orc".to_string(), Enemy { name: "Orc".into(), hp: 50 });
 ///
-/// assert_eq!(enemies.get("goblin").unwrap().hp, 30);
+/// assert_eq!(enemies.get(&"goblin".to_string()).unwrap().hp, 30);
 /// assert_eq!(enemies.len(), 2);
 /// ```
 #[derive(Debug, Clone)]

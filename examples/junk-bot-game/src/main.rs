@@ -9,10 +9,11 @@ mod assets;
 // mod game; // Removed - not needed with SceneDirector
 mod ui;
 
+use issun::engine::GameRunner;
 use issun::prelude::*;
-use issun::ui::{Tui, InputEvent};
-use models::{GameContext, GameScene, handle_scene_input};
-use std::time::{Duration, Instant};
+use issun::ui::Tui;
+use models::{handle_scene_input, GameContext, GameScene};
+use std::time::Duration;
 
 const TICK_RATE: Duration = Duration::from_millis(33); // 30 FPS
 
@@ -46,70 +47,29 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize SceneDirector with initial scene
     let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());
-    let mut director = SceneDirector::new(initial_scene, services, systems, resources).await;
+    let runner = GameRunner::new(
+        SceneDirector::new(initial_scene, services, systems, resources).await,
+    )
+    .with_tick_rate(TICK_RATE);
 
-    let mut last_tick = Instant::now();
-
-    // Main game loop
-    let result = game_loop(&mut tui, &mut director, &mut last_tick).await;
+    let result = runner
+        .run(
+            &mut tui,
+            |frame, scene, resources| {
+                if let Some(state) = resources.try_get::<GameContext>() {
+                    render_scene(frame, scene, &state);
+                }
+            },
+            |scene, services, systems, resources, input| {
+                Box::pin(handle_scene_input(scene, services, systems, resources, input))
+            },
+        )
+        .await
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
 
     // Cleanup
     tui.restore()?;
     result
-}
-
-async fn game_loop(
-    tui: &mut Tui,
-    director: &mut SceneDirector<GameScene>,
-    last_tick: &mut Instant,
-) -> std::io::Result<()> {
-    loop {
-        // Draw UI based on current scene
-        let game_state = director
-            .resources()
-            .get::<GameContext>()
-            .await
-            .expect("GameContext resource missing");
-
-        tui.terminal().draw(|f| {
-            if let Some(current_scene) = director.current() {
-                render_scene(f, current_scene, &game_state);
-            }
-        })?;
-
-        // Calculate timeout for next tick
-        let timeout = TICK_RATE
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-
-        // Poll for input
-        let input = issun::ui::input::poll_input(timeout)?;
-
-        // Handle input and scene transitions
-        if input != InputEvent::Other {
-            if let Some(transition) = director
-                .with_current_async(|scene, services, systems, resources| async move {
-                    handle_scene_input(scene, services, systems, resources, input).await
-                })
-                .await
-            {
-                // SceneDirector.handle() automatically manages all lifecycle hooks
-                director.handle(transition).await.ok();
-            }
-        }
-
-        // Update game state every tick
-        if last_tick.elapsed() >= TICK_RATE {
-            *last_tick = Instant::now();
-        }
-
-        // Exit condition - SceneDirector manages quit state
-        if director.should_quit() || director.is_empty() {
-            break;
-        }
-    }
-
-    Ok(())
 }
 
 /// Render the current scene

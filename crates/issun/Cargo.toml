@@ -36,3 +36,4 @@ default = ["ui", "storage"]
 ui = []           # TUI support
 storage = []      # Save/Load support
 full = ["ui", "storage"]
+tty_tests = []    # Enable TTY-dependent tests
