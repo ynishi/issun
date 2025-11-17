@@ -6,14 +6,25 @@ The Plugin system allows you to compose game systems in a modular, reusable way.
 
 ## Architecture
 
+Plugins bundle **System** (Application Logic) + **Service** (Domain Service):
+
 ```
 plugin/
 ├── mod.rs           # Plugin trait definition
-├── combat.rs        # TurnBasedCombatPlugin
-├── inventory.rs     # InventoryPlugin (TODO)
-├── loot.rs          # LootPlugin (TODO)
-└── dungeon.rs       # DungeonPlugin (TODO)
+└── combat/
+    ├── plugin.rs    # TurnBasedCombatPlugin (registers System + Service)
+    ├── engine.rs    # CombatEngine (System - orchestration)
+    ├── service.rs   # CombatService (Service - pure logic)
+    └── types.rs     # Domain types (Combatant trait, etc.)
 ```
+
+**Service vs System**:
+- **Service** (`service.rs`): Pure functions, stateless
+  - Example: `CombatService::calculate_damage(base, defense) -> i32`
+- **System** (`engine.rs`): Stateful orchestration
+  - Example: `CombatEngine { turn_count, log, combat_service }`
+
+See [ARCHITECTURE.md](../../../ARCHITECTURE.md) for detailed guide.
 
 ## Built-in Plugins
 
@@ -98,13 +109,42 @@ Buff/debuff management:
 
 ## Creating a Custom Plugin
 
+A typical plugin bundles System + Service:
+
 ```rust
-use issun::plugin::{Plugin, PluginBuilder};
+use issun::prelude::*;
 use async_trait::async_trait;
 
-pub struct MyCustomPlugin {
-    config: MyConfig,
+// 1. Define Service (pure logic)
+#[derive(Service)]
+#[service(name = "my_service")]
+pub struct MyService {
+    multiplier: f32,
 }
+
+impl MyService {
+    pub fn calculate(&self, value: i32) -> i32 {
+        (value as f32 * self.multiplier) as i32
+    }
+}
+
+// 2. Define System (orchestration)
+#[derive(System)]
+#[system(name = "my_system")]
+pub struct MySystem {
+    counter: u32,
+    my_service: MyService,
+}
+
+impl MySystem {
+    pub fn process(&mut self, value: i32) -> i32 {
+        self.counter += 1;
+        self.my_service.calculate(value)
+    }
+}
+
+// 3. Create Plugin (bundles System + Service)
+pub struct MyCustomPlugin;
 
 #[async_trait]
 impl Plugin for MyCustomPlugin {
@@ -113,15 +153,17 @@ impl Plugin for MyCustomPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register entities, services, etc.
+        // Register both System and Service
+        builder.register_system(Box::new(MySystem::new()));
+        builder.register_service(Box::new(MyService::new()));
     }
 
     fn dependencies(&self) -> Vec<&'static str> {
-        vec!["turn_based_combat"]  // Depend on combat plugin
+        vec![]  // Or depend on other plugins: vec!["turn_based_combat"]
     }
 
     async fn initialize(&mut self) {
-        // Setup logic
+        // Setup logic (optional)
     }
 }
 ```

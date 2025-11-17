@@ -68,8 +68,11 @@ pub trait PluginBuilder {
     /// Register an entity type
     fn register_entity(&mut self, name: &str, entity: Box<dyn crate::entity::Entity>);
 
-    /// Register a service
+    /// Register a service (Domain Service - pure functions)
     fn register_service(&mut self, service: Box<dyn crate::service::Service>);
+
+    /// Register a system (Application Logic - orchestration)
+    fn register_system(&mut self, system: Box<dyn crate::system::System>);
 
     /// Register a scene
     fn register_scene(&mut self, name: &str, scene: Box<dyn crate::scene::Scene>);

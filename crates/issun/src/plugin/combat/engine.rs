@@ -8,7 +8,11 @@ use super::service::CombatService;
 /// Core combat engine
 ///
 /// Generic over party members (P) and enemies (E) that implement Combatant
-#[derive(Debug, Clone)]
+///
+/// This demonstrates the System pattern for Application Logic.
+/// CombatEngine orchestrates combat flow using CombatService.
+#[derive(Debug, Clone, issun_macros::System)]
+#[system(name = "combat_engine")]
 pub struct CombatEngine {
     turn_count: u32,
     log: Vec<CombatLogEntry>,

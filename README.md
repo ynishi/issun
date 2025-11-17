@@ -24,6 +24,23 @@ ISSUN is designed for developers who want to:
 - 💾 **Built-in Save/Load** - Automatic serialization with Serde
 - 🛠️ **Derive Macros** - Less boilerplate, more game logic
 
+## 🏗️ Architecture
+
+ISSUN provides traits and macros for clean, DDD-inspired architecture:
+
+| Component | Trait | Macro | Purpose |
+|-----------|-------|-------|---------|
+| **Service** | `Service` | `#[derive(Service)]` | Pure functions (damage calc, pathfinding) |
+| **System** | `System` | `#[derive(System)]` | Orchestration (turn management, game flow) |
+| **Scene** | `Scene` | `#[derive(Scene)]` | Presentation (UI state, input handling) |
+| **Plugin** | `Plugin` | - | Bundles System + Service for reuse |
+
+**Service vs System**:
+- **Service** = Stateless, pure logic (like a calculator)
+- **System** = Stateful, orchestrates services (like a conductor)
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed guide and best practices.
+
 ## 🚀 Quick Start
 
 ```rust

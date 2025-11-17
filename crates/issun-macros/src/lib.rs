@@ -3,6 +3,8 @@
 //! This crate provides derive macros for:
 //! - `#[derive(Scene)]` - Auto-implement Scene trait
 //! - `#[derive(Entity)]` - Auto-generate entity methods
+//! - `#[derive(Service)]` - Auto-implement Service trait
+//! - `#[derive(System)]` - Auto-implement System trait
 //! - `#[derive(Asset)]` - Auto-generate asset loading
 
 use proc_macro::TokenStream;
@@ -409,6 +411,87 @@ fn parse_service_name(attrs: &[syn::Attribute]) -> String {
 
     // Default: use lowercase struct name
     "unknown_service".to_string()
+}
+
+/// Derive macro for System trait
+///
+/// Auto-generates the boilerplate System trait implementation.
+/// Requires #[system(name = "system_name")] attribute.
+///
+/// # Example
+/// ```ignore
+/// use crate::system::System; // or use issun::system::System;
+///
+/// #[derive(System)]
+/// #[system(name = "combat_engine")]
+/// pub struct CombatEngine {
+///     turn_count: u32,
+///     log: Vec<String>,
+/// }
+/// ```
+///
+/// This generates:
+/// - name() method returning the specified system name
+/// - as_any() and as_any_mut() for downcasting
+/// - async_trait wrapper
+///
+/// Note: You must have `System` trait in scope via `use` statement.
+#[proc_macro_derive(System, attributes(system))]
+pub fn derive_system(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let struct_name = &input.ident;
+
+    // Parse #[system(name = "...")] attribute
+    let system_name = parse_system_name(&input.attrs);
+
+    let crate_name = get_crate_name();
+
+    let expanded = quote! {
+        #[::async_trait::async_trait]
+        impl #crate_name::system::System for #struct_name {
+            fn name(&self) -> &'static str {
+                #system_name
+            }
+
+            fn as_any(&self) -> &dyn ::std::any::Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn ::std::any::Any {
+                self
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Parse #[system(name = "system_name")] attribute
+fn parse_system_name(attrs: &[syn::Attribute]) -> String {
+    for attr in attrs {
+        if attr.path().is_ident("system") {
+            let mut name = None;
+            let _ = attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("name") {
+                    if let Ok(value) = meta.value() {
+                        if let Ok(lit) = value.parse::<Lit>() {
+                            if let Lit::Str(s) = lit {
+                                name = Some(s.value());
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            });
+            if let Some(n) = name {
+                return n;
+            }
+        }
+    }
+
+    // Default: use lowercase struct name
+    "unknown_system".to_string()
 }
 
 /// Derive macro for Asset trait

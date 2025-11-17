@@ -61,6 +61,7 @@ impl GameBuilder {
         Ok(Game {
             context,
             entities: plugin_builder.entities,
+            systems: plugin_builder.systems,
             scenes: plugin_builder.scenes,
             assets: plugin_builder.assets,
         })
@@ -133,6 +134,7 @@ impl Default for GameBuilder {
 struct DefaultPluginBuilder {
     entities: HashMap<String, Box<dyn crate::entity::Entity>>,
     services: Vec<Box<dyn crate::service::Service>>,
+    systems: Vec<Box<dyn crate::system::System>>,
     scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
     assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
 }
@@ -142,6 +144,7 @@ impl DefaultPluginBuilder {
         Self {
             entities: HashMap::new(),
             services: Vec::new(),
+            systems: Vec::new(),
             scenes: HashMap::new(),
             assets: HashMap::new(),
         }
@@ -155,6 +158,10 @@ impl PluginBuilder for DefaultPluginBuilder {
 
     fn register_service(&mut self, service: Box<dyn crate::service::Service>) {
         self.services.push(service);
+    }
+
+    fn register_system(&mut self, system: Box<dyn crate::system::System>) {
+        self.systems.push(system);
     }
 
     fn register_scene(&mut self, name: &str, scene: Box<dyn crate::scene::Scene>) {
@@ -172,6 +179,8 @@ pub struct Game {
     pub context: crate::context::Context,
     /// Registered entities from plugins
     pub entities: HashMap<String, Box<dyn crate::entity::Entity>>,
+    /// Registered systems from plugins (Application Logic)
+    pub systems: Vec<Box<dyn crate::system::System>>,
     /// Registered scenes from plugins
     pub scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
     /// Registered assets from plugins
