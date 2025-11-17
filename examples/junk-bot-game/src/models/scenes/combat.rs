@@ -134,14 +134,17 @@ impl CombatSceneData {
         };
     }
 
-    pub fn handle_input(
+    pub async fn handle_input(
         &mut self,
-        _services: &ServiceContext,
+        services: &ServiceContext,
         _systems: &mut SystemContext,
-        _resources: &mut ResourceContext,
-        ctx: &mut GameContext,
+        resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
+        let mut ctx = resources
+            .get_mut::<GameContext>()
+            .await
+            .expect("GameContext resource not registered");
         match input {
             InputEvent::Cancel => {
                 SceneTransition::Quit
@@ -185,7 +188,7 @@ impl CombatSceneData {
             }
             InputEvent::Char(' ') => {
                 // Process combat turn
-                self.process_turn(ctx);
+                self.process_turn(&mut ctx, services);
 
                 // Check win/lose conditions
                 let all_enemies_dead = self.enemies.iter().all(|e| !e.is_alive());
@@ -196,12 +199,13 @@ impl CombatSceneData {
                     let drops = generate_drops(&self.enemies, self.room_buff.loot_multiplier());
 
                     if drops.is_empty() {
-                        // No drops, proceed to next floor logic
-                        proceed_to_next_floor(ctx)
-                    } else {
-                        // Show drop collection scene
-                        SceneTransition::Switch(GameScene::DropCollection(DropCollectionSceneData::new(drops)))
+                        drop(ctx);
+                        return proceed_to_next_floor(resources).await;
                     }
+                    // Show drop collection scene
+                    return SceneTransition::Switch(GameScene::DropCollection(
+                        DropCollectionSceneData::new(drops),
+                    ));
                 } else if party_dead {
                     SceneTransition::Switch(GameScene::Result(ResultSceneData::new(false, ctx.score)))
                 } else {
@@ -213,16 +217,13 @@ impl CombatSceneData {
     }
 
     /// Process a combat turn using CombatSystem
-    fn process_turn(&mut self, ctx: &mut GameContext) {
-        // Demo: Access CombatService via Service Registry (Option 2 pattern)
-        // This demonstrates the new Service Registry pattern
-        if let Some(issun_ctx) = ctx.issun() {
-            if let Some(combat_service) = issun_ctx.service_as::<CombatService>("combat_service") {
-                // CombatService is available via Service Registry!
-                // Example: Calculate hypothetical damage
-                let demo_damage = combat_service.calculate_damage(100, Some(20));
-                self.log(format!("🔧 Service Registry Demo: 100 dmg - 20 def = {}", demo_damage));
-            }
+    fn process_turn(&mut self, ctx: &mut GameContext, services: &ServiceContext) {
+        if let Some(combat_service) = services.get_as::<CombatService>("combat_service") {
+            let demo_damage = combat_service.calculate_damage(100, Some(20));
+            self.log(format!(
+                "🔧 Service Registry Demo: 100 dmg - 20 def = {}",
+                demo_damage
+            ));
         }
 
         // Build party trait object slice (player + bots)

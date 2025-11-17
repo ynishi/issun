@@ -35,20 +35,14 @@ async fn main() -> std::io::Result<()> {
 
     // Destructure game to obtain contexts
     let Game {
-        resources,
+        mut resources,
         services,
         systems,
-        context,
         ..
     } = game;
 
-    // Initialize game context with ISSUN context from GameBuilder
-    let mut ctx = GameContext::new().with_issun_context(context);
-
-    // Register resources (read-only data)
-    if let Some(issun_ctx) = ctx.issun_mut() {
-        issun_ctx.resources_mut().register(assets::BuffCardDatabase::new());
-    }
+    // Insert runtime game state resource
+    resources.insert(GameContext::new());
 
     // Initialize SceneDirector with initial scene
     let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());
@@ -57,7 +51,7 @@ async fn main() -> std::io::Result<()> {
     let mut last_tick = Instant::now();
 
     // Main game loop
-    let result = game_loop(&mut tui, &mut director, &mut ctx, &mut last_tick).await;
+    let result = game_loop(&mut tui, &mut director, &mut last_tick).await;
 
     // Cleanup
     tui.restore()?;
@@ -67,14 +61,19 @@ async fn main() -> std::io::Result<()> {
 async fn game_loop(
     tui: &mut Tui,
     director: &mut SceneDirector<GameScene>,
-    ctx: &mut GameContext,
     last_tick: &mut Instant,
 ) -> std::io::Result<()> {
     loop {
         // Draw UI based on current scene
+        let game_state = director
+            .resources()
+            .get::<GameContext>()
+            .await
+            .expect("GameContext resource missing");
+
         tui.terminal().draw(|f| {
             if let Some(current_scene) = director.current() {
-                render_scene(f, current_scene, ctx);
+                render_scene(f, current_scene, &game_state);
             }
         })?;
 
@@ -88,9 +87,12 @@ async fn game_loop(
 
         // Handle input and scene transitions
         if input != InputEvent::Other {
-            if let Some(transition) = director.with_current_mut(|scene, services, systems, resources| {
-                handle_scene_input(scene, services, systems, resources, ctx, input)
-            }) {
+            if let Some(transition) = director
+                .with_current_mut_async(|scene, services, systems, resources| async move {
+                    handle_scene_input(scene, services, systems, resources, input).await
+                })
+                .await
+            {
                 // SceneDirector.handle() automatically manages all lifecycle hooks
                 director.handle(transition).await.ok();
             }

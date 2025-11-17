@@ -15,14 +15,17 @@ impl TitleSceneData {
         Self { selected_index: 0 }
     }
 
-    pub fn handle_input(
+    pub async fn handle_input(
         &mut self,
         _services: &ServiceContext,
         _systems: &mut SystemContext,
-        _resources: &mut ResourceContext,
-        ctx: &mut GameContext,
+        resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
+        let mut ctx = resources
+            .get_mut::<GameContext>()
+            .await
+            .expect("GameContext resource not registered");
         match input {
             InputEvent::Cancel => {
                 SceneTransition::Quit

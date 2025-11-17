@@ -2,12 +2,18 @@
 //!
 //! Common logic used by multiple scene handlers
 
-use super::{GameContext, GameScene, scenes::*};
 use super::entities::{Enemy, LootItem, generate_random_loot};
-use issun::prelude::SceneTransition;
+use super::{GameContext, GameScene, scenes::*};
+use issun::prelude::{ResourceContext, SceneTransition};
 
 /// Proceed to next floor in dungeon
-pub fn proceed_to_next_floor(ctx: &mut GameContext) -> SceneTransition<GameScene> {
+pub async fn proceed_to_next_floor(
+    resources: &mut ResourceContext,
+) -> SceneTransition<GameScene> {
+    let mut ctx = resources
+        .get_mut::<GameContext>()
+        .await
+        .expect("GameContext resource not registered");
     let (advanced, current_floor, needs_floor4, next_room) = {
         if let Some(dungeon) = ctx.get_dungeon_mut() {
             // Advance to next floor

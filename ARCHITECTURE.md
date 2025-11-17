@@ -170,7 +170,7 @@ pub enum GameScene {
 // The attributes above auto-generate:
 // - `GameState { scene, ctx, should_quit }`
 // - `GameState::new()` seeded with the initial scene
-// - `handle_scene_input(&mut GameScene, ctx, input)` dispatcher
+// - `handle_scene_input(&mut GameScene, &ServiceContext, &mut SystemContext, &mut ResourceContext, input)` dispatcher
 ```
 
 **SceneDirector Runtime**:

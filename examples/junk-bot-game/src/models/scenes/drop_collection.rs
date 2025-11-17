@@ -61,14 +61,17 @@ impl DropCollectionSceneData {
         }
     }
 
-    pub fn handle_input(
+    pub async fn handle_input(
         &mut self,
         _services: &ServiceContext,
         _systems: &mut SystemContext,
-        _resources: &mut ResourceContext,
-        ctx: &mut GameContext,
+        resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
+        let mut ctx = resources
+            .get_mut::<GameContext>()
+            .await
+            .expect("GameContext resource not registered");
         match input {
             InputEvent::Up => {
                 self.move_up();
@@ -86,8 +89,11 @@ impl DropCollectionSceneData {
 
                 // If no more items, transition to card selection
                 if !self.has_drops() {
+                    drop(ctx);
                     let cards = generate_random_cards(3);
-                    SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
+                    return SceneTransition::Switch(GameScene::CardSelection(
+                        CardSelectionSceneData::new(cards),
+                    ));
                 } else {
                     SceneTransition::Stay
                 }
@@ -98,11 +104,13 @@ impl DropCollectionSceneData {
                     ctx.apply_loot_item(&item);
                 }
                 // Transition to card selection after taking all
+                drop(ctx);
                 let cards = generate_random_cards(3);
                 SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
             }
             InputEvent::Cancel => {
                 // Skip all items, transition to card selection
+                drop(ctx);
                 let cards = generate_random_cards(3);
                 SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
             }

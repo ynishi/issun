@@ -50,6 +50,7 @@
 use super::{Scene, SceneTransition};
 use crate::context::{ResourceContext, ServiceContext, SystemContext};
 use crate::error::Result;
+use std::future::Future;
 
 /// Scene Director manages scene lifecycle and transitions
 ///
@@ -276,6 +277,22 @@ impl<S: Scene> SceneDirector<S> {
             let systems = &mut self.systems;
             let resources = &mut self.resources;
             Some(f(scene, services, systems, resources))
+        } else {
+            None
+        }
+    }
+
+    /// Apply an async closure to the current scene with contexts
+    pub async fn with_current_mut_async<R, F, Fut>(&mut self, f: F) -> Option<R>
+    where
+        F: FnOnce(&mut S, &ServiceContext, &mut SystemContext, &mut ResourceContext) -> Fut,
+        Fut: Future<Output = R>,
+    {
+        if let Some(scene) = self.stack.last_mut() {
+            let services = &self.services;
+            let systems = &mut self.systems;
+            let resources = &mut self.resources;
+            Some(f(scene, services, systems, resources).await)
         } else {
             None
         }

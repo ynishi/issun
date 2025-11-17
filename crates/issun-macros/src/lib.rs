@@ -181,7 +181,7 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
                     systems,
                     resources,
                     #(#param_names),*
-                )
+                ).await
             }
         });
 
@@ -189,7 +189,7 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
             /// Auto-generated scene input handler dispatcher
             ///
             /// Takes a mutable reference to the scene and returns a transition.
-            pub fn handle_scene_input(
+            pub async fn handle_scene_input(
                 scene: &mut #scene_name,
                 services: &#crate_name::context::ServiceContext,
                 systems: &mut #crate_name::context::SystemContext,

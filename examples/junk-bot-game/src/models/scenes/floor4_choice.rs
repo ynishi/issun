@@ -47,14 +47,17 @@ impl Floor4ChoiceSceneData {
         }
     }
 
-    pub fn handle_input(
+    pub async fn handle_input(
         &mut self,
         _services: &ServiceContext,
         _systems: &mut SystemContext,
-        _resources: &mut ResourceContext,
-        ctx: &mut GameContext,
+        resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
+        let mut ctx = resources
+            .get_mut::<GameContext>()
+            .await
+            .expect("GameContext resource not registered");
         match input {
             InputEvent::Up => {
                 self.cursor_up();
@@ -78,6 +81,7 @@ impl Floor4ChoiceSceneData {
             }
             InputEvent::Cancel => {
                 // Go back to title
+                drop(ctx);
                 SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
             }
             _ => SceneTransition::Stay

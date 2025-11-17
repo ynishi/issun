@@ -50,14 +50,17 @@ impl CardSelectionSceneData {
             .and_then(|idx| self.available_cards.get(idx).cloned())
     }
 
-    pub fn handle_input(
+    pub async fn handle_input(
         &mut self,
         _services: &ServiceContext,
         _systems: &mut SystemContext,
-        _resources: &mut ResourceContext,
-        ctx: &mut GameContext,
+        resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
+        let mut ctx = resources
+            .get_mut::<GameContext>()
+            .await
+            .expect("GameContext resource not registered");
         match input {
             InputEvent::Up => {
                 self.cursor_up();
@@ -74,11 +77,13 @@ impl CardSelectionSceneData {
                     ctx.apply_buff_card(card);
                 }
                 // Proceed to next floor after selecting a card
-                proceed_to_next_floor(ctx)
+                drop(ctx);
+                proceed_to_next_floor(resources).await
             }
             InputEvent::Cancel => {
                 // Skip card selection, proceed to next floor
-                proceed_to_next_floor(ctx)
+                drop(ctx);
+                proceed_to_next_floor(resources).await
             }
             _ => SceneTransition::Stay
         }

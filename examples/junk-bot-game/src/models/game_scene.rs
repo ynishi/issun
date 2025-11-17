@@ -13,7 +13,7 @@ use issun::Scene; // Scene derive macro
 #[scene(
     context = "GameContext",
     initial = "Title(TitleSceneData::new())",
-    handler_params = "ctx: &mut GameContext, input: ::issun::ui::InputEvent"
+    handler_params = "input: ::issun::ui::InputEvent"
 )]
 pub enum GameScene {
     Title(TitleSceneData),
@@ -23,17 +23,4 @@ pub enum GameScene {
     CardSelection(CardSelectionSceneData),
     Floor4Choice(Floor4ChoiceSceneData),
     Result(ResultSceneData),
-}
-
-// Additional implementation for GameState (macro-generated struct)
-impl GameState {
-    /// Create GameState with ISSUN context from GameBuilder
-    pub fn new_with_context(issun_context: issun::context::Context) -> Self {
-        let ctx = GameContext::new().with_issun_context(issun_context);
-        Self {
-            scene: GameScene::Title(TitleSceneData::new()),
-            ctx,
-            should_quit: false,
-        }
-    }
 }
