@@ -39,7 +39,7 @@ ISSUN provides traits and macros for clean, DDD-inspired architecture:
 - **Service** = Stateless, pure logic (like a calculator)
 - **System** = Stateful, orchestrates services (like a conductor)
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed guide and best practices.
+See [Architecture Guide](docs/ARCHITECTURE.md) for detailed guide and best practices.
 
 ## 🎮 Built-in Plugins
 
@@ -96,40 +96,57 @@ GameBuilder::new()
 
 ```rust
 use issun::prelude::*;
+use issun::engine::GameRunner;
 use issun::ui::{Tui, InputEvent};
 
+#[derive(Scene)]
+enum GameScene {
+    Title,
+    // Add your scenes here
+}
+
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<()> {
     // Initialize TUI
     let mut tui = Tui::new()?;
 
     // Build game with plugins
     let game = GameBuilder::new()
-        .with_plugin(TurnBasedCombatPlugin::default())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
-        .with_plugin(InventoryPlugin::new())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
-        .with_plugin(LootPlugin::new())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+        .with_plugin(TurnBasedCombatPlugin::default())?
+        .with_plugin(InventoryPlugin::new())?
+        .with_plugin(LootPlugin::new())?
         .build()
-        .await
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        .await?;
 
-    // Your game state
-    let mut ctx = GameContext::new().with_issun_context(game.context);
+    // Destructure game to get contexts
+    let Game { mut resources, services, systems, .. } = game;
 
-    // Game loop
-    loop {
-        tui.terminal().draw(|f| {
-            // Render your game
-        })?;
+    // Add your game state to resources
+    resources.insert(YourGameState::new());
 
-        // Handle input
-        let input = issun::ui::input::poll_input(timeout)?;
-        if input == InputEvent::Cancel {
-            break;
-        }
-    }
+    // Create SceneDirector with initial scene
+    let director = SceneDirector::new(
+        GameScene::Title,
+        services,
+        systems,
+        resources,
+    ).await;
+
+    // Run the game loop
+    GameRunner::new(director)
+        .run(
+            &mut tui,
+            |frame, scene, resources| {
+                // Render your scene
+            },
+            |scene, services, systems, resources, input| {
+                Box::pin(async move {
+                    // Handle input and return scene transition
+                    SceneTransition::Stay
+                })
+            },
+        )
+        .await?;
 
     tui.restore()?;
     Ok(())
@@ -173,8 +190,8 @@ cargo run --example junk-bot-game
 
 ## 📚 Documentation
 
-- [Architecture Guide](ARCHITECTURE.md) - Service/System/Scene/Plugin patterns
-- [API Reference](https://docs.rs/issun) - Full API documentation (TODO: publish)
+- [Architecture Guide](docs/ARCHITECTURE.md) - Service/System/Scene/Plugin patterns
+- [API Reference](https://docs.rs/issun) - Full API documentation
 - Example game: `examples/junk-bot-game/` - Complete working example
 
 ## 🤝 Contributing

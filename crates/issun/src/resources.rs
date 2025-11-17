@@ -168,6 +168,7 @@ impl Resources {
     /// Returns the removed resource if it existed.
     ///
     /// This is only available within the crate for internal use.
+    #[allow(dead_code)]
     pub(crate) fn remove<T: Resource>(&mut self) -> Option<T> {
         self.data
             .remove(&TypeId::of::<T>())
@@ -178,6 +179,7 @@ impl Resources {
     /// Clear all resources
     ///
     /// This is only available within the crate for internal use.
+    #[allow(dead_code)]
     pub(crate) fn clear(&mut self) {
         self.data.clear();
     }

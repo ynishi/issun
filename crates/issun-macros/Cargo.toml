@@ -5,7 +5,10 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Proc macros for issun game engine"
+keywords = ["game", "engine", "macros", "derive"]
+categories = ["game-engines"]
 
 [lib]
 proc-macro = true

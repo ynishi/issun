@@ -68,6 +68,7 @@ impl GameBuilder {
     }
 
     /// Build and run the game
+    #[allow(deprecated)]
     pub async fn build(mut self) -> Result<Game> {
         // Initialize plugins first
         for plugin in &mut self.plugins {
@@ -302,6 +303,7 @@ impl Game {
         since = "0.2.0",
         note = "Use resources(), services(), or systems() instead"
     )]
+    #[allow(deprecated)]
     pub fn context(&self) -> &crate::context::Context {
         &self.context
     }
@@ -311,6 +313,7 @@ impl Game {
         since = "0.2.0",
         note = "Use resources_mut(), services_mut(), or systems_mut() instead"
     )]
+    #[allow(deprecated)]
     pub fn context_mut(&mut self) -> &mut crate::context::Context {
         &mut self.context
     }
