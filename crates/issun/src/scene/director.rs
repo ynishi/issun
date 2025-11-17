@@ -387,8 +387,8 @@ impl<S: Scene> SceneDirector<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use crate::context::{ResourceContext, ServiceContext, SystemContext};
+    use async_trait::async_trait;
 
     // Test scene that tracks lifecycle calls
     #[derive(Debug, Clone, PartialEq)]

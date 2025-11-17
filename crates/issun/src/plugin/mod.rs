@@ -96,6 +96,9 @@ pub use room_buff::{
     RoomBuffPlugin,
 };
 
+use crate::builder::RuntimeResourceEntry;
+use std::any::TypeId;
+
 /// Plugin trait for system composition
 #[async_trait]
 pub trait Plugin: Send + Sync {
@@ -125,6 +128,13 @@ pub trait PluginBuilder {
     /// Register a system (Application Logic - orchestration)
     fn register_system(&mut self, system: Box<dyn crate::system::System>);
 
+    /// Register a runtime (mutable) resource stored inside `ResourceContext`
+    fn register_runtime_resource_boxed(
+        &mut self,
+        type_id: TypeId,
+        resource: Box<dyn RuntimeResourceEntry>,
+    );
+
     // Note: Scene registration removed in favor of SceneDirector-based architecture
     // Scenes are now managed directly by SceneDirector, not through plugins
 
@@ -152,6 +162,11 @@ pub trait PluginBuilderExt: PluginBuilder {
     /// ```
     fn register_resource<T: crate::resources::Resource>(&mut self, resource: T) {
         self.resources_mut().register(resource);
+    }
+
+    /// Register a runtime resource (mutable shared state)
+    fn register_runtime_state<T: 'static + Send + Sync>(&mut self, resource: T) {
+        self.register_runtime_resource_boxed(TypeId::of::<T>(), Box::new(resource));
     }
 }
 

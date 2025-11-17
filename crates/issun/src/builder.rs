@@ -83,11 +83,20 @@ impl GameBuilder {
             self.plugins[idx].build(&mut plugin_builder);
         }
 
+        let DefaultPluginBuilder {
+            entities,
+            services: plugin_services,
+            systems: plugin_systems,
+            assets,
+            resources: plugin_resources,
+            runtime_resources: plugin_runtime_resources,
+        } = plugin_builder;
+
         // Combine services/systems from plugins and manual registrations
-        let mut all_services = plugin_builder.services;
+        let mut all_services = plugin_services;
         all_services.extend(self.extra_services.into_iter());
 
-        let mut all_systems = plugin_builder.systems;
+        let mut all_systems = plugin_systems;
         all_systems.extend(self.extra_systems.into_iter());
 
         // Legacy context (for backward compatibility)
@@ -110,21 +119,26 @@ impl GameBuilder {
             system_context.register_boxed(system);
         }
 
-        // Register runtime resources
+        // Register runtime resources from plugins
+        for (_, entry) in plugin_runtime_resources.into_iter() {
+            entry.insert(&mut resource_context);
+        }
+
+        // Register runtime resources from explicit builder configuration
         for (_, entry) in self.runtime_resources.into_iter() {
             entry.insert(&mut resource_context);
         }
 
         // Register resources from plugins (read-only data)
-        *context.resources_mut() = plugin_builder.resources;
+        *context.resources_mut() = plugin_resources;
 
         Ok(Game {
             resources: resource_context,
             services: service_context,
             systems: system_context,
             context,
-            entities: plugin_builder.entities,
-            assets: plugin_builder.assets,
+            entities,
+            assets,
         })
     }
 
@@ -191,7 +205,7 @@ impl Default for GameBuilder {
 }
 
 /// Trait object wrapper to insert concrete resources into ResourceContext
-trait RuntimeResourceEntry: Send {
+pub trait RuntimeResourceEntry: Send {
     fn insert(self: Box<Self>, ctx: &mut ResourceContext);
 }
 
@@ -209,6 +223,7 @@ struct DefaultPluginBuilder {
     // scenes: Removed - use SceneDirector instead
     assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
     resources: crate::resources::Resources,
+    runtime_resources: HashMap<TypeId, Box<dyn RuntimeResourceEntry>>,
 }
 
 impl DefaultPluginBuilder {
@@ -219,6 +234,7 @@ impl DefaultPluginBuilder {
             systems: Vec::new(),
             assets: HashMap::new(),
             resources: crate::resources::Resources::default(),
+            runtime_resources: HashMap::new(),
         }
     }
 }
@@ -234,6 +250,14 @@ impl PluginBuilder for DefaultPluginBuilder {
 
     fn register_system(&mut self, system: Box<dyn crate::system::System>) {
         self.systems.push(system);
+    }
+
+    fn register_runtime_resource_boxed(
+        &mut self,
+        type_id: TypeId,
+        resource: Box<dyn RuntimeResourceEntry>,
+    ) {
+        self.runtime_resources.insert(type_id, resource);
     }
 
     // register_scene removed - use SceneDirector instead
