@@ -25,9 +25,10 @@ use async_trait::async_trait;
 
 // Built-in plugins
 pub mod combat;
+pub mod dungeon;
 pub mod inventory;
 pub mod loot;
-// pub mod dungeon;    // TODO: Implement
+pub mod room_buff;
 
 // Re-exports for convenience
 pub use combat::{
@@ -64,6 +65,37 @@ pub use loot::{
     LootPlugin,
 };
 
+pub use dungeon::{
+    // Service
+    DungeonService,
+    // System
+    DungeonSystem,
+    // Types
+    Connection,
+    ConnectionPattern,
+    DungeonConfig,
+    DungeonState,
+    RoomId,
+    // Plugin
+    DungeonPlugin,
+};
+
+pub use room_buff::{
+    // Service
+    BuffService,
+    // System
+    BuffSystem,
+    // Types
+    ActiveBuff,
+    ActiveBuffs,
+    BuffConfig,
+    BuffDuration,
+    BuffEffect,
+    RoomBuffDatabase,
+    // Plugin
+    RoomBuffPlugin,
+};
+
 /// Plugin trait for system composition
 #[async_trait]
 pub trait Plugin: Send + Sync {
@@ -98,4 +130,30 @@ pub trait PluginBuilder {
 
     /// Register an asset
     fn register_asset(&mut self, name: &str, asset: Box<dyn std::any::Any + Send + Sync>);
+
+    /// Get mutable access to the resources registry (internal use)
+    fn resources_mut(&mut self) -> &mut crate::resources::Resources;
 }
+
+/// Extension trait for PluginBuilder with generic methods
+pub trait PluginBuilderExt: PluginBuilder {
+    /// Register a resource (read-only global data)
+    ///
+    /// Resources are type-based and accessible from Systems and Scenes.
+    /// Use this to register configuration, asset databases, or lookup tables.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// builder.register_resource(DungeonConfig {
+    ///     total_floors: 5,
+    ///     rooms_per_floor: 3,
+    /// });
+    /// ```
+    fn register_resource<T: crate::resources::Resource>(&mut self, resource: T) {
+        self.resources_mut().register(resource);
+    }
+}
+
+// Blanket implementation
+impl<T: ?Sized + PluginBuilder> PluginBuilderExt for T {}

@@ -58,6 +58,9 @@ impl GameBuilder {
             context.register_service(service);
         }
 
+        // Register resources from plugins
+        *context.resources_mut() = plugin_builder.resources;
+
         Ok(Game {
             context,
             entities: plugin_builder.entities,
@@ -136,6 +139,7 @@ struct DefaultPluginBuilder {
     systems: Vec<Box<dyn crate::system::System>>,
     scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
     assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
+    resources: crate::resources::Resources,
 }
 
 impl DefaultPluginBuilder {
@@ -146,6 +150,7 @@ impl DefaultPluginBuilder {
             systems: Vec::new(),
             scenes: HashMap::new(),
             assets: HashMap::new(),
+            resources: crate::resources::Resources::default(),
         }
     }
 }
@@ -169,6 +174,10 @@ impl PluginBuilder for DefaultPluginBuilder {
 
     fn register_asset(&mut self, name: &str, asset: Box<dyn std::any::Any + Send + Sync>) {
         self.assets.insert(name.to_string(), asset);
+    }
+
+    fn resources_mut(&mut self) -> &mut crate::resources::Resources {
+        &mut self.resources
     }
 }
 

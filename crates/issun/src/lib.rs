@@ -56,9 +56,46 @@ pub mod prelude {
     pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
     pub use crate::plugin::{
-        CombatLogEntry, CombatResult, CombatService, CombatSystem, Combatant, DamageResult,
-        DropConfig, InventoryPlugin, InventoryService, Item, LootPlugin, LootService, Plugin,
-        PluginBuilder, Rarity, TurnBasedCombatConfig, TurnBasedCombatPlugin,
+        // Combat
+        CombatLogEntry,
+        CombatResult,
+        CombatService,
+        CombatSystem,
+        Combatant,
+        DamageResult,
+        TurnBasedCombatConfig,
+        TurnBasedCombatPlugin,
+        // Inventory
+        InventoryPlugin,
+        InventoryService,
+        Item,
+        // Loot
+        DropConfig,
+        LootPlugin,
+        LootService,
+        Rarity,
+        // Dungeon
+        Connection,
+        ConnectionPattern,
+        DungeonConfig,
+        DungeonPlugin,
+        DungeonService,
+        DungeonState,
+        DungeonSystem,
+        RoomId,
+        // Room Buff
+        ActiveBuff,
+        ActiveBuffs,
+        BuffConfig,
+        BuffDuration,
+        BuffEffect,
+        BuffService,
+        BuffSystem,
+        RoomBuffDatabase,
+        RoomBuffPlugin,
+        // Core
+        Plugin,
+        PluginBuilder,
     };
     pub use crate::scene::{Scene, SceneTransition};
     pub use crate::service::Service;
