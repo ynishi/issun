@@ -3,7 +3,9 @@
 //! Provides centralized damage calculation and combat mechanics.
 //! Follows Domain-Driven Design principles - combat logic as a service.
 
-use super::Combatant;
+use super::types::Combatant;
+use async_trait::async_trait;
+use std::any::Any;
 
 /// Result of a damage application
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,6 +166,22 @@ impl CombatService {
 impl Default for CombatService {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Implement Service trait for CombatService
+#[async_trait]
+impl crate::service::Service for CombatService {
+    fn name(&self) -> &'static str {
+        "combat_service"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

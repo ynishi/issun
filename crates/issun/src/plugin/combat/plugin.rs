@@ -38,11 +38,13 @@ impl Plugin for TurnBasedCombatPlugin {
         "turn_based_combat"
     }
 
-    fn build(&self, _builder: &mut dyn PluginBuilder) {
-        // TODO: Register combat-related entities and services
+    fn build(&self, builder: &mut dyn PluginBuilder) {
+        // Register CombatService
+        builder.register_service(Box::new(super::CombatService::new()));
+
+        // TODO: Register combat-related entities if needed
         // Example:
         // builder.register_entity("combatant", Box::new(CombatantEntity::default()));
-        // builder.register_service(Box::new(CombatService::new(self.config.clone())));
     }
 
     fn dependencies(&self) -> Vec<&'static str> {

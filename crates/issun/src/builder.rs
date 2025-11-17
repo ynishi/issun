@@ -52,8 +52,17 @@ impl GameBuilder {
             self.plugins[idx].build(&mut plugin_builder);
         }
 
+        // Create context and register all services
+        let mut context = crate::context::Context::new();
+        for service in plugin_builder.services {
+            context.register_service(service);
+        }
+
         Ok(Game {
-            plugin_builder,
+            context,
+            entities: plugin_builder.entities,
+            scenes: plugin_builder.scenes,
+            assets: plugin_builder.assets,
         })
     }
 
@@ -159,14 +168,32 @@ impl PluginBuilder for DefaultPluginBuilder {
 
 /// Game instance
 pub struct Game {
-    plugin_builder: DefaultPluginBuilder,
+    /// Game context with registered services
+    pub context: crate::context::Context,
+    /// Registered entities from plugins
+    pub entities: HashMap<String, Box<dyn crate::entity::Entity>>,
+    /// Registered scenes from plugins
+    pub scenes: HashMap<String, Box<dyn crate::scene::Scene>>,
+    /// Registered assets from plugins
+    pub assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
 }
 
 impl Game {
+    /// Get the game context
+    pub fn context(&self) -> &crate::context::Context {
+        &self.context
+    }
+
+    /// Get mutable reference to game context
+    pub fn context_mut(&mut self) -> &mut crate::context::Context {
+        &mut self.context
+    }
+
     /// Run the game (TODO: implement game loop)
     pub fn run(self) -> Result<()> {
         // TODO: Implement game loop
-        println!("Game running...");
+        println!("Game running with {} registered services...",
+                 self.context.service_count());
         Ok(())
     }
 }

@@ -4,13 +4,14 @@
 
 use async_trait::async_trait;
 use crate::context::Context;
+use std::any::Any;
 
 /// Service trait for game systems
 ///
 /// Services are reusable systems that provide functionality to the game.
 /// Examples: DamageCalculator, PathFinder, DialogueSystem, QuestManager
 #[async_trait]
-pub trait Service: Send + Sync {
+pub trait Service: Send + Sync + 'static {
     /// Service name (must be unique)
     fn name(&self) -> &'static str;
 
@@ -22,6 +23,12 @@ pub trait Service: Send + Sync {
 
     /// Optional: Shutdown cleanup
     async fn shutdown(&mut self, _ctx: &mut Context) {}
+
+    /// Downcast to Any for type-safe access
+    fn as_any(&self) -> &dyn Any;
+
+    /// Downcast to Any for type-safe mutable access
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 /// Example: Damage calculation service
@@ -57,6 +64,14 @@ mod tests {
 
         async fn initialize(&mut self, _ctx: &mut Context) {
             // Load configuration, etc.
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
         }
     }
 
