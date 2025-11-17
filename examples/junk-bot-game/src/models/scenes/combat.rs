@@ -1,8 +1,23 @@
 //! Combat scene data
 
 use crate::models::entities::{Enemy, RoomBuff, Weapon};
-use crate::models::{GameContext, GameScene, proceed_to_next_floor, scene_helpers::generate_drops, scenes::{DropCollectionSceneData, ResultSceneData}};
-use issun::prelude::{CombatSystem, CombatService, TurnBasedCombatConfig, Combatant, SceneTransition};
+use crate::models::{
+    proceed_to_next_floor,
+    scene_helpers::generate_drops,
+    scenes::{DropCollectionSceneData, ResultSceneData},
+    GameContext,
+    GameScene,
+};
+use issun::prelude::{
+    CombatService,
+    CombatSystem,
+    Combatant,
+    ResourceContext,
+    SceneTransition,
+    ServiceContext,
+    SystemContext,
+    TurnBasedCombatConfig,
+};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
@@ -121,6 +136,9 @@ impl CombatSceneData {
 
     pub fn handle_input(
         &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
         ctx: &mut GameContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {

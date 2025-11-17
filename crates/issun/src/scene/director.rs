@@ -266,6 +266,21 @@ impl<S: Scene> SceneDirector<S> {
         self.stack.last_mut()
     }
 
+    /// Apply a closure to the current scene together with contexts
+    pub fn with_current_mut<R>(
+        &mut self,
+        f: impl FnOnce(&mut S, &ServiceContext, &mut SystemContext, &mut ResourceContext) -> R,
+    ) -> Option<R> {
+        if let Some(scene) = self.stack.last_mut() {
+            let services = &self.services;
+            let systems = &mut self.systems;
+            let resources = &mut self.resources;
+            Some(f(scene, services, systems, resources))
+        } else {
+            None
+        }
+    }
+
     /// Get the depth of the scene stack
     ///
     /// # Returns

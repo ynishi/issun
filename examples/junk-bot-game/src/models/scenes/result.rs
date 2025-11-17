@@ -1,9 +1,9 @@
 //! Result scene data
 
-use serde::{Deserialize, Serialize};
-use crate::models::{GameContext, GameScene, scenes::TitleSceneData};
-use issun::prelude::SceneTransition;
+use crate::models::{scenes::TitleSceneData, GameContext, GameScene};
+use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResultSceneData {
@@ -29,6 +29,9 @@ impl ResultSceneData {
 
     pub fn handle_input(
         &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
         ctx: &mut GameContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {

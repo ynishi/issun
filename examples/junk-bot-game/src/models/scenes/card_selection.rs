@@ -1,6 +1,6 @@
 use crate::models::entities::BuffCard;
-use crate::models::{GameContext, GameScene, proceed_to_next_floor};
-use issun::prelude::SceneTransition;
+use crate::models::{proceed_to_next_floor, GameContext, GameScene};
+use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +52,9 @@ impl CardSelectionSceneData {
 
     pub fn handle_input(
         &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
         ctx: &mut GameContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {

@@ -88,8 +88,9 @@ async fn game_loop(
 
         // Handle input and scene transitions
         if input != InputEvent::Other {
-            if let Some(current_scene) = director.current_mut() {
-                let transition = handle_scene_input(current_scene, ctx, input);
+            if let Some(transition) = director.with_current_mut(|scene, services, systems, resources| {
+                handle_scene_input(scene, services, systems, resources, ctx, input)
+            }) {
                 // SceneDirector.handle() automatically manages all lifecycle hooks
                 director.handle(transition).await.ok();
             }

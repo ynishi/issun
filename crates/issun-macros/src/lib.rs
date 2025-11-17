@@ -176,7 +176,12 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
         let match_arms = variants.iter().map(|variant| {
             let variant_name = &variant.ident;
             quote! {
-                #scene_name::#variant_name(data) => data.#handler_name(#(#param_names),*)
+                #scene_name::#variant_name(data) => data.#handler_name(
+                    services,
+                    systems,
+                    resources,
+                    #(#param_names),*
+                )
             }
         });
 
@@ -186,6 +191,9 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
             /// Takes a mutable reference to the scene and returns a transition.
             pub fn handle_scene_input(
                 scene: &mut #scene_name,
+                services: &#crate_name::context::ServiceContext,
+                systems: &mut #crate_name::context::SystemContext,
+                resources: &mut #crate_name::context::ResourceContext,
                 #params_tokens,
             ) -> ::issun::scene::SceneTransition<#scene_name> {
                 match scene {

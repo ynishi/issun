@@ -1,6 +1,10 @@
 use crate::models::entities::Floor4Choice;
-use crate::models::{GameContext, GameScene, scenes::{CombatSceneData, TitleSceneData}};
-use issun::prelude::SceneTransition;
+use crate::models::{
+    scenes::{CombatSceneData, TitleSceneData},
+    GameContext,
+    GameScene,
+};
+use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +49,9 @@ impl Floor4ChoiceSceneData {
 
     pub fn handle_input(
         &mut self,
+        _services: &ServiceContext,
+        _systems: &mut SystemContext,
+        _resources: &mut ResourceContext,
         ctx: &mut GameContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
