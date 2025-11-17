@@ -88,16 +88,16 @@ publish: preflight
 	@echo "🚀 Starting sequential publish process..."
 	@echo ""
 
-	@echo "--- Step 1: Publishing issun-macro ---"
-	@echo "  Running dry-run for issun-macro..."
-	cargo publish -p issun-macro --dry-run --allow-dirty
+	@echo "--- Step 1: Publishing issun-macros ---"
+	@echo "  Running dry-run for issun-macros..."
+	cargo publish -p issun-macros --dry-run --allow-dirty
 
-	@echo "  ✓ Dry-run successful for issun-macro"
-	@echo "  Publishing issun-macro to crates.io..."
-	cargo publish -p issun-macro --allow-dirty
+	@echo "  ✓ Dry-run successful for issun-macros"
+	@echo "  Publishing issun-macros to crates.io..."
+	cargo publish -p issun-macros --allow-dirty
 
 	@echo ""
-	@echo "✅ issun-macro published successfully!"
+	@echo "✅ issun-macros published successfully!"
 	@echo ""
 	@echo "⏳ Waiting 30 seconds for crates.io index to update..."
 	sleep 30
