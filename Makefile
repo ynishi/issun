@@ -1,4 +1,4 @@
-.PHONY: help preflight publish test check build clean examples doc release-check release release-patch release-minor
+.PHONY: help preflight publish test check build clean doc release-check release release-patch release-minor
 
 help:
 	@echo "Available targets:"
@@ -6,7 +6,6 @@ help:
 	@echo "  make test           - Run all tests"
 	@echo "  make build          - Build all crates"
 	@echo "  make doc            - Generate documentation"
-	@echo "  make examples       - Run all examples"
 	@echo "  make preflight      - Run all checks before publishing"
 	@echo "  make release-check  - Dry-run release with cargo-release"
 	@echo "  make release        - Release patch version (0.x.y -> 0.x.y+1)"
@@ -43,7 +42,7 @@ preflight:
 	cargo fmt --all
 	@echo ""
 	@echo "2️⃣  Running clippy (auto-fix)..."
-	cargo clippy --all-targets --all-features --fix --allow-dirty -- -D warnings
+	cargo clippy --all-targets --all-features --fix --allow-dirty --allow-staged -- -D warnings
 	@echo ""
 	@echo "3️⃣  Running tests..."
 	cargo test --all-targets --all-features
@@ -83,3 +82,36 @@ release-minor: preflight
 	cargo release minor --execute --no-confirm
 
 release: release-patch
+
+publish: preflight
+	@echo ""
+	@echo "🚀 Starting sequential publish process..."
+	@echo ""
+
+	@echo "--- Step 1: Publishing issun-macro ---"
+	@echo "  Running dry-run for issun-macro..."
+	cargo publish -p issun-macro --dry-run --allow-dirty
+
+	@echo "  ✓ Dry-run successful for issun-macro"
+	@echo "  Publishing issun-macro to crates.io..."
+	cargo publish -p issun-macro --allow-dirty
+
+	@echo ""
+	@echo "✅ issun-macro published successfully!"
+	@echo ""
+	@echo "⏳ Waiting 30 seconds for crates.io index to update..."
+	sleep 30
+
+	@echo ""
+	@echo "--- Step 2: Publishing issun ---"
+	@echo "  Running dry-run for issun..."
+	cargo publish -p issun --dry-run --allow-dirty
+
+	@echo "  ✓ Dry-run successful for issun"
+	@echo "  Publishing issun to crates.io..."
+	cargo publish -p issun --allow-dirty
+
+	@echo ""
+	@echo "✅ issun published successfully!"
+	@echo ""
+	@echo "🎉 All crates have been successfully published to crates.io!"

@@ -108,11 +108,6 @@ pub mod prelude {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        // Basic smoke test
-        assert!(true);
-    }
+    // Tests are organized in individual modules
+    // See each module's tests section for comprehensive coverage
 }

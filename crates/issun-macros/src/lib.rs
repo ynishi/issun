@@ -237,50 +237,38 @@ fn parse_scene_attributes(attrs: &[syn::Attribute]) -> SceneAttributes {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("context") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                context = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            context = Some(s.value());
                         }
                     }
                 } else if meta.path.is_ident("initial") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                initial = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            initial = Some(s.value());
                         }
                     }
                 } else if meta.path.is_ident("name") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                name = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            name = Some(s.value());
                         }
                     }
                 } else if meta.path.is_ident("handler") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                handler = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            handler = Some(s.value());
                         }
                     }
                 } else if meta.path.is_ident("handler_params") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                handler_params = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            handler_params = Some(s.value());
                         }
                     }
                 } else if meta.path.is_ident("handler_return") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                handler_return = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            handler_return = Some(s.value());
                         }
                     }
                 }
@@ -449,10 +437,8 @@ fn parse_service_name(attrs: &[syn::Attribute]) -> String {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("name") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                name = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            name = Some(s.value());
                         }
                     }
                 }
@@ -530,10 +516,8 @@ fn parse_system_name(attrs: &[syn::Attribute]) -> String {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("name") {
                     if let Ok(value) = meta.value() {
-                        if let Ok(lit) = value.parse::<Lit>() {
-                            if let Lit::Str(s) = lit {
-                                name = Some(s.value());
-                            }
+                        if let Ok(Lit::Str(s)) = value.parse::<Lit>() {
+                            name = Some(s.value());
                         }
                     }
                 }

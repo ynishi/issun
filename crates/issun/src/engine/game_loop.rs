@@ -99,6 +99,7 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
 
+    #[allow(dead_code)]
     struct TestScene {
         update_count: usize,
     }
@@ -141,6 +142,6 @@ mod tests {
     fn test_game_loop_config() {
         let config = GameLoopConfig::default();
         assert_eq!(config.input_timeout_ms, 100);
-        assert_eq!(config.enable_echo, false);
+        assert!(!config.enable_echo);
     }
 }

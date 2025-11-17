@@ -247,8 +247,8 @@ mod tests {
         let result = service.apply_damage(&mut target, 30, Some(5));
 
         assert_eq!(result.actual_damage, 25);
-        assert_eq!(result.was_blocked, true);
-        assert_eq!(result.is_dead, false);
+        assert!(result.was_blocked);
+        assert!(!result.is_dead);
         assert_eq!(target.hp, 75);
     }
 
@@ -266,8 +266,8 @@ mod tests {
         let result = service.apply_damage(&mut target, 50, None);
 
         assert_eq!(result.actual_damage, 50);
-        assert_eq!(result.was_blocked, false);
-        assert_eq!(result.is_dead, true);
+        assert!(!result.was_blocked);
+        assert!(result.is_dead);
         assert_eq!(target.hp, 0);
     }
 
@@ -309,7 +309,7 @@ mod tests {
 
         // 50 attack - 10 defense = 40 damage
         assert_eq!(result.actual_damage, 40);
-        assert_eq!(result.was_blocked, true);
+        assert!(result.was_blocked);
         assert_eq!(defender.hp, 60);
     }
 

@@ -156,7 +156,6 @@ pub trait Scene: Send + Sized {
 mod tests {
     use super::*;
     use crate::Scene; // Import derive macro
-    use async_trait::async_trait;
 
     // Test Scene derive macro
     #[derive(Scene)]
@@ -167,6 +166,9 @@ mod tests {
     #[tokio::test]
     async fn test_derived_scene() {
         let mut scene = TestScene { entered: false };
+
+        // Verify initial state
+        assert!(!scene.entered);
 
         // Default on_enter should work
         scene
@@ -198,6 +200,7 @@ mod tests {
     }
 
     #[derive(Scene)]
+    #[allow(dead_code)]
     enum GameScene {
         Title,
         Combat,

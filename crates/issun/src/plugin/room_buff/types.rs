@@ -117,7 +117,7 @@ impl ActiveBuff {
     }
 
     pub fn is_expired(&self) -> bool {
-        self.remaining_turns.map_or(false, |turns| turns == 0)
+        self.remaining_turns == Some(0)
     }
 
     pub fn tick(&mut self) {

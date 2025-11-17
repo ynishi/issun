@@ -29,7 +29,7 @@ impl DungeonService {
             ConnectionPattern::Branching => {
                 // For now, simple branching: current + 1 and current + 2
                 let mut rooms = Vec::new();
-                if state.current_room + 1 <= config.rooms_per_floor {
+                if state.current_room < config.rooms_per_floor {
                     rooms.push(state.current_room + 1);
                 }
                 if state.current_room + 2 <= config.rooms_per_floor {

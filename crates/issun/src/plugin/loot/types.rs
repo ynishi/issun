@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 ///
 /// Provides a common 5-tier rarity system with drop weights.
 /// Games can use this directly or implement custom rarity systems.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum Rarity {
+    #[default]
     Common,
     Uncommon,
     Rare,
@@ -51,12 +52,6 @@ impl Rarity {
             Rarity::Epic,
             Rarity::Legendary,
         ]
-    }
-}
-
-impl Default for Rarity {
-    fn default() -> Self {
-        Rarity::Common
     }
 }
 

@@ -162,7 +162,7 @@ mod tests {
         let asset = TitleScreenAsset::new("Test Game");
         let output = TitleScreenService::render(&asset, 0);
 
-        assert!(output.contains("Test Game") || output.len() > 0);
+        assert!(output.contains("Test Game") || !output.is_empty());
         assert!(output.contains("> Start Game"));
     }
 }

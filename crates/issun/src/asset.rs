@@ -36,6 +36,11 @@ mod tests {
 
         // Asset trait should be implemented
         assert!(enemy.asset_type().contains("EnemyAsset"));
+
+        // Verify fields are accessible
+        assert_eq!(enemy.name, "Goblin");
+        assert_eq!(enemy.hp, 30);
+        assert_eq!(enemy.attack, 5);
     }
 
     #[derive(Asset)]
@@ -59,5 +64,10 @@ mod tests {
 
         assert!(enemy.asset_type().contains("EnemyAsset"));
         assert!(item.asset_type().contains("ItemAsset"));
+
+        // Verify fields are accessible
+        assert_eq!(enemy.name, "Dragon");
+        assert_eq!(item.name, "Sword");
+        assert_eq!(item.value, 50);
     }
 }

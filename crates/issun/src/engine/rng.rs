@@ -92,7 +92,7 @@ mod tests {
 
         for _ in 0..100 {
             let result = rng.roll(6);
-            assert!(result >= 1 && result <= 6);
+            assert!((1..=6).contains(&result));
         }
     }
 

@@ -227,10 +227,8 @@ impl Tui {
             let input = crate::ui::input::poll_input(timeout)?;
 
             // Handle input
-            if input != crate::ui::InputEvent::Other {
-                if on_input(state, input) {
-                    break; // Quit requested
-                }
+            if input != crate::ui::InputEvent::Other && on_input(state, input) {
+                break; // Quit requested
             }
 
             // Tick
@@ -255,7 +253,6 @@ impl Drop for Tui {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_tui_creation() {
