@@ -2,8 +2,8 @@
 //!
 //! Entities represent game objects (Player, Enemy, Item, etc.)
 
-use async_trait::async_trait;
 use crate::context::Context;
+use async_trait::async_trait;
 
 /// Entity trait for game objects
 ///

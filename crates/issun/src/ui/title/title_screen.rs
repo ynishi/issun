@@ -71,14 +71,14 @@ pub struct TitleScreenService;
 
 impl TitleScreenService {
     /// Render title with FIGlet
-    pub fn render_figlet(text: &str, font_name: &str) -> Result<String, String> {
-        let standard_font = FIGfont::standard()
-            .map_err(|e| format!("Failed to load standard font: {}", e))?;
-        
+    pub fn render_figlet(text: &str, _font_name: &str) -> Result<String, String> {
+        let standard_font =
+            FIGfont::standard().map_err(|e| format!("Failed to load standard font: {}", e))?;
+
         let figure = standard_font
             .convert(text)
             .ok_or_else(|| format!("Failed to convert text: {}", text))?;
-        
+
         Ok(figure.to_string())
     }
 
@@ -161,7 +161,7 @@ mod tests {
     fn test_render_title_screen() {
         let asset = TitleScreenAsset::new("Test Game");
         let output = TitleScreenService::render(&asset, 0);
-        
+
         assert!(output.contains("Test Game") || output.len() > 0);
         assert!(output.contains("> Start Game"));
     }

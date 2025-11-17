@@ -2,7 +2,7 @@
 
 use crate::models::entities::{Enemy, RoomBuff, Weapon};
 use crate::models::{GameContext, GameScene, proceed_to_next_floor, scene_helpers::generate_drops, scenes::{DropCollectionSceneData, ResultSceneData}};
-use issun::prelude::{CombatEngine, TurnBasedCombatConfig, Combatant, SceneTransition};
+use issun::prelude::{CombatSystem, TurnBasedCombatConfig, Combatant, SceneTransition};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +11,7 @@ pub struct CombatSceneData {
     pub enemies: Vec<Enemy>,
     /// Combat engine managing turn count, log, and score
     #[serde(skip)]
-    pub combat_engine: Option<CombatEngine>,
+    pub combat_engine: Option<CombatSystem>,
     /// Show inventory for weapon switching
     pub show_inventory: bool,
     /// Selected inventory index
@@ -32,7 +32,7 @@ impl CombatSceneData {
     pub fn new(enemies: Vec<Enemy>) -> Self {
         Self {
             enemies,
-            combat_engine: Some(CombatEngine::new(TurnBasedCombatConfig::default())),
+            combat_engine: Some(CombatSystem::new(TurnBasedCombatConfig::default())),
             show_inventory: false,
             inventory_cursor: 0,
             equip_target: EquipTarget::Player,
@@ -44,7 +44,7 @@ impl CombatSceneData {
     pub fn from_room(room: crate::models::entities::Room) -> Self {
         Self {
             enemies: room.enemies,
-            combat_engine: Some(CombatEngine::new(TurnBasedCombatConfig::default())),
+            combat_engine: Some(CombatSystem::new(TurnBasedCombatConfig::default())),
             show_inventory: false,
             inventory_cursor: 0,
             equip_target: EquipTarget::Player,
@@ -53,9 +53,9 @@ impl CombatSceneData {
     }
 
     /// Get combat engine (lazily initialized)
-    fn engine(&mut self) -> &mut CombatEngine {
+    fn engine(&mut self) -> &mut CombatSystem {
         self.combat_engine.get_or_insert_with(|| {
-            CombatEngine::new(TurnBasedCombatConfig::default())
+            CombatSystem::new(TurnBasedCombatConfig::default())
         })
     }
 
@@ -194,7 +194,7 @@ impl CombatSceneData {
         }
     }
 
-    /// Process a combat turn using CombatEngine
+    /// Process a combat turn using CombatSystem
     fn process_turn(&mut self, ctx: &mut GameContext) {
         // Demo: Access CombatService via Service Registry (Option 2 pattern)
         // This demonstrates the new Service Registry pattern
@@ -219,7 +219,7 @@ impl CombatSceneData {
             .map(|e| e as &mut dyn Combatant)
             .collect();
 
-        // Process turn using combat engine (CombatEngine internally uses CombatService)
+        // Process turn using combat engine (CombatSystem internally uses CombatService)
         let damage_multiplier = self.room_buff.damage_multiplier();
         let per_turn_damage = self.room_buff.per_turn_damage();
 

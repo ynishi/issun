@@ -1,9 +1,9 @@
 //! JSON-based save repository
 
-use async_trait::async_trait;
 use crate::error::{IssunError, Result};
 use crate::storage::repository::SaveRepository;
 use crate::storage::save_data::{SaveData, SaveMetadata};
+use async_trait::async_trait;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
@@ -53,8 +53,8 @@ impl SaveRepository for JsonSaveRepository {
         }
 
         let json = fs::read_to_string(path).await?;
-        let data: SaveData = serde_json::from_str(&json)
-            .map_err(|e| IssunError::Serialization(e.to_string()))?;
+        let data: SaveData =
+            serde_json::from_str(&json).map_err(|e| IssunError::Serialization(e.to_string()))?;
 
         Ok(data)
     }
@@ -107,8 +107,8 @@ impl SaveRepository for JsonSaveRepository {
 
         let file_size = fs::metadata(&path).await?.len();
         let json = fs::read_to_string(path).await?;
-        let data: SaveData = serde_json::from_str(&json)
-            .map_err(|e| IssunError::Serialization(e.to_string()))?;
+        let data: SaveData =
+            serde_json::from_str(&json).map_err(|e| IssunError::Serialization(e.to_string()))?;
 
         Ok(SaveMetadata::from_save_data(&data, file_size))
     }

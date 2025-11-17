@@ -1,8 +1,8 @@
 //! Save repository trait for ISSUN
 
-use async_trait::async_trait;
 use crate::error::Result;
 use crate::storage::save_data::{SaveData, SaveMetadata};
+use async_trait::async_trait;
 
 /// Save repository trait for game persistence
 ///

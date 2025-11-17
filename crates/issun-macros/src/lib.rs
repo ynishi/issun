@@ -8,9 +8,9 @@
 //! - `#[derive(Asset)]` - Auto-generate asset loading
 
 use proc_macro::TokenStream;
-use quote::{quote, format_ident};
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit};
 use proc_macro_crate::{crate_name, FoundCrate};
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit};
 
 /// Helper function to get the issun crate identifier
 /// Returns `crate` if called from within issun crate, otherwise `::issun`
@@ -72,46 +72,51 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
     };
 
     // Generate GameState struct if context and initial are specified
-    let game_state_gen = if let (Some(context), Some(initial)) = (&scene_attrs.context, &scene_attrs.initial) {
-        let state_name = scene_attrs.name.as_ref()
-            .map(|n| format_ident!("{}", n))
-            .unwrap_or_else(|| format_ident!("GameState"));
+    let game_state_gen =
+        if let (Some(context), Some(initial)) = (&scene_attrs.context, &scene_attrs.initial) {
+            let state_name = scene_attrs
+                .name
+                .as_ref()
+                .map(|n| format_ident!("{}", n))
+                .unwrap_or_else(|| format_ident!("GameState"));
 
-        let context_ident = format_ident!("{}", context);
-        let initial_expr: proc_macro2::TokenStream = initial.parse().unwrap();
+            let context_ident = format_ident!("{}", context);
+            let initial_expr: proc_macro2::TokenStream = initial.parse().unwrap();
 
-        quote! {
-            /// Auto-generated game state combining scene and context
-            #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-            pub struct #state_name {
-                pub scene: #scene_name,
-                pub ctx: #context_ident,
-                pub should_quit: bool,
-            }
+            quote! {
+                /// Auto-generated game state combining scene and context
+                #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+                pub struct #state_name {
+                    pub scene: #scene_name,
+                    pub ctx: #context_ident,
+                    pub should_quit: bool,
+                }
 
-            impl #state_name {
-                pub fn new() -> Self {
-                    Self {
-                        scene: #scene_name::#initial_expr,
-                        ctx: #context_ident::new(),
-                        should_quit: false,
+                impl #state_name {
+                    pub fn new() -> Self {
+                        Self {
+                            scene: #scene_name::#initial_expr,
+                            ctx: #context_ident::new(),
+                            should_quit: false,
+                        }
+                    }
+                }
+
+                impl Default for #state_name {
+                    fn default() -> Self {
+                        Self::new()
                     }
                 }
             }
-
-            impl Default for #state_name {
-                fn default() -> Self {
-                    Self::new()
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
+        } else {
+            quote! {}
+        };
 
     // Generate handler dispatcher if handler_params is specified
     let handler_gen = if let Some(params) = &scene_attrs.handler_params {
-        let handler_name = scene_attrs.handler.as_ref()
+        let handler_name = scene_attrs
+            .handler
+            .as_ref()
             .map(|h| format_ident!("{}", h))
             .unwrap_or_else(|| format_ident!("handle_input"));
 
@@ -121,7 +126,9 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
         let param_names = extract_param_names(params);
 
         // Default return type based on scene name
-        let return_type = scene_attrs.handler_return.as_ref()
+        let return_type = scene_attrs
+            .handler_return
+            .as_ref()
             .map(|r| r.parse::<proc_macro2::TokenStream>().unwrap())
             .unwrap_or_else(|| {
                 quote! { (#scene_name, ::issun::scene::SceneTransition) }
@@ -290,17 +297,20 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
             match &data.fields {
                 Fields::Named(fields) => {
                     // Find field with #[entity(id)] attribute
-                    fields.named.iter()
+                    fields
+                        .named
+                        .iter()
                         .find(|field| {
-                            field.attrs.iter().any(|attr| {
-                                attr.path().is_ident("entity")
-                            })
+                            field
+                                .attrs
+                                .iter()
+                                .any(|attr| attr.path().is_ident("entity"))
                         })
                         .map(|field| field.ident.as_ref().unwrap())
-                },
+                }
                 _ => None,
             }
-        },
+        }
         _ => None,
     };
 
@@ -424,7 +434,7 @@ fn parse_service_name(attrs: &[syn::Attribute]) -> String {
 ///
 /// #[derive(System)]
 /// #[system(name = "combat_engine")]
-/// pub struct CombatEngine {
+/// pub struct CombatSystem {
 ///     turn_count: u32,
 ///     log: Vec<String>,
 /// }

@@ -1,8 +1,8 @@
 //! Hello ISSUN - Minimal example
 
-use issun::prelude::*;
-use issun::ui::{TitleScreenAsset, AsciiFont};
 use issun::engine::GameRng;
+use issun::prelude::*;
+use issun::ui::{AsciiFont, TitleScreenAsset};
 
 fn main() -> Result<()> {
     println!("=== Hello ISSUN (一寸) ===\n");

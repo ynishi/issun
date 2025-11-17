@@ -2,9 +2,9 @@
 //!
 //! GameContext holds persistent data that survives scene transitions.
 
-use std::collections::HashMap;
-use std::any::Any;
 use crate::service::Service;
+use std::any::Any;
+use std::collections::HashMap;
 
 /// Marker trait for game context
 ///
@@ -69,7 +69,7 @@ impl Context {
     /// Services are accessible by name and provide reusable functionality.
     /// Typically registered during game initialization via GameBuilder.
     pub fn register_service(&mut self, service: Box<dyn Service>) {
-        let name = service.name();  // Returns &'static str
+        let name = service.name(); // Returns &'static str
         self.services.insert(name, service);
     }
 
@@ -271,4 +271,3 @@ mod tests {
         assert!(ctx.service("service_b").is_some());
     }
 }
-

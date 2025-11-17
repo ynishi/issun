@@ -26,43 +26,41 @@
 //! - **Built-in Save/Load**: Automatic serialization with Serde
 
 // Re-export macros
-pub use issun_macros::{Scene, Entity, Asset, Service, System};
+pub use issun_macros::{Asset, Entity, Scene, Service, System};
 
 // Re-export async-trait for macros
 pub use async_trait;
 
 // Core modules
+pub mod asset;
+pub mod builder;
+pub mod context;
+pub mod engine;
+pub mod entity;
 pub mod error;
 pub mod plugin;
 pub mod scene;
-pub mod context;
-pub mod builder;
-pub mod engine;
-pub mod ui;
-pub mod storage;
-pub mod entity;
 pub mod service;
-pub mod system;
-pub mod asset;
+pub mod storage;
 pub mod store;
+pub mod system;
+pub mod ui;
 
 // Prelude for convenient imports
 pub mod prelude {
+    pub use crate::asset::Asset;
+    pub use crate::builder::GameBuilder;
+    pub use crate::context::{Context, GameContext};
+    pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
     pub use crate::plugin::{
-        Plugin, PluginBuilder,
-        TurnBasedCombatPlugin, TurnBasedCombatConfig,
-        CombatEngine, Combatant, CombatResult, CombatLogEntry,
-        CombatService, DamageResult,
+        CombatLogEntry, CombatResult, CombatService, CombatSystem, Combatant, DamageResult, Plugin,
+        PluginBuilder, TurnBasedCombatConfig, TurnBasedCombatPlugin,
     };
     pub use crate::scene::{Scene, SceneTransition};
-    pub use crate::context::{GameContext, Context};
-    pub use crate::builder::GameBuilder;
-    pub use crate::entity::Entity;
     pub use crate::service::Service;
+    pub use crate::store::{EntityStore, Store};
     pub use crate::system::System;
-    pub use crate::asset::Asset;
-    pub use crate::store::{Store, EntityStore};
 }
 
 #[cfg(test)]

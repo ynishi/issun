@@ -22,7 +22,7 @@ impl GameBuilder {
     /// Register a plugin
     pub fn with_plugin(mut self, plugin: impl Plugin + 'static) -> Result<Self> {
         let name = plugin.name().to_string();
-        
+
         // Check for duplicate plugins
         if self.plugin_names.contains(&name) {
             return Err(IssunError::Plugin(format!(
@@ -121,7 +121,6 @@ impl GameBuilder {
 
         Ok(())
     }
-
 }
 
 impl Default for GameBuilder {
@@ -201,8 +200,10 @@ impl Game {
     /// Run the game (TODO: implement game loop)
     pub fn run(self) -> Result<()> {
         // TODO: Implement game loop
-        println!("Game running with {} registered services...",
-                 self.context.service_count());
+        println!(
+            "Game running with {} registered services...",
+            self.context.service_count()
+        );
         Ok(())
     }
 }

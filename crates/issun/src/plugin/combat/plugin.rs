@@ -2,9 +2,9 @@
 //!
 //! Plugin that registers combat system with the game builder.
 
+use super::TurnBasedCombatConfig;
 use crate::plugin::{Plugin, PluginBuilder};
 use async_trait::async_trait;
-use super::TurnBasedCombatConfig;
 
 /// Turn-based combat plugin
 ///
@@ -42,8 +42,8 @@ impl Plugin for TurnBasedCombatPlugin {
         // Register CombatService (Domain Service - pure logic)
         builder.register_service(Box::new(super::CombatService::new()));
 
-        // Register CombatEngine (System - orchestration)
-        builder.register_system(Box::new(super::CombatEngine::new(self.config.clone())));
+        // Register CombatSystem (System - orchestration)
+        builder.register_system(Box::new(super::CombatSystem::new(self.config.clone())));
 
         // TODO: Register combat-related entities if needed
         // Example:

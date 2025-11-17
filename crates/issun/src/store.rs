@@ -201,7 +201,10 @@ mod tests {
         let mut store = Store::new();
 
         // Insert
-        let entity = TestEntity { name: "Goblin".into(), hp: 30 };
+        let entity = TestEntity {
+            name: "Goblin".into(),
+            hp: 30,
+        };
         assert_eq!(store.insert("goblin", entity.clone()), None);
         assert_eq!(store.len(), 1);
 
@@ -226,9 +229,27 @@ mod tests {
     #[test]
     fn test_store_iteration() {
         let mut store = Store::new();
-        store.insert("goblin", TestEntity { name: "Goblin".into(), hp: 30 });
-        store.insert("orc", TestEntity { name: "Orc".into(), hp: 50 });
-        store.insert("troll", TestEntity { name: "Troll".into(), hp: 100 });
+        store.insert(
+            "goblin",
+            TestEntity {
+                name: "Goblin".into(),
+                hp: 30,
+            },
+        );
+        store.insert(
+            "orc",
+            TestEntity {
+                name: "Orc".into(),
+                hp: 50,
+            },
+        );
+        store.insert(
+            "troll",
+            TestEntity {
+                name: "Troll".into(),
+                hp: 100,
+            },
+        );
 
         // Iterate over values
         let total_hp: i32 = store.values().map(|e| e.hp).sum();
@@ -242,9 +263,27 @@ mod tests {
     #[test]
     fn test_store_retain() {
         let mut store = Store::new();
-        store.insert("goblin", TestEntity { name: "Goblin".into(), hp: 30 });
-        store.insert("orc", TestEntity { name: "Orc".into(), hp: 0 });
-        store.insert("troll", TestEntity { name: "Troll".into(), hp: 100 });
+        store.insert(
+            "goblin",
+            TestEntity {
+                name: "Goblin".into(),
+                hp: 30,
+            },
+        );
+        store.insert(
+            "orc",
+            TestEntity {
+                name: "Orc".into(),
+                hp: 0,
+            },
+        );
+        store.insert(
+            "troll",
+            TestEntity {
+                name: "Troll".into(),
+                hp: 100,
+            },
+        );
 
         // Remove dead entities
         store.retain(|_, entity| entity.hp > 0);
@@ -257,8 +296,20 @@ mod tests {
     fn test_entity_store() {
         let mut players: EntityStore<TestEntity> = EntityStore::new();
 
-        players.insert("alice".to_string(), TestEntity { name: "Alice".into(), hp: 100 });
-        players.insert("bob".to_string(), TestEntity { name: "Bob".into(), hp: 90 });
+        players.insert(
+            "alice".to_string(),
+            TestEntity {
+                name: "Alice".into(),
+                hp: 100,
+            },
+        );
+        players.insert(
+            "bob".to_string(),
+            TestEntity {
+                name: "Bob".into(),
+                hp: 90,
+            },
+        );
 
         assert_eq!(players.len(), 2);
         assert_eq!(players.get(&"alice".to_string()).unwrap().hp, 100);
@@ -267,8 +318,20 @@ mod tests {
     #[test]
     fn test_from_iterator() {
         let data = vec![
-            ("goblin", TestEntity { name: "Goblin".into(), hp: 30 }),
-            ("orc", TestEntity { name: "Orc".into(), hp: 50 }),
+            (
+                "goblin",
+                TestEntity {
+                    name: "Goblin".into(),
+                    hp: 30,
+                },
+            ),
+            (
+                "orc",
+                TestEntity {
+                    name: "Orc".into(),
+                    hp: 50,
+                },
+            ),
         ];
 
         let store: Store<&str, TestEntity> = data.into_iter().collect();

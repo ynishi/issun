@@ -39,22 +39,22 @@ impl InputMapper {
         // Default bindings
         bindings.insert(KeyCode::Up, GameAction::MoveUp);
         bindings.insert(KeyCode::Char('k'), GameAction::MoveUp);
-        
+
         bindings.insert(KeyCode::Down, GameAction::MoveDown);
         bindings.insert(KeyCode::Char('j'), GameAction::MoveDown);
-        
+
         bindings.insert(KeyCode::Left, GameAction::MoveLeft);
         bindings.insert(KeyCode::Char('h'), GameAction::MoveLeft);
-        
+
         bindings.insert(KeyCode::Right, GameAction::MoveRight);
         bindings.insert(KeyCode::Char('l'), GameAction::MoveRight);
-        
+
         bindings.insert(KeyCode::Enter, GameAction::Confirm);
         bindings.insert(KeyCode::Char(' '), GameAction::Confirm);
-        
+
         bindings.insert(KeyCode::Esc, GameAction::Cancel);
         bindings.insert(KeyCode::Backspace, GameAction::Cancel);
-        
+
         bindings.insert(KeyCode::Char('m'), GameAction::Menu);
         bindings.insert(KeyCode::Char('q'), GameAction::Quit);
 
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn test_default_bindings() {
         let mapper = InputMapper::new();
-        
+
         assert_eq!(mapper.map_key(KeyCode::Up), Some(GameAction::MoveUp));
         assert_eq!(mapper.map_key(KeyCode::Char('k')), Some(GameAction::MoveUp));
         assert_eq!(mapper.map_key(KeyCode::Enter), Some(GameAction::Confirm));
@@ -109,7 +109,7 @@ mod tests {
     fn test_rebind() {
         let mut mapper = InputMapper::new();
         mapper.rebind(GameAction::Quit, KeyCode::Char('x'));
-        
+
         assert_eq!(mapper.map_key(KeyCode::Char('x')), Some(GameAction::Quit));
     }
 }

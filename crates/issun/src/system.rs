@@ -1,10 +1,10 @@
 //! System trait for ISSUN
 //!
 //! Systems orchestrate game logic using Services and managing state.
-//! Examples: CombatEngine, TurnManager, QuestOrchestrator
+//! Examples: CombatSystem, TurnManager, QuestOrchestrator
 
-use async_trait::async_trait;
 use crate::context::Context;
+use async_trait::async_trait;
 use std::any::Any;
 
 /// System trait for Application Logic
@@ -26,12 +26,12 @@ use std::any::Any;
 ///
 /// #[derive(System)]
 /// #[system(name = "combat_engine")]
-/// pub struct CombatEngine {
+/// pub struct CombatSystem {
 ///     turn_count: u32,
 ///     log: Vec<String>,
 /// }
 ///
-/// impl CombatEngine {
+/// impl CombatSystem {
 ///     pub fn new() -> Self {
 ///         Self {
 ///             turn_count: 0,

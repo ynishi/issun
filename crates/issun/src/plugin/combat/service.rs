@@ -107,7 +107,11 @@ impl CombatService {
     /// # Returns
     ///
     /// Base damage (before defense calculation)
-    pub fn calculate_attack_damage<C: Combatant + ?Sized>(&self, attacker: &C, multiplier: f32) -> i32 {
+    pub fn calculate_attack_damage<C: Combatant + ?Sized>(
+        &self,
+        attacker: &C,
+        multiplier: f32,
+    ) -> i32 {
         (attacker.attack() as f32 * multiplier) as i32
     }
 

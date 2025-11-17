@@ -2,8 +2,8 @@
 //!
 //! Services provide reusable game systems and utilities
 
-use async_trait::async_trait;
 use crate::context::Context;
+use async_trait::async_trait;
 use std::any::Any;
 
 /// Service trait for game systems

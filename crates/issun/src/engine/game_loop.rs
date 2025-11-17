@@ -53,8 +53,7 @@ impl GameLoop {
             if event::poll(Duration::from_millis(self.config.input_timeout_ms))? {
                 if let Event::Key(key_event) = event::read()? {
                     // Handle quit
-                    if key_event.code == KeyCode::Char('q')
-                        || key_event.code == KeyCode::Esc {
+                    if key_event.code == KeyCode::Char('q') || key_event.code == KeyCode::Esc {
                         break;
                     }
                 }

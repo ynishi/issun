@@ -1,7 +1,7 @@
 //! Menu widget for ratatui backend
 
-use crate::ui::core::widget::{InputEvent, Widget};
 use crate::ui::core::menu::Menu;
+use crate::ui::core::widget::{InputEvent, Widget};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -91,10 +91,7 @@ impl MenuWidget {
                     Span::styled(item, self.selected_style),
                 ])
             } else {
-                Line::from(vec![
-                    Span::raw("  "),
-                    Span::styled(item, self.normal_style),
-                ])
+                Line::from(vec![Span::raw("  "), Span::styled(item, self.normal_style)])
             };
 
             buf.set_line(area.x, y, &line, area.width);
@@ -105,13 +102,7 @@ impl MenuWidget {
     /// Get minimum size required for this menu
     pub fn min_size(&self) -> (u16, u16) {
         let height = self.items.len() as u16 + if self.title.is_some() { 2 } else { 0 };
-        let width = self
-            .items
-            .iter()
-            .map(|s| s.len())
-            .max()
-            .unwrap_or(0) as u16
-            + 2; // +2 for cursor
+        let width = self.items.iter().map(|s| s.len()).max().unwrap_or(0) as u16 + 2; // +2 for cursor
         (width, height)
     }
 }

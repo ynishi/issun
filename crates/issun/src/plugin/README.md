@@ -13,7 +13,7 @@ plugin/
 ├── mod.rs           # Plugin trait definition
 └── combat/
     ├── plugin.rs    # TurnBasedCombatPlugin (registers System + Service)
-    ├── engine.rs    # CombatEngine (System - orchestration)
+    ├── engine.rs    # CombatSystem (System - orchestration)
     ├── service.rs   # CombatService (Service - pure logic)
     └── types.rs     # Domain types (Combatant trait, etc.)
 ```
@@ -22,7 +22,7 @@ plugin/
 - **Service** (`service.rs`): Pure functions, stateless
   - Example: `CombatService::calculate_damage(base, defense) -> i32`
 - **System** (`engine.rs`): Stateful orchestration
-  - Example: `CombatEngine { turn_count, log, combat_service }`
+  - Example: `CombatSystem { turn_count, log, combat_service }`
 
 See [ARCHITECTURE.md](../../../ARCHITECTURE.md) for detailed guide.
 

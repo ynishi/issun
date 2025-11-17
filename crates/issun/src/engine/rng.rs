@@ -1,7 +1,7 @@
 //! Random number generation for ISSUN
 
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 /// Seeded random number generator for reproducible gameplay
 pub struct GameRng {
@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn test_roll() {
         let mut rng = GameRng::new(42);
-        
+
         for _ in 0..100 {
             let result = rng.roll(6);
             assert!(result >= 1 && result <= 6);
@@ -99,12 +99,12 @@ mod tests {
     #[test]
     fn test_chance() {
         let mut rng = GameRng::new(42);
-        
+
         // With seed 42, check reproducibility
         let result1 = rng.chance(0.5);
         let mut rng2 = GameRng::new(42);
         let result2 = rng2.chance(0.5);
-        
+
         assert_eq!(result1, result2);
     }
 
@@ -112,7 +112,7 @@ mod tests {
     fn test_choose() {
         let mut rng = GameRng::new(42);
         let items = vec![1, 2, 3, 4, 5];
-        
+
         let chosen = rng.choose(&items);
         assert!(chosen.is_some());
         assert!(items.contains(chosen.unwrap()));

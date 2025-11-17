@@ -53,7 +53,7 @@ impl CombatService {
   - Coordinates between components
 
 **Examples**:
-- `CombatEngine` - Turn management, combat log, score tracking
+- `CombatSystem` - Turn management, combat log, score tracking
 - `QuestManager` - Quest progress, completion tracking
 - `TurnManager` - Global turn coordination
 
@@ -63,13 +63,13 @@ use issun::prelude::*;
 
 #[derive(System)]
 #[system(name = "combat_engine")]
-pub struct CombatEngine {
+pub struct CombatSystem {
     turn_count: u32,
     log: Vec<String>,
     combat_service: CombatService,
 }
 
-impl CombatEngine {
+impl CombatSystem {
     pub fn process_turn(&mut self) {
         self.turn_count += 1;
         // Orchestrate combat using CombatService
@@ -163,7 +163,7 @@ impl Scene for GameScene {
   - 80% reusable, 20% customizable
 
 **Examples**:
-- `TurnBasedCombatPlugin` - Bundles CombatEngine + CombatService
+- `TurnBasedCombatPlugin` - Bundles CombatSystem + CombatService
 - `InventoryPlugin` - Bundles InventoryService
 - `LootPlugin` - Bundles LootSystem + LootService (future)
 
@@ -180,7 +180,7 @@ impl Plugin for CombatPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        builder.register_system(Box::new(CombatEngine::new()));
+        builder.register_system(Box::new(CombatSystem::new()));
         builder.register_service(Box::new(CombatService::new()));
     }
 }
@@ -288,12 +288,12 @@ your-game/
 
 ```rust
 // ❌ BAD: Everything in one place
-pub struct CombatEngine {
+pub struct CombatSystem {
     turn_count: u32,
     log: Vec<String>,
 }
 
-impl CombatEngine {
+impl CombatSystem {
     pub fn process_turn(&mut self, attacker: &Character, defender: &mut Character) {
         // Mixing state management + pure calculation
         let damage = (attacker.attack - defender.defense).max(1);
@@ -323,13 +323,13 @@ impl CombatService {
 // System: State management + orchestration
 #[derive(System)]
 #[system(name = "combat_engine")]
-pub struct CombatEngine {
+pub struct CombatSystem {
     turn_count: u32,
     log: Vec<String>,
     combat_service: CombatService,
 }
 
-impl CombatEngine {
+impl CombatSystem {
     pub fn process_turn(&mut self, attacker: &Character, defender: &mut Character) {
         // Use service for calculation
         let damage = self.combat_service.calculate_damage(attacker.attack, defender.defense);

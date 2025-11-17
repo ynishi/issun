@@ -10,14 +10,14 @@ use std::time::SystemTime;
 pub struct SaveData {
     /// Save data version (for migration)
     pub version: u32,
-    
+
     /// Save slot name
     pub slot: String,
-    
+
     /// Timestamp when saved
     #[serde(with = "system_time_serde")]
     pub timestamp: SystemTime,
-    
+
     /// Game-specific data (serialized as JSON/RON)
     pub data: serde_json::Value,
 }
@@ -34,7 +34,10 @@ impl SaveData {
     }
 
     /// Create from typed context
-    pub fn from_context<T: Serialize>(slot: impl Into<String>, context: &T) -> Result<Self, serde_json::Error> {
+    pub fn from_context<T: Serialize>(
+        slot: impl Into<String>,
+        context: &T,
+    ) -> Result<Self, serde_json::Error> {
         let data = serde_json::to_value(context)?;
         Ok(Self::new(slot, data))
     }
@@ -75,7 +78,8 @@ mod system_time_serde {
     where
         S: Serializer,
     {
-        let duration = time.duration_since(UNIX_EPOCH)
+        let duration = time
+            .duration_since(UNIX_EPOCH)
             .map_err(serde::ser::Error::custom)?;
         duration.as_secs().serialize(serializer)
     }
@@ -101,19 +105,25 @@ mod tests {
 
     #[test]
     fn test_save_data_creation() {
-        let ctx = TestContext { score: 100, level: 5 };
+        let ctx = TestContext {
+            score: 100,
+            level: 5,
+        };
         let save = SaveData::from_context("slot1", &ctx).unwrap();
-        
+
         assert_eq!(save.version, 1);
         assert_eq!(save.slot, "slot1");
     }
 
     #[test]
     fn test_save_data_roundtrip() {
-        let ctx = TestContext { score: 100, level: 5 };
+        let ctx = TestContext {
+            score: 100,
+            level: 5,
+        };
         let save = SaveData::from_context("slot1", &ctx).unwrap();
         let loaded: TestContext = save.into_context().unwrap();
-        
+
         assert_eq!(ctx, loaded);
     }
 }

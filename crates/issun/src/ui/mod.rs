@@ -20,11 +20,11 @@
 //! ```
 
 pub mod core;
-pub mod ratatui;
 pub mod input;
+pub mod ratatui;
 pub mod title;
 
 // Re-exports for convenience
-pub use core::{Widget, InputEvent};
+pub use core::{InputEvent, Widget};
 pub use ratatui::Tui;
-pub use title::title_screen::{TitleScreenAsset, AsciiFont, TitleScreenService};
+pub use title::title_screen::{AsciiFont, TitleScreenAsset, TitleScreenService};

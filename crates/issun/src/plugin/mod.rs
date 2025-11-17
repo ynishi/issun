@@ -31,18 +31,18 @@ pub mod combat;
 
 // Re-exports for convenience
 pub use combat::{
-    // Plugin
-    TurnBasedCombatPlugin,
-    TurnBasedCombatConfig,
-    // Engine
-    CombatEngine,
-    // Types
-    Combatant,
-    CombatResult,
     CombatLogEntry,
+    CombatResult,
     // Service
     CombatService,
+    // Engine
+    CombatSystem,
+    // Types
+    Combatant,
     DamageResult,
+    TurnBasedCombatConfig,
+    // Plugin
+    TurnBasedCombatPlugin,
 };
 
 /// Plugin trait for system composition

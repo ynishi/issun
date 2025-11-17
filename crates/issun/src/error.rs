@@ -11,10 +11,7 @@ pub enum IssunError {
 
     /// Plugin dependency error
     #[error("Plugin dependency error: {plugin} requires {dependency}")]
-    PluginDependency {
-        plugin: String,
-        dependency: String,
-    },
+    PluginDependency { plugin: String, dependency: String },
 
     /// Circular dependency detected
     #[error("Circular dependency detected in plugins: {0:?}")]
