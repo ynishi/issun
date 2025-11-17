@@ -125,8 +125,8 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
         // Extract parameter names from "ctx: &mut GameContext, input: InputEvent" -> ["ctx", "input"]
         let param_names = extract_param_names(params);
 
-        // Default return type based on scene name
-        let return_type = scene_attrs
+        // Default return type based on scene name (kept for potential future use)
+        let _return_type = scene_attrs
             .handler_return
             .as_ref()
             .map(|r| r.parse::<proc_macro2::TokenStream>().unwrap())

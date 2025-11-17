@@ -240,6 +240,47 @@ impl<S: Scene> SceneDirector<S> {
         self.stack.is_empty()
     }
 
+    /// Iterate over all scenes in the stack (bottom to top)
+    ///
+    /// Useful for transparent rendering where you want to draw
+    /// background scenes before foreground scenes.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Render all scenes with transparency
+    /// for (depth, scene) in director.iter_scenes().enumerate() {
+    ///     scene.render(frame, depth);
+    /// }
+    /// ```
+    pub fn iter_scenes(&self) -> impl Iterator<Item = &S> {
+        self.stack.iter()
+    }
+
+    /// Iterate over all scenes in the stack (top to bottom)
+    ///
+    /// Useful when you need to process scenes from foreground to background.
+    pub fn iter_scenes_rev(&self) -> impl Iterator<Item = &S> {
+        self.stack.iter().rev()
+    }
+
+    /// Iterate over scenes with their depth index
+    ///
+    /// Returns (depth, scene) where depth=0 is bottom, depth=n-1 is top.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// for (depth, scene) in director.iter_with_depth() {
+    ///     if depth < 2 {  // Only render bottom 2 layers
+    ///         scene.render(frame);
+    ///     }
+    /// }
+    /// ```
+    pub fn iter_with_depth(&self) -> impl Iterator<Item = (usize, &S)> {
+        self.stack.iter().enumerate()
+    }
+
     /// Handle a scene transition returned from update()
     ///
     /// This is the primary method for processing scene transitions.
@@ -539,5 +580,40 @@ mod tests {
 
         assert_eq!(director.depth(), 1);
         assert_eq!(director.current().unwrap().name, "scene2");
+    }
+
+    #[tokio::test]
+    async fn test_iter_scenes() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+        director.push(TestScene::new("scene2")).await;
+        director.push(TestScene::new("scene3")).await;
+
+        let names: Vec<_> = director.iter_scenes().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["scene1", "scene2", "scene3"]);
+    }
+
+    #[tokio::test]
+    async fn test_iter_scenes_rev() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+        director.push(TestScene::new("scene2")).await;
+        director.push(TestScene::new("scene3")).await;
+
+        let names: Vec<_> = director.iter_scenes_rev().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["scene3", "scene2", "scene1"]);
+    }
+
+    #[tokio::test]
+    async fn test_iter_with_depth() {
+        let scene1 = TestScene::new("scene1");
+        let mut director = SceneDirector::new(scene1).await;
+        director.push(TestScene::new("scene2")).await;
+
+        let items: Vec<_> = director.iter_with_depth()
+            .map(|(depth, scene)| (depth, scene.name.as_str()))
+            .collect();
+
+        assert_eq!(items, vec![(0, "scene1"), (1, "scene2")]);
     }
 }
