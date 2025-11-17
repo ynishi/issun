@@ -8,6 +8,20 @@
 use proc_macro::TokenStream;
 use quote::{quote, format_ident};
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit};
+use proc_macro_crate::{crate_name, FoundCrate};
+
+/// Helper function to get the issun crate identifier
+/// Returns `crate` if called from within issun crate, otherwise `::issun`
+fn get_crate_name() -> proc_macro2::TokenStream {
+    match crate_name("issun") {
+        Ok(FoundCrate::Itself) => quote!(crate),
+        Ok(FoundCrate::Name(name)) => {
+            let ident = format_ident!("{}", name);
+            quote!(::#ident)
+        }
+        Err(_) => quote!(::issun),
+    }
+}
 
 /// Derive macro for Scene trait
 ///
@@ -34,18 +48,19 @@ pub fn derive_scene(input: TokenStream) -> TokenStream {
     // Parse #[scene(...)] attributes
     let scene_attrs = parse_scene_attributes(&input.attrs);
 
+    let crate_name = get_crate_name();
+
     // Generate Scene trait implementation
-    // Note: We rely on Scene and SceneTransition being in scope via `use issun::prelude::*`
     let scene_impl = quote! {
         #[::async_trait::async_trait]
-        impl ::issun::scene::Scene for #scene_name {
+        impl #crate_name::scene::Scene for #scene_name {
             async fn on_enter(&mut self) {
                 // Default implementation: do nothing
             }
 
-            async fn on_update(&mut self) -> ::issun::scene::SceneTransition {
+            async fn on_update(&mut self) -> #crate_name::scene::SceneTransition {
                 // Default implementation: stay in current scene
-                ::issun::scene::SceneTransition::Stay
+                #crate_name::scene::SceneTransition::Stay
             }
 
             async fn on_exit(&mut self) {
@@ -314,6 +329,86 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Derive macro for Service trait
+///
+/// Auto-generates the boilerplate Service trait implementation.
+/// Requires #[service(name = "service_name")] attribute.
+///
+/// # Example
+/// ```ignore
+/// use crate::service::Service; // or use issun::service::Service;
+///
+/// #[derive(Service)]
+/// #[service(name = "combat_service")]
+/// pub struct CombatService {
+///     min_damage: i32,
+/// }
+/// ```
+///
+/// This generates:
+/// - name() method returning the specified service name
+/// - as_any() and as_any_mut() for downcasting
+/// - async_trait wrapper
+///
+/// Note: You must have `Service` trait in scope via `use` statement.
+#[proc_macro_derive(Service, attributes(service))]
+pub fn derive_service(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let struct_name = &input.ident;
+
+    // Parse #[service(name = "...")] attribute
+    let service_name = parse_service_name(&input.attrs);
+
+    let crate_name = get_crate_name();
+
+    let expanded = quote! {
+        #[::async_trait::async_trait]
+        impl #crate_name::service::Service for #struct_name {
+            fn name(&self) -> &'static str {
+                #service_name
+            }
+
+            fn as_any(&self) -> &dyn ::std::any::Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn ::std::any::Any {
+                self
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Parse #[service(name = "service_name")] attribute
+fn parse_service_name(attrs: &[syn::Attribute]) -> String {
+    for attr in attrs {
+        if attr.path().is_ident("service") {
+            let mut name = None;
+            let _ = attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("name") {
+                    if let Ok(value) = meta.value() {
+                        if let Ok(lit) = value.parse::<Lit>() {
+                            if let Lit::Str(s) = lit {
+                                name = Some(s.value());
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            });
+            if let Some(n) = name {
+                return n;
+            }
+        }
+    }
+
+    // Default: use lowercase struct name
+    "unknown_service".to_string()
 }
 
 /// Derive macro for Asset trait

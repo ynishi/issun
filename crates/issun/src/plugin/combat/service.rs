@@ -4,8 +4,6 @@
 //! Follows Domain-Driven Design principles - combat logic as a service.
 
 use super::types::Combatant;
-use async_trait::async_trait;
-use std::any::Any;
 
 /// Result of a damage application
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +29,8 @@ pub struct DamageResult {
 /// let result = service.apply_damage(target, 50, Some(10));
 /// assert_eq!(result.actual_damage, 40);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, issun_macros::Service)]
+#[service(name = "combat_service")]
 pub struct CombatService {
     /// Minimum damage that can be dealt (even with high defense)
     min_damage: i32,
@@ -166,22 +165,6 @@ impl CombatService {
 impl Default for CombatService {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-// Implement Service trait for CombatService
-#[async_trait]
-impl crate::service::Service for CombatService {
-    fn name(&self) -> &'static str {
-        "combat_service"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 

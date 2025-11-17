@@ -26,7 +26,7 @@
 //! - **Built-in Save/Load**: Automatic serialization with Serde
 
 // Re-export macros
-pub use issun_macros::*;
+pub use issun_macros::{Scene, Entity, Asset, Service};
 
 // Re-export async-trait for macros
 pub use async_trait;
