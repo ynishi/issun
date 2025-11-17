@@ -5,6 +5,7 @@
 
 mod models;
 mod systems;
+mod services;
 mod assets;
 mod game;
 mod ui;
@@ -21,8 +22,16 @@ async fn main() -> std::io::Result<()> {
     // Initialize terminal
     let mut tui = Tui::new()?;
 
-    // Initialize game state with ISSUN's Scene system
-    let mut state = GameState::new();
+    // Initialize ISSUN framework with plugins
+    let game = GameBuilder::new()
+        .with_plugin(TurnBasedCombatPlugin::default())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+        .build()
+        .await
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+
+    // Initialize game state with ISSUN context from GameBuilder
+    let mut state = GameState::new_with_context(game.context);
     let mut last_tick = Instant::now();
 
     // Main game loop

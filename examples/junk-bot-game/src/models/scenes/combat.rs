@@ -196,6 +196,17 @@ impl CombatSceneData {
 
     /// Process a combat turn using CombatEngine
     fn process_turn(&mut self, ctx: &mut GameContext) {
+        // Demo: Access CombatService via Service Registry (Option 2 pattern)
+        // This demonstrates the new Service Registry pattern
+        if let Some(issun_ctx) = ctx.issun() {
+            if let Some(combat_service) = issun_ctx.service_as::<CombatService>("combat_service") {
+                // CombatService is available via Service Registry!
+                // Example: Calculate hypothetical damage
+                let demo_damage = combat_service.calculate_damage(100, Some(20));
+                self.log(format!("🔧 Service Registry Demo: 100 dmg - 20 def = {}", demo_damage));
+            }
+        }
+
         // Build party trait object slice (player + bots)
         let mut party: Vec<&mut dyn Combatant> = vec![&mut ctx.player as &mut dyn Combatant];
         for bot in ctx.bots.iter_mut() {
@@ -208,7 +219,7 @@ impl CombatSceneData {
             .map(|e| e as &mut dyn Combatant)
             .collect();
 
-        // Process turn using combat engine
+        // Process turn using combat engine (CombatEngine internally uses CombatService)
         let damage_multiplier = self.room_buff.damage_multiplier();
         let per_turn_damage = self.room_buff.per_turn_damage();
 

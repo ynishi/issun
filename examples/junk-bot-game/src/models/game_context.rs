@@ -16,6 +16,11 @@ pub struct GameContext {
     pub score: u32,
     pub floor: u32,
     pub dungeon: Option<Dungeon>,
+
+    /// ISSUN framework context with service registry
+    /// Note: Services are not serializable, will be re-initialized on load
+    #[serde(skip)]
+    pub issun_context: Option<issun::context::Context>,
 }
 
 impl GameContext {
@@ -31,7 +36,24 @@ impl GameContext {
             score: 0,
             floor: 1,
             dungeon: None,
+            issun_context: None,
         }
+    }
+
+    /// Initialize with ISSUN context (from GameBuilder)
+    pub fn with_issun_context(mut self, context: issun::context::Context) -> Self {
+        self.issun_context = Some(context);
+        self
+    }
+
+    /// Get ISSUN context for service access
+    pub fn issun(&self) -> Option<&issun::context::Context> {
+        self.issun_context.as_ref()
+    }
+
+    /// Get mutable ISSUN context for service access
+    pub fn issun_mut(&mut self) -> Option<&mut issun::context::Context> {
+        self.issun_context.as_mut()
     }
 
     /// Start a new dungeon run

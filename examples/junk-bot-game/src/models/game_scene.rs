@@ -24,3 +24,16 @@ pub enum GameScene {
     Floor4Choice(Floor4ChoiceSceneData),
     Result(ResultSceneData),
 }
+
+// Additional implementation for GameState (macro-generated struct)
+impl GameState {
+    /// Create GameState with ISSUN context from GameBuilder
+    pub fn new_with_context(issun_context: issun::context::Context) -> Self {
+        let ctx = GameContext::new().with_issun_context(issun_context);
+        Self {
+            scene: GameScene::Title(TitleSceneData::new()),
+            ctx,
+            should_quit: false,
+        }
+    }
+}
