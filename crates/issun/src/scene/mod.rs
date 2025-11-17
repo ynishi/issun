@@ -4,6 +4,12 @@
 
 use async_trait::async_trait;
 
+// Sub-modules
+pub mod director;
+
+// Re-exports
+pub use director::SceneDirector;
+
 /// Scene transition result
 ///
 /// Note: This is a simple enum without data.

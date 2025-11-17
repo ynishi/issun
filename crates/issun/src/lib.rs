@@ -97,7 +97,7 @@ pub mod prelude {
         Plugin,
         PluginBuilder,
     };
-    pub use crate::scene::{Scene, SceneTransition};
+    pub use crate::scene::{Scene, SceneDirector, SceneTransition};
     pub use crate::service::Service;
     pub use crate::store::{EntityStore, Store};
     pub use crate::system::System;
