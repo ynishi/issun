@@ -2,6 +2,7 @@
 
 use super::service::BuffService;
 use super::types::{ActiveBuff, ActiveBuffs, BuffConfig};
+use crate::context::ResourceContext;
 
 /// Buff system
 ///
@@ -20,13 +21,21 @@ impl BuffSystem {
     }
 
     /// Apply a buff from configuration
-    pub fn apply_buff(&self, buffs: &mut ActiveBuffs, config: BuffConfig) {
+    pub async fn apply_buff(&self, resources: &mut ResourceContext, config: BuffConfig) {
+        let mut buffs = resources
+            .get_mut::<ActiveBuffs>()
+            .await
+            .expect("ActiveBuffs not registered in ResourceContext");
         let active_buff = ActiveBuff::new(config);
         buffs.add(active_buff);
     }
 
     /// Tick all buffs (called each turn)
-    pub fn tick(&self, buffs: &mut ActiveBuffs) {
+    pub async fn tick(&self, resources: &mut ResourceContext) {
+        let mut buffs = resources
+            .get_mut::<ActiveBuffs>()
+            .await
+            .expect("ActiveBuffs not registered in ResourceContext");
         // Decrement turn-based buffs
         for buff in &mut buffs.buffs {
             buff.tick();
@@ -37,12 +46,20 @@ impl BuffSystem {
     }
 
     /// Clear room-scoped buffs (called on room exit)
-    pub fn clear_room_buffs(&self, buffs: &mut ActiveBuffs) {
+    pub async fn clear_room_buffs(&self, resources: &mut ResourceContext) {
+        let mut buffs = resources
+            .get_mut::<ActiveBuffs>()
+            .await
+            .expect("ActiveBuffs not registered in ResourceContext");
         buffs.clear_room_buffs();
     }
 
     /// Remove all buffs
-    pub fn clear_all(&self, buffs: &mut ActiveBuffs) {
+    pub async fn clear_all(&self, resources: &mut ResourceContext) {
+        let mut buffs = resources
+            .get_mut::<ActiveBuffs>()
+            .await
+            .expect("ActiveBuffs not registered in ResourceContext");
         buffs.buffs.clear();
     }
 
@@ -61,13 +78,19 @@ impl Default for BuffSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::ResourceContext;
     use crate::plugin::room_buff::types::{BuffDuration, BuffEffect};
 
-    #[test]
-    fn test_apply_buff() {
-        let system = BuffSystem::new();
-        let mut buffs = ActiveBuffs::new();
+    fn context_with_buffs() -> ResourceContext {
+        let mut resources = ResourceContext::new();
+        resources.insert(ActiveBuffs::new());
+        resources
+    }
 
+    #[tokio::test]
+    async fn test_apply_buff() {
+        let system = BuffSystem::new();
+        let mut resources = context_with_buffs();
         let config = BuffConfig {
             id: "test".to_string(),
             name: "Test Buff".to_string(),
@@ -75,14 +98,15 @@ mod tests {
             effect: BuffEffect::AttackBonus(5),
         };
 
-        system.apply_buff(&mut buffs, config);
+        system.apply_buff(&mut resources, config).await;
+        let buffs = resources.get::<ActiveBuffs>().await.unwrap();
         assert_eq!(buffs.len(), 1);
     }
 
-    #[test]
-    fn test_tick() {
+    #[tokio::test]
+    async fn test_tick() {
         let system = BuffSystem::new();
-        let mut buffs = ActiveBuffs::new();
+        let mut resources = context_with_buffs();
 
         let config = BuffConfig {
             id: "test".to_string(),
@@ -91,46 +115,61 @@ mod tests {
             effect: BuffEffect::AttackBonus(5),
         };
 
-        system.apply_buff(&mut buffs, config);
-        assert_eq!(buffs.buffs[0].remaining_turns, Some(2));
+        system.apply_buff(&mut resources, config).await;
+        {
+            let buffs = resources.get::<ActiveBuffs>().await.unwrap();
+            assert_eq!(buffs.buffs[0].remaining_turns, Some(2));
+        }
 
-        system.tick(&mut buffs);
-        assert_eq!(buffs.buffs[0].remaining_turns, Some(1));
+        system.tick(&mut resources).await;
+        {
+            let buffs = resources.get::<ActiveBuffs>().await.unwrap();
+            assert_eq!(buffs.buffs[0].remaining_turns, Some(1));
+        }
 
-        system.tick(&mut buffs);
+        system.tick(&mut resources).await;
+        let buffs = resources.get::<ActiveBuffs>().await.unwrap();
         assert_eq!(buffs.len(), 0); // Expired and removed
     }
 
-    #[test]
-    fn test_clear_room_buffs() {
+    #[tokio::test]
+    async fn test_clear_room_buffs() {
         let system = BuffSystem::new();
-        let mut buffs = ActiveBuffs::new();
+        let mut resources = context_with_buffs();
 
         // Room buff
-        system.apply_buff(
-            &mut buffs,
-            BuffConfig {
-                id: "room".to_string(),
-                name: "Room Buff".to_string(),
-                duration: BuffDuration::UntilRoomExit,
-                effect: BuffEffect::AttackBonus(5),
-            },
-        );
+        system
+            .apply_buff(
+                &mut resources,
+                BuffConfig {
+                    id: "room".to_string(),
+                    name: "Room Buff".to_string(),
+                    duration: BuffDuration::UntilRoomExit,
+                    effect: BuffEffect::AttackBonus(5),
+                },
+            )
+            .await;
 
         // Permanent buff
-        system.apply_buff(
-            &mut buffs,
-            BuffConfig {
-                id: "permanent".to_string(),
-                name: "Permanent Buff".to_string(),
-                duration: BuffDuration::Permanent,
-                effect: BuffEffect::DefenseBonus(3),
-            },
-        );
+        system
+            .apply_buff(
+                &mut resources,
+                BuffConfig {
+                    id: "permanent".to_string(),
+                    name: "Permanent Buff".to_string(),
+                    duration: BuffDuration::Permanent,
+                    effect: BuffEffect::DefenseBonus(3),
+                },
+            )
+            .await;
 
-        assert_eq!(buffs.len(), 2);
+        {
+            let buffs = resources.get::<ActiveBuffs>().await.unwrap();
+            assert_eq!(buffs.len(), 2);
+        }
 
-        system.clear_room_buffs(&mut buffs);
+        system.clear_room_buffs(&mut resources).await;
+        let buffs = resources.get::<ActiveBuffs>().await.unwrap();
         assert_eq!(buffs.len(), 1); // Only permanent remains
     }
 }

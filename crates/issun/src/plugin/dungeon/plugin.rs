@@ -1,6 +1,6 @@
 //! Dungeon plugin implementation
 
-use super::types::DungeonConfig;
+use super::types::{DungeonConfig, DungeonState};
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
 
@@ -47,6 +47,9 @@ impl Plugin for DungeonPlugin {
     fn build(&self, builder: &mut dyn PluginBuilder) {
         // Register config as Resource (read-only)
         builder.register_resource(self.config.clone());
+
+        // Register runtime dungeon state (mutable shared data)
+        builder.register_runtime_state(DungeonState::default());
 
         // Register service (pure logic)
         builder.register_service(Box::new(super::service::DungeonService::new()));

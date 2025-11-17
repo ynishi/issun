@@ -1,6 +1,6 @@
 //! Room buff plugin implementation
 
-use super::types::RoomBuffDatabase;
+use super::types::{ActiveBuffs, RoomBuffDatabase};
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
 
@@ -50,6 +50,9 @@ impl Plugin for RoomBuffPlugin {
     fn build(&self, builder: &mut dyn PluginBuilder) {
         // Register buff database as Resource (read-only)
         builder.register_resource(self.database.clone());
+
+        // Register runtime active buff state
+        builder.register_runtime_state(ActiveBuffs::default());
 
         // Register service (pure logic)
         builder.register_service(Box::new(super::service::BuffService::new()));

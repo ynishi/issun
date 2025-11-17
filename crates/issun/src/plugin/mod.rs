@@ -165,6 +165,10 @@ pub trait PluginBuilderExt: PluginBuilder {
     }
 
     /// Register a runtime resource (mutable shared state)
+    ///
+    /// These values live in `ResourceContext` and are mutated exclusively
+    /// by systems. Use this for shared runtime state (party status, dungeon
+    /// progression, active buffs, etc.).
     fn register_runtime_state<T: 'static + Send + Sync>(&mut self, resource: T) {
         self.register_runtime_resource_boxed(TypeId::of::<T>(), Box::new(resource));
     }

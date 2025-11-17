@@ -34,7 +34,7 @@ pub enum ConnectionPattern {
     Graph,
 }
 
-/// Current dungeon state (stored in Context - saveable)
+/// Current dungeon state (stored in `ResourceContext`)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DungeonState {
     pub current_floor: u32,

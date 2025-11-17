@@ -2,6 +2,7 @@
 
 use super::service::DungeonService;
 use super::types::{Connection, DungeonState, RoomId};
+use crate::context::ResourceContext;
 
 /// Dungeon progression system
 ///
@@ -21,7 +22,11 @@ impl DungeonSystem {
     }
 
     /// Move to a specific room on current floor
-    pub fn advance_room(&self, state: &mut DungeonState, room: u32) {
+    pub async fn advance_room(&self, resources: &mut ResourceContext, room: u32) {
+        let mut state = resources
+            .get_mut::<DungeonState>()
+            .await
+            .expect("DungeonState not registered in ResourceContext");
         let room_id = RoomId::new(state.current_floor, room);
 
         if !state.visited_rooms.contains(&room_id) {
@@ -32,7 +37,11 @@ impl DungeonSystem {
     }
 
     /// Advance to next floor
-    pub fn advance_floor(&self, state: &mut DungeonState) {
+    pub async fn advance_floor(&self, resources: &mut ResourceContext) {
+        let mut state = resources
+            .get_mut::<DungeonState>()
+            .await
+            .expect("DungeonState not registered in ResourceContext");
         state.current_floor += 1;
         state.current_room = 1;
 
@@ -43,7 +52,16 @@ impl DungeonSystem {
     }
 
     /// Unlock a connection between rooms
-    pub fn unlock_connection(&self, state: &mut DungeonState, from: RoomId, to: RoomId) {
+    pub async fn unlock_connection(
+        &self,
+        resources: &mut ResourceContext,
+        from: RoomId,
+        to: RoomId,
+    ) {
+        let mut state = resources
+            .get_mut::<DungeonState>()
+            .await
+            .expect("DungeonState not registered in ResourceContext");
         let connection = Connection::new(from, to);
         if !state.unlocked_connections.contains(&connection) {
             state.unlocked_connections.push(connection);
@@ -65,36 +83,49 @@ impl Default for DungeonSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::ResourceContext;
 
-    #[test]
-    fn test_advance_room() {
+    fn context_with_state() -> ResourceContext {
+        let mut resources = ResourceContext::new();
+        resources.insert(DungeonState::default());
+        resources
+    }
+
+    #[tokio::test]
+    async fn test_advance_room() {
         let system = DungeonSystem::new();
-        let mut state = DungeonState::default();
+        let mut resources = context_with_state();
 
-        system.advance_room(&mut state, 2);
+        system.advance_room(&mut resources, 2).await;
+        let state = resources.get::<DungeonState>().await.unwrap();
         assert_eq!(state.current_room, 2);
         assert_eq!(state.visited_rooms.len(), 2); // Initial room + new room
     }
 
-    #[test]
-    fn test_advance_floor() {
+    #[tokio::test]
+    async fn test_advance_floor() {
         let system = DungeonSystem::new();
-        let mut state = DungeonState::default();
+        let mut resources = context_with_state();
 
-        system.advance_floor(&mut state);
+        system.advance_floor(&mut resources).await;
+        let state = resources.get::<DungeonState>().await.unwrap();
         assert_eq!(state.current_floor, 2);
         assert_eq!(state.current_room, 1);
     }
 
-    #[test]
-    fn test_unlock_connection() {
+    #[tokio::test]
+    async fn test_unlock_connection() {
         let system = DungeonSystem::new();
-        let mut state = DungeonState::default();
+        let mut resources = context_with_state();
 
         let from = RoomId::new(1, 1);
         let to = RoomId::new(1, 3);
 
-        system.unlock_connection(&mut state, from.clone(), to.clone());
+        system
+            .unlock_connection(&mut resources, from.clone(), to.clone())
+            .await;
+
+        let state = resources.get::<DungeonState>().await.unwrap();
         assert_eq!(state.unlocked_connections.len(), 1);
         assert_eq!(state.unlocked_connections[0].from, from);
         assert_eq!(state.unlocked_connections[0].to, to);

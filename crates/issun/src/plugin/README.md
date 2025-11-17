@@ -200,27 +200,46 @@ let game = GameBuilder::new()
 
 ---
 
-### Future Plugins 🔮
+### Future / Additional Plugins 🔮
 
-#### DungeonPlugin (Planned)
+#### DungeonPlugin ✅
 
-Floor progression and room generation:
-- Floor management
-- Room selection mechanics
-- Difficulty scaling
-- Procedural generation hooks
+Floor progression and room navigation with mutable dungeon state stored in `ResourceContext`.
 
-**Status**: Planned
+**Components**:
+- `DungeonService` – Pure logic (available rooms, progression rules)
+- `DungeonSystem` – Mutates `DungeonState` runtime resource
+- `DungeonConfig` (Resource) + `DungeonState` (Runtime Resource)
 
-#### BuffPlugin (Planned)
+**Usage**:
+```rust
+let game = GameBuilder::new()
+    .with_plugin(DungeonPlugin::default())
+    .build()
+    .await?;
 
-Buff/debuff management:
-- Timed effects
-- Stacking rules
-- Effect application
-- Status persistence
+// Access runtime state via ResourceContext
+let mut state = game.resources.get_mut::<DungeonState>().await?;
+state.current_floor = 2;
+```
 
-**Status**: Planned
+#### RoomBuffPlugin ✅
+
+Manages active buffs per room with runtime `ActiveBuffs` stored in `ResourceContext`.
+
+**Components**:
+- `BuffService` – Pure calculations (attack/defense bonuses, regen, etc.)
+- `BuffSystem` – Applies/clears buffs, mutates `ActiveBuffs`
+- `RoomBuffDatabase` (Resource) + `ActiveBuffs` (Runtime Resource)
+
+**Usage**:
+```rust
+builder
+    .register_resource(RoomBuffDatabase::default())
+    .register_runtime_state(ActiveBuffs::default());
+
+let mut active = game.resources.get_mut::<ActiveBuffs>().await?;
+```
 
 ---
 

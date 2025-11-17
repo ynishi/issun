@@ -67,7 +67,7 @@ pub enum BuffEffect {
     DropRateMultiplier(f32),
 }
 
-/// Active buffs state (stored in Context - saveable)
+/// Active buffs state (stored in `ResourceContext`)
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ActiveBuffs {
     pub buffs: Vec<ActiveBuff>,
