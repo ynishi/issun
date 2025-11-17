@@ -39,8 +39,11 @@ impl Plugin for TurnBasedCombatPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register CombatService
+        // Register CombatService (Domain Service - pure logic)
         builder.register_service(Box::new(super::CombatService::new()));
+
+        // Register CombatEngine (System - orchestration)
+        builder.register_system(Box::new(super::CombatEngine::new(self.config.clone())));
 
         // TODO: Register combat-related entities if needed
         // Example:
