@@ -31,3 +31,30 @@ impl Enemy {
         self.hp = (self.hp - damage).max(0);
     }
 }
+
+impl Combatant for Enemy {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn hp(&self) -> i32 {
+        self.hp
+    }
+
+    fn max_hp(&self) -> i32 {
+        self.max_hp
+    }
+
+    fn attack(&self) -> i32 {
+        self.attack
+    }
+
+    fn defense(&self) -> Option<i32> {
+        None  // Enemies have no defense (can be added per enemy type later)
+    }
+
+    fn take_damage(&mut self, damage: i32) {
+        // Now just applies raw damage (CombatService handles defense calculation)
+        self.hp = (self.hp - damage).max(0);
+    }
+}

@@ -307,10 +307,11 @@ fn render_combat_log(frame: &mut Frame, area: Rect, data: &CombatSceneData) {
 
     // Take last N messages that fit in the area
     let max_lines = (area.height.saturating_sub(2)) as usize;
-    let start_index = data.combat_log.len().saturating_sub(max_lines);
-    let messages: Vec<ListItem> = data.combat_log[start_index..]
+    let log_entries = data.combat_log();
+    let start_index = log_entries.len().saturating_sub(max_lines);
+    let messages: Vec<ListItem> = log_entries[start_index..]
         .iter()
-        .map(|msg| ListItem::new(msg.as_str()))
+        .map(|entry| ListItem::new(entry.message.as_str()))
         .collect();
 
     let list = List::new(messages).block(block);

@@ -76,6 +76,33 @@ impl Bot {
     }
 }
 
+impl Combatant for Bot {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn hp(&self) -> i32 {
+        self.hp
+    }
+
+    fn max_hp(&self) -> i32 {
+        self.max_hp
+    }
+
+    fn attack(&self) -> i32 {
+        self.attack + self.equipped_weapon.attack
+    }
+
+    fn defense(&self) -> Option<i32> {
+        None  // Bots have no defense
+    }
+
+    fn take_damage(&mut self, damage: i32) {
+        // Now just applies raw damage (CombatService handles defense calculation)
+        self.hp = (self.hp - damage).max(0);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -30,7 +30,20 @@ pub mod combat;
 // pub mod dungeon;    // TODO: Implement
 
 // Re-exports for convenience
-pub use combat::TurnBasedCombatPlugin;
+pub use combat::{
+    // Plugin
+    TurnBasedCombatPlugin,
+    TurnBasedCombatConfig,
+    // Engine
+    CombatEngine,
+    // Types
+    Combatant,
+    CombatResult,
+    CombatLogEntry,
+    // Service
+    CombatService,
+    DamageResult,
+};
 
 /// Plugin trait for system composition
 #[async_trait]

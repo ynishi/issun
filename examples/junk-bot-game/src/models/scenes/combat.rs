@@ -2,15 +2,16 @@
 
 use crate::models::entities::{Enemy, RoomBuff, Weapon};
 use crate::models::{GameContext, GameScene, proceed_to_next_floor, scene_helpers::generate_drops, scenes::{DropCollectionSceneData, ResultSceneData}};
-use issun::prelude::SceneTransition;
+use issun::prelude::{CombatEngine, TurnBasedCombatConfig, Combatant, SceneTransition};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CombatSceneData {
     pub enemies: Vec<Enemy>,
-    pub combat_log: Vec<String>,
-    pub turn_count: u32,
+    /// Combat engine managing turn count, log, and score
+    #[serde(skip)]
+    pub combat_engine: Option<CombatEngine>,
     /// Show inventory for weapon switching
     pub show_inventory: bool,
     /// Selected inventory index
@@ -31,8 +32,7 @@ impl CombatSceneData {
     pub fn new(enemies: Vec<Enemy>) -> Self {
         Self {
             enemies,
-            combat_log: Vec::new(),
-            turn_count: 0,
+            combat_engine: Some(CombatEngine::new(TurnBasedCombatConfig::default())),
             show_inventory: false,
             inventory_cursor: 0,
             equip_target: EquipTarget::Player,
@@ -44,8 +44,7 @@ impl CombatSceneData {
     pub fn from_room(room: crate::models::entities::Room) -> Self {
         Self {
             enemies: room.enemies,
-            combat_log: Vec::new(),
-            turn_count: 0,
+            combat_engine: Some(CombatEngine::new(TurnBasedCombatConfig::default())),
             show_inventory: false,
             inventory_cursor: 0,
             equip_target: EquipTarget::Player,
@@ -53,8 +52,29 @@ impl CombatSceneData {
         }
     }
 
+    /// Get combat engine (lazily initialized)
+    fn engine(&mut self) -> &mut CombatEngine {
+        self.combat_engine.get_or_insert_with(|| {
+            CombatEngine::new(TurnBasedCombatConfig::default())
+        })
+    }
+
+    /// Get combat log
+    pub fn combat_log(&self) -> &[issun::prelude::CombatLogEntry] {
+        self.combat_engine.as_ref()
+            .map(|e| e.log())
+            .unwrap_or(&[])
+    }
+
+    /// Get turn count
+    pub fn turn_count(&self) -> u32 {
+        self.combat_engine.as_ref()
+            .map(|e| e.turn_count())
+            .unwrap_or(0)
+    }
+
     pub fn log(&mut self, message: impl Into<String>) {
-        self.combat_log.push(message.into());
+        self.engine().add_log(message.into());
     }
 
     /// Toggle inventory display
@@ -174,110 +194,36 @@ impl CombatSceneData {
         }
     }
 
-    /// Process a combat turn
+    /// Process a combat turn using CombatEngine
     fn process_turn(&mut self, ctx: &mut GameContext) {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-
-        self.turn_count += 1;
-        self.log(format!("--- Turn {} ---", self.turn_count));
-
-        // Player attacks first enemy
-        if ctx.player.is_alive() {
-            if let Some(enemy_idx) = self.enemies.iter().position(|e| e.is_alive()) {
-                let damage = ctx.player.attack + ctx.player.equipped_weapon.attack;
-                let enemy_name = self.enemies[enemy_idx].name.clone();
-
-                self.enemies[enemy_idx].take_damage(damage);
-                self.log(format!("{} attacks {} for {} damage!", ctx.player.name, enemy_name, damage));
-
-                if !self.enemies[enemy_idx].is_alive() {
-                    self.log(format!("{} defeated!", enemy_name));
-                    ctx.score += 10;
-                }
-            }
+        // Build party trait object slice (player + bots)
+        let mut party: Vec<&mut dyn Combatant> = vec![&mut ctx.player as &mut dyn Combatant];
+        for bot in ctx.bots.iter_mut() {
+            party.push(bot as &mut dyn Combatant);
         }
 
-        // Bots attack
-        for bot in ctx.bots.iter_mut().filter(|b| b.is_alive()) {
-            if let Some(enemy_idx) = self.enemies.iter().position(|e| e.is_alive()) {
-                let damage = bot.attack + bot.equipped_weapon.attack;
-                let enemy_name = self.enemies[enemy_idx].name.clone();
-
-                self.enemies[enemy_idx].take_damage(damage);
-                self.log(format!("{} attacks {} for {} damage!", bot.name, enemy_name, damage));
-
-                if !self.enemies[enemy_idx].is_alive() {
-                    self.log(format!("{} defeated!", enemy_name));
-                    ctx.score += 10;
-                }
-            }
-        }
-
-        // Enemies attack (randomly target player or bots)
-        let alive_enemies: Vec<(String, i32)> = self.enemies
-            .iter()
-            .filter(|e| e.is_alive())
-            .map(|e| (e.name.clone(), e.attack))
+        // Build enemy trait object slice
+        let mut enemies: Vec<&mut dyn Combatant> = self.enemies
+            .iter_mut()
+            .map(|e| e as &mut dyn Combatant)
             .collect();
 
-        // Create list of alive party members for targeting
-        let mut alive_party: Vec<String> = Vec::new();
-        if ctx.player.is_alive() {
-            alive_party.push(ctx.player.name.clone());
-        }
-        for bot in ctx.bots.iter().filter(|b| b.is_alive()) {
-            alive_party.push(bot.name.clone());
-        }
-
-        for (enemy_name, base_damage) in alive_enemies {
-            if alive_party.is_empty() {
-                break;
-            }
-
-            // Apply room buff damage multiplier
-            let damage = (base_damage as f32 * self.room_buff.damage_multiplier()) as i32;
-
-            // Random target
-            let target_idx = rng.gen_range(0..alive_party.len());
-            let target_name = alive_party[target_idx].clone();
-
-            // Apply damage to target
-            if target_name == ctx.player.name {
-                ctx.player.take_damage(damage);
-                self.log(format!("{} attacks {} for {} damage!", enemy_name, target_name, damage));
-                if !ctx.player.is_alive() {
-                    alive_party.retain(|n| n != &target_name);
-                }
-            } else {
-                // Find the bot
-                if let Some(bot) = ctx.bots.iter_mut().find(|b| b.name == target_name) {
-                    bot.take_damage(damage);
-                    self.log(format!("{} attacks {} for {} damage!", enemy_name, target_name, damage));
-                    if !bot.is_alive() {
-                        alive_party.retain(|n| n != &target_name);
-                    }
-                }
-            }
-        }
-
-        // Apply room buff per-turn damage (Contaminated rooms)
+        // Process turn using combat engine
+        let damage_multiplier = self.room_buff.damage_multiplier();
         let per_turn_damage = self.room_buff.per_turn_damage();
-        if per_turn_damage > 0 {
-            if ctx.player.is_alive() {
-                ctx.player.take_damage(per_turn_damage);
-                self.log(format!("☢️ Contamination damages {} for {} HP!", ctx.player.name, per_turn_damage));
-            }
-            for bot in ctx.bots.iter_mut().filter(|b| b.is_alive()) {
-                bot.take_damage(per_turn_damage);
-                self.log(format!("☢️ Contamination damages {} for {} HP!", bot.name, per_turn_damage));
-            }
-        }
 
-        // Check game over conditions
-        if !ctx.is_party_alive() {
-            self.log("Your party has been defeated...".to_string());
-        }
+        // Extract engine to avoid double borrow
+        let engine = self.combat_engine.as_mut().unwrap();
+
+        let _result = engine.process_turn_dyn(
+            &mut party,
+            &mut enemies,
+            damage_multiplier,
+            per_turn_damage,
+        );
+
+        // Sync score from engine to context
+        ctx.score = engine.score();
     }
 
     /// Equip weapon to target (player or bot)
