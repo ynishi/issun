@@ -54,8 +54,9 @@ pub mod prelude {
     pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
     pub use crate::plugin::{
-        CombatLogEntry, CombatResult, CombatService, CombatSystem, Combatant, DamageResult, Plugin,
-        PluginBuilder, TurnBasedCombatConfig, TurnBasedCombatPlugin,
+        CombatLogEntry, CombatResult, CombatService, CombatSystem, Combatant, DamageResult,
+        InventoryPlugin, InventoryService, Item, Plugin, PluginBuilder, TurnBasedCombatConfig,
+        TurnBasedCombatPlugin,
     };
     pub use crate::scene::{Scene, SceneTransition};
     pub use crate::service::Service;
