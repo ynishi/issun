@@ -47,50 +47,50 @@ pub use combat::{
 };
 
 pub use inventory::{
+    // Plugin
+    InventoryPlugin,
     // Service
     InventoryService,
     // Types
     Item,
-    // Plugin
-    InventoryPlugin,
 };
 
 pub use loot::{
-    // Service
-    LootService,
     // Types
     DropConfig,
-    Rarity,
     // Plugin
     LootPlugin,
+    // Service
+    LootService,
+    Rarity,
 };
 
 pub use dungeon::{
-    // Service
-    DungeonService,
-    // System
-    DungeonSystem,
     // Types
     Connection,
     ConnectionPattern,
     DungeonConfig,
-    DungeonState,
-    RoomId,
     // Plugin
     DungeonPlugin,
+    // Service
+    DungeonService,
+    DungeonState,
+    // System
+    DungeonSystem,
+    RoomId,
 };
 
 pub use room_buff::{
-    // Service
-    BuffService,
-    // System
-    BuffSystem,
     // Types
     ActiveBuff,
     ActiveBuffs,
     BuffConfig,
     BuffDuration,
     BuffEffect,
+    // Service
+    BuffService,
+    // System
+    BuffSystem,
     RoomBuffDatabase,
     // Plugin
     RoomBuffPlugin,

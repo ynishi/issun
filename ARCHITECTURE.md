@@ -116,38 +116,76 @@ impl SaveRepository for JsonRepository {
 
 ### 4. Scene (Presentation Logic)
 
-**Purpose**: UI state, input handling, and scene transitions
+**Purpose**: Finite UI/game states, their data, and transition orchestration
 
 - **Trait**: `Scene`
 - **Macro**: `#[derive(Scene)]`
+- **Runtime**: `SceneDirector` (stack-based scene manager)
 - **Characteristics**:
-  - Manages UI state
-  - Handles user input
-  - Triggers scene transitions
-  - Uses Systems and Services for logic
+  - Owns UI state and per-scene data
+  - Handles input (often via macro-generated dispatcher)
+  - Interacts with Systems/Services to mutate global context
+  - Transitions via `SceneTransition::{Stay, Switch, Push, Pop, Quit}`
+  - Lifecycle hooks: `on_enter`, `on_exit`, `on_suspend`, `on_resume`, `on_update`
 
 **Examples**:
 - `TitleScene` - Title screen, menu navigation
 - `CombatScene` - Combat UI, action selection
 - `InventoryScene` - Inventory display, item management
+- `PauseMenuScene` - Overlays pushed on top of active scene
 
-**Usage**:
+**Usage** (enum scenes + derived helpers):
 ```rust
-use issun::prelude::*;
+use issun::Scene; // derive macro
+use crate::models::GameContext;
 
-#[derive(Scene)]
+#[derive(Debug, Clone, Scene)]
+#[scene(
+    context = "GameContext",
+    initial = "Title(TitleSceneData::new())",
+    handler_params = "ctx: &mut GameContext, input: ::issun::ui::InputEvent"
+)]
 pub enum GameScene {
     Title(TitleSceneData),
     Combat(CombatSceneData),
+    PauseMenu(PauseMenuData),
 }
 
-#[async_trait]
-impl Scene for GameScene {
-    async fn on_update(&mut self) -> SceneTransition {
-        // Handle scene logic
-    }
-}
+// The attributes above auto-generate:
+// - `GameState { scene, ctx, should_quit }`
+// - `GameState::new()` seeded with the initial scene
+// - `handle_scene_input(&mut GameScene, ctx, input)` dispatcher
 ```
+
+**SceneDirector Runtime**:
+```rust
+use issun::scene::{SceneDirector, SceneTransition};
+
+let mut director = SceneDirector::new(
+    GameScene::Title(TitleSceneData::new())
+).await;
+
+loop {
+    // Update active scene
+    let transition = director.update().await;
+    director.handle(transition).await?;
+
+    if director.should_quit() { break; }
+}
+
+// Manual overlays (pause menus, dialogs)
+director.handle(SceneTransition::Push(
+    GameScene::PauseMenu(PauseMenuData::new())
+)).await?;
+```
+
+`SceneDirector` maintains a stack of scenes, automatically calling:
+- `on_enter` for newly activated scenes
+- `on_suspend` when another scene is pushed on top
+- `on_resume` when the top scene is popped
+- `on_exit` when a scene leaves the stack or quitting
+
+This keeps scene logic declarative—scenes only return transitions and the director handles the lifecycle.
 
 ---
 

@@ -84,11 +84,7 @@ impl LootService {
     /// let drop_count = LootService::calculate_drop_count(5, &config, &mut rng);
     /// // Returns 0-5 based on 30% chance per source
     /// ```
-    pub fn calculate_drop_count(
-        count: usize,
-        config: &DropConfig,
-        rng: &mut impl Rng,
-    ) -> usize {
+    pub fn calculate_drop_count(count: usize, config: &DropConfig, rng: &mut impl Rng) -> usize {
         (0..count)
             .filter(|_| Self::should_drop(config, rng))
             .count()
@@ -117,8 +113,8 @@ impl Default for LootService {
 mod tests {
     use super::*;
     use crate::service::Service;
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     #[test]
     fn test_should_drop_deterministic() {

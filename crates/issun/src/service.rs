@@ -15,6 +15,12 @@ pub trait Service: Send + Sync + 'static {
     /// Service name (must be unique)
     fn name(&self) -> &'static str;
 
+    /// Clone this service as a boxed trait object
+    ///
+    /// Services are expected to be lightweight and typically `Clone`.
+    /// This enables the builder to duplicate services across contexts.
+    fn clone_box(&self) -> Box<dyn Service>;
+
     /// Initialize service (called once at startup)
     async fn initialize(&mut self, _ctx: &mut Context) {}
 
@@ -36,6 +42,7 @@ pub trait Service: Send + Sync + 'static {
 mod tests {
     use super::*;
 
+    #[derive(Clone)]
     struct DamageCalculatorService {
         critical_multiplier: f32,
     }
@@ -60,6 +67,10 @@ mod tests {
     impl Service for DamageCalculatorService {
         fn name(&self) -> &'static str {
             "damage_calculator"
+        }
+
+        fn clone_box(&self) -> Box<dyn Service> {
+            Box::new(self.clone())
         }
 
         async fn initialize(&mut self, _ctx: &mut Context) {

@@ -385,6 +385,10 @@ pub fn derive_service(input: TokenStream) -> TokenStream {
                 #service_name
             }
 
+            fn clone_box(&self) -> Box<dyn #crate_name::service::Service> {
+                Box::new(self.clone())
+            }
+
             fn as_any(&self) -> &dyn ::std::any::Any {
                 self
             }

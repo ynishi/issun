@@ -38,11 +38,7 @@ impl InventoryService {
     /// # Returns
     ///
     /// Some(item) if transfer successful, None if index out of bounds
-    pub fn transfer_item<T: Item>(
-        from: &mut Vec<T>,
-        to: &mut Vec<T>,
-        index: usize,
-    ) -> Option<T> {
+    pub fn transfer_item<T: Item>(from: &mut Vec<T>, to: &mut Vec<T>, index: usize) -> Option<T> {
         if index >= from.len() {
             return None;
         }

@@ -52,19 +52,35 @@ impl GameBuilder {
             self.plugins[idx].build(&mut plugin_builder);
         }
 
-        // Create context and register all services
+        // Legacy context (for backward compatibility)
         let mut context = crate::context::Context::new();
+
+        // New contexts
+        let resource_context = crate::context::ResourceContext::new();
+        let mut service_context = crate::context::ServiceContext::new();
+        let mut system_context = crate::context::SystemContext::new();
+
+        // Register services in both contexts (cloned for new architecture)
         for service in plugin_builder.services {
+            let cloned = service.as_ref().clone_box();
             context.register_service(service);
+            service_context.register(cloned);
         }
 
-        // Register resources from plugins
+        // Register systems into SystemContext
+        for system in plugin_builder.systems {
+            system_context.register_boxed(system);
+        }
+
+        // Register resources from plugins (read-only data)
         *context.resources_mut() = plugin_builder.resources;
 
         Ok(Game {
+            resources: resource_context,
+            services: service_context,
+            systems: system_context,
             context,
             entities: plugin_builder.entities,
-            systems: plugin_builder.systems,
             assets: plugin_builder.assets,
         })
     }
@@ -177,36 +193,82 @@ impl PluginBuilder for DefaultPluginBuilder {
     }
 }
 
-/// Game instance
+/// Game instance with partitioned contexts (Proposal C)
+///
+/// This struct holds the three specialized contexts:
+/// - `resources`: Global shared state (Resources)
+/// - `services`: Stateless domain logic (Services)
+/// - `systems`: Stateful orchestration (Systems)
 pub struct Game {
-    /// Game context with registered services
+    /// Resource context - global shared state
+    pub resources: crate::context::ResourceContext,
+    /// Service context - stateless domain logic
+    pub services: crate::context::ServiceContext,
+    /// System context - stateful orchestration
+    pub systems: crate::context::SystemContext,
+
+    /// Legacy: Old unified context (deprecated)
+    /// Kept for backward compatibility. Will be removed in future versions.
+    #[deprecated(since = "0.2.0", note = "Use resources, services, and systems instead")]
     pub context: crate::context::Context,
+
     /// Registered entities from plugins
     pub entities: HashMap<String, Box<dyn crate::entity::Entity>>,
-    /// Registered systems from plugins (Application Logic)
-    pub systems: Vec<Box<dyn crate::system::System>>,
-    // scenes: Removed - use SceneDirector instead
     /// Registered assets from plugins
     pub assets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
 }
 
 impl Game {
-    /// Get the game context
+    /// Get the legacy game context (deprecated)
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use resources(), services(), or systems() instead"
+    )]
     pub fn context(&self) -> &crate::context::Context {
         &self.context
     }
 
-    /// Get mutable reference to game context
+    /// Get mutable reference to legacy game context (deprecated)
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use resources_mut(), services_mut(), or systems_mut() instead"
+    )]
     pub fn context_mut(&mut self) -> &mut crate::context::Context {
         &mut self.context
+    }
+
+    /// Get reference to resource context
+    pub fn resources(&self) -> &crate::context::ResourceContext {
+        &self.resources
+    }
+
+    /// Get mutable reference to resource context
+    pub fn resources_mut(&mut self) -> &mut crate::context::ResourceContext {
+        &mut self.resources
+    }
+
+    /// Get reference to service context
+    pub fn services(&self) -> &crate::context::ServiceContext {
+        &self.services
+    }
+
+    /// Get reference to system context
+    pub fn systems(&self) -> &crate::context::SystemContext {
+        &self.systems
+    }
+
+    /// Get mutable reference to system context
+    pub fn systems_mut(&mut self) -> &mut crate::context::SystemContext {
+        &mut self.systems
     }
 
     /// Run the game (TODO: implement game loop)
     pub fn run(self) -> Result<()> {
         // TODO: Implement game loop
         println!(
-            "Game running with {} registered services...",
-            self.context.service_count()
+            "Game running with {} services and {} systems...",
+            self.services.len(),
+            self.systems.len()
         );
         Ok(())
     }

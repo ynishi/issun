@@ -55,14 +55,12 @@ impl DungeonService {
     /// Check if can advance to next floor
     pub fn can_advance_floor(&self, config: &DungeonConfig, state: &DungeonState) -> bool {
         // Boss room cleared (last room on floor)
-        state.current_room >= config.rooms_per_floor
-            && state.current_floor < config.total_floors
+        state.current_room >= config.rooms_per_floor && state.current_floor < config.total_floors
     }
 
     /// Check if dungeon is completed
     pub fn is_completed(&self, config: &DungeonConfig, state: &DungeonState) -> bool {
-        state.current_floor >= config.total_floors
-            && state.current_room >= config.rooms_per_floor
+        state.current_floor >= config.total_floors && state.current_room >= config.rooms_per_floor
     }
 
     /// Check if a room has been visited

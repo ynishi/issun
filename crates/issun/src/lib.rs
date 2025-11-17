@@ -50,39 +50,14 @@ pub mod ui;
 // Prelude for convenient imports
 pub mod prelude {
     pub use crate::asset::Asset;
+    pub use crate::builder::Game;
     pub use crate::builder::GameBuilder;
-    pub use crate::context::{Context, GameContext};
-    pub use crate::resources::{Resource, Resources};
+    pub use crate::context::{
+        Context, GameContext, ResourceContext, ServiceContext, SystemContext,
+    };
     pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
     pub use crate::plugin::{
-        // Combat
-        CombatLogEntry,
-        CombatResult,
-        CombatService,
-        CombatSystem,
-        Combatant,
-        DamageResult,
-        TurnBasedCombatConfig,
-        TurnBasedCombatPlugin,
-        // Inventory
-        InventoryPlugin,
-        InventoryService,
-        Item,
-        // Loot
-        DropConfig,
-        LootPlugin,
-        LootService,
-        Rarity,
-        // Dungeon
-        Connection,
-        ConnectionPattern,
-        DungeonConfig,
-        DungeonPlugin,
-        DungeonService,
-        DungeonState,
-        DungeonSystem,
-        RoomId,
         // Room Buff
         ActiveBuff,
         ActiveBuffs,
@@ -91,12 +66,40 @@ pub mod prelude {
         BuffEffect,
         BuffService,
         BuffSystem,
-        RoomBuffDatabase,
-        RoomBuffPlugin,
+        // Combat
+        CombatLogEntry,
+        CombatResult,
+        CombatService,
+        CombatSystem,
+        Combatant,
+        // Dungeon
+        Connection,
+        ConnectionPattern,
+        DamageResult,
+        // Loot
+        DropConfig,
+        DungeonConfig,
+        DungeonPlugin,
+        DungeonService,
+        DungeonState,
+        DungeonSystem,
+        // Inventory
+        InventoryPlugin,
+        InventoryService,
+        Item,
+        LootPlugin,
+        LootService,
         // Core
         Plugin,
         PluginBuilder,
+        Rarity,
+        RoomBuffDatabase,
+        RoomBuffPlugin,
+        RoomId,
+        TurnBasedCombatConfig,
+        TurnBasedCombatPlugin,
     };
+    pub use crate::resources::{Resource, Resources};
     pub use crate::scene::{Scene, SceneDirector, SceneTransition};
     pub use crate::service::Service;
     pub use crate::store::{EntityStore, Store};

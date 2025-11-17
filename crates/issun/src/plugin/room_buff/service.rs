@@ -66,10 +66,9 @@ impl BuffService {
 
     /// Check if a specific buff effect is active
     pub fn has_effect(&self, buffs: &ActiveBuffs, effect_type: &BuffEffect) -> bool {
-        buffs
-            .buffs
-            .iter()
-            .any(|buff| std::mem::discriminant(&buff.config.effect) == std::mem::discriminant(effect_type))
+        buffs.buffs.iter().any(|buff| {
+            std::mem::discriminant(&buff.config.effect) == std::mem::discriminant(effect_type)
+        })
     }
 }
 

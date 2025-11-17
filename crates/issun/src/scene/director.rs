@@ -600,7 +600,10 @@ mod tests {
         director.push(TestScene::new("scene2")).await;
         director.push(TestScene::new("scene3")).await;
 
-        let names: Vec<_> = director.iter_scenes_rev().map(|s| s.name.as_str()).collect();
+        let names: Vec<_> = director
+            .iter_scenes_rev()
+            .map(|s| s.name.as_str())
+            .collect();
         assert_eq!(names, vec!["scene3", "scene2", "scene1"]);
     }
 
@@ -610,7 +613,8 @@ mod tests {
         let mut director = SceneDirector::new(scene1).await;
         director.push(TestScene::new("scene2")).await;
 
-        let items: Vec<_> = director.iter_with_depth()
+        let items: Vec<_> = director
+            .iter_with_depth()
             .map(|(depth, scene)| (depth, scene.name.as_str()))
             .collect();
 

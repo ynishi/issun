@@ -51,6 +51,4 @@ pub mod types;
 pub use plugin::RoomBuffPlugin;
 pub use service::BuffService;
 pub use system::BuffSystem;
-pub use types::{
-    ActiveBuff, ActiveBuffs, BuffConfig, BuffDuration, BuffEffect, RoomBuffDatabase,
-};
+pub use types::{ActiveBuff, ActiveBuffs, BuffConfig, BuffDuration, BuffEffect, RoomBuffDatabase};
