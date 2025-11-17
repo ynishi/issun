@@ -6,6 +6,7 @@
 mod models;
 mod systems;
 mod services;
+mod plugins;
 mod assets;
 mod game;
 mod ui;
@@ -13,6 +14,7 @@ mod ui;
 use issun::prelude::*;
 use issun::ui::{Tui, InputEvent};
 use models::{GameState, GameScene, handle_scene_input};
+use plugins::InventoryPlugin;
 use std::time::{Duration, Instant};
 
 const TICK_RATE: Duration = Duration::from_millis(33); // 30 FPS
@@ -25,6 +27,7 @@ async fn main() -> std::io::Result<()> {
     // Initialize ISSUN framework with plugins
     let game = GameBuilder::new()
         .with_plugin(TurnBasedCombatPlugin::default())
+        .with_plugin(InventoryPlugin::new())
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
         .build()
         .await
