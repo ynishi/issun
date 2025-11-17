@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::entities::{Player, Bot, Weapon, BuffCard, BuffType, Dungeon, LootItem, ItemEffect, WeaponEffect};
 
 /// Persistent game data (survives scene transitions)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct GameContext {
     pub player: Player,
     pub bots: Vec<Bot>,
@@ -21,6 +21,37 @@ pub struct GameContext {
     /// Note: Services are not serializable, will be re-initialized on load
     #[serde(skip)]
     pub issun_context: Option<issun::context::Context>,
+}
+
+impl Clone for GameContext {
+    fn clone(&self) -> Self {
+        Self {
+            player: self.player.clone(),
+            bots: self.bots.clone(),
+            inventory: self.inventory.clone(),
+            buff_cards: self.buff_cards.clone(),
+            score: self.score,
+            floor: self.floor,
+            dungeon: self.dungeon.clone(),
+            // Skip cloning issun_context (not cloneable)
+            issun_context: None,
+        }
+    }
+}
+
+impl std::fmt::Debug for GameContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GameContext")
+            .field("player", &self.player)
+            .field("bots", &self.bots)
+            .field("inventory", &self.inventory)
+            .field("buff_cards", &self.buff_cards)
+            .field("score", &self.score)
+            .field("floor", &self.floor)
+            .field("dungeon", &self.dungeon)
+            .field("issun_context", &"<Context>")
+            .finish()
+    }
 }
 
 impl GameContext {

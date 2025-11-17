@@ -2,7 +2,7 @@
 
 use crate::models::entities::{Enemy, RoomBuff, Weapon};
 use crate::models::{GameContext, GameScene, proceed_to_next_floor, scene_helpers::generate_drops, scenes::{DropCollectionSceneData, ResultSceneData}};
-use issun::prelude::{CombatSystem, TurnBasedCombatConfig, Combatant, SceneTransition};
+use issun::prelude::{CombatSystem, CombatService, TurnBasedCombatConfig, Combatant, SceneTransition};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
 
