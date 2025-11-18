@@ -1,7 +1,9 @@
-//! UI layer
-//!
-//! Rendering and input handling
+//! UI layer for the scaffold scenes.
 
-// Example: Rendering functions would go here
-// For TUI games, this would use ratatui widgets
-// For CLI games, this would use println! with formatting
+mod ping;
+mod pong;
+mod title;
+
+pub use ping::render_ping;
+pub use pong::render_pong;
+pub use title::render_title;

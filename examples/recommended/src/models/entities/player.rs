@@ -1,7 +1,7 @@
-//! Player entity
+//! Player entity (minimal example)
 
 use issun::prelude::*;
-use issun::Entity; // Import derive macro
+use issun::Entity;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Entity)]
@@ -10,7 +10,6 @@ pub struct Player {
     pub name: String,
     pub hp: i32,
     pub max_hp: i32,
-    pub attack: i32,
 }
 
 impl Player {
@@ -18,16 +17,11 @@ impl Player {
         Self {
             name: name.into(),
             hp: 100,
-            max_hp: 100,
-            attack: 10,
+            max_hp: 150,
         }
     }
 
-    pub fn is_alive(&self) -> bool {
-        self.hp > 0
-    }
-
-    pub fn take_damage(&mut self, damage: i32) {
-        self.hp = (self.hp - damage).max(0);
+    pub fn heal(&mut self, amount: i32) {
+        self.hp = (self.hp + amount).min(self.max_hp);
     }
 }

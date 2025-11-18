@@ -1,11 +1,11 @@
 //! Scene-specific data
 //!
-//! Each scene has its own data that is discarded on transition
+//! Each scene has its own data that is discarded on transition.
 
+mod ping;
+mod pong;
 mod title;
-mod combat;
-mod result;
 
+pub use ping::PingSceneData;
+pub use pong::PongSceneData;
 pub use title::TitleSceneData;
-pub use combat::CombatSceneData;
-pub use result::ResultSceneData;

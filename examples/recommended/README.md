@@ -1,156 +1,78 @@
-# ISSUN Recommended Project Structure
+# ISSUN Recommended Project Structure (Junk Bot Edition)
 
-This is a **scaffold template** showing the recommended project structure for ISSUN games.
+This directory now ships a complete, playable sample – the **Junk Bot: Salvage Run** mini-roguelike – that follows the latest ISSUN layering guidelines (Service / System / UI) and demonstrates how to wire everything up with `SceneDirector`.
 
-## 🎯 How to Use This Template
+Use it as a living template: copy the directory, rename the crate in `Cargo.toml`, and start swapping out entities/assets/scenes with your own content.
 
-1. **Copy this entire directory** to start your own game:
-   ```bash
-   cp -r examples/recommended my-new-game
-   cd my-new-game
-   ```
-
-2. **Update `Cargo.toml`**:
-   ```toml
-   [package]
-   name = "my-awesome-game"
-   ```
-
-3. **Start implementing** your game logic following the structure below!
+```bash
+cp -r issun/examples/recommended my-new-game
+cd my-new-game
+cargo run
+```
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Structure (practical Hw)
+
+The layout mirrors the conceptual Service/System split we document elsewhere, but with working game code:
 
 ```
 src/
-├── models/              # データモデル層
-│   ├── entities/        # ゲームエンティティ (Player, Enemy, Item, etc.)
-│   │   ├── player.rs
-│   │   ├── enemy.rs
-│   │   └── mod.rs
-│   ├── scenes/          # Scene固有データ (各Scene専用の揮発性データ)
-│   │   ├── title.rs     # TitleSceneData
-│   │   ├── combat.rs    # CombatSceneData
-│   │   └── mod.rs
-│   ├── game_context.rs  # 共通・永続化データ (Scene間で共有、Save/Load対象)
-│   ├── game_scene.rs    # Scene enum定義 (< 10 scenes推奨)
+├── assets/              # constデータ (enemies, rooms, loot tables, cards…)
 │   └── mod.rs
-│
-├── systems/             # ビジネスロジック層 (純粋関数、状態変更処理)
-│   ├── combat_system.rs # 戦闘ロジック
+├── models/              # 純粋なデータ + Scene enum
+│   ├── entities/        # Player, Enemy, Weapon, Bot, Loot, etc.
+│   ├── scenes/          # Title/RoomSelection/Combat/... SceneData structs
+│   ├── game_context.rs  # 永続データ (save対象)
+│   ├── game_scene.rs    # #[derive(Scene)] enum + handle_scene_input()
+│   ├── scene_helpers.rs # シーン跨ぎの小ヘルパ
 │   └── mod.rs
-│
-├── assets/              # ゲームコンテンツ層 (const配列 or RON/JSON)
-│   └── mod.rs           # 敵データ、アイテムデータ等
-│
-├── game/                # ゲーム固有Coordinator (高レベル進行管理)
+├── systems/             # ビジネスロジック (CombatSystem, LootSystem…)
 │   └── mod.rs
-│
-├── ui/                  # UI層 (描画・入力処理)
-│   └── mod.rs
-│
-└── main.rs              # エントリーポイント
+├── ui/                  # ratatui 描画
+│   └── *.rs             # sceneごとのウィジェット
+└── main.rs              # GameBuilder + SceneDirector + render loop
 ```
 
 ---
 
-## 🏗️ Layer Responsibilities
+## 🔧 Services / Systems
 
-### 1. `models/` - データモデル層
-**責務**: データ定義のみ（ロジックなし）
+- **Services** (`issun::prelude::ServiceContext`) wrap reusable engines such as `CombatService` or `LootService`. They are registered through ISSUN plugins and accessed in scenes via `services.get_as`.
+- **Systems** (`SystemContext`) expose stateful logic like `CombatSystem`. Scenes call them to perform deterministic steps (e.g., resolve a battle turn) without knowing the internals.
+- **Assets** define inputs for those systems (enemy stats, loot rarities). This keeps combat math/test data outside of UI code.
 
-- **`entities/`**: ゲームオブジェクト (Player, Enemy, Item)
-  - `#[derive(Entity)]` で自動的に Entity trait 実装
-  - シンプルなメソッド (is_alive, take_damage) のみ
+See `models/scenes/combat.rs` for a concrete example: the scene asks `CombatSystem` to process turns, while also demonstrating how to reach into `CombatService` for debug output.
 
-- **`scenes/`**: Scene固有データ
-  - 各Sceneが持つ専用データ (CombatSceneData, TreasureSceneData)
-  - Scene遷移時に破棄される
+### 🏓 Ping-Pong Accumulator Demo
 
-- **`game_context.rs`**: 永続データ
-  - Scene間で共有されるデータ
-  - Save/Load対象
-  - 例: Player, Score, Floor
-
-- **`game_scene.rs`**: Scene enum定義
-  - `#[derive(Scene)]` で自動的に Scene trait 実装
-  - < 10 scenes なら enum推奨（全体を一目で把握）
-
-### 2. `systems/` - ビジネスロジック層
-**責務**: 純粋関数、状態変更処理
-
-- ゲーム固有のロジック
-- Entityに直接書かない処理
-- テストしやすい純粋関数
-- 例: `apply_damage(target: &mut Player, damage: i32)`
-
-### 3. `assets/` - ゲームコンテンツ層
-**責務**: 静的データ定義
-
-- const配列 or RON/JSONファイル
-- `#[derive(Asset)]` でアセット化
-- 例: `pub const ENEMIES: &[EnemyAsset] = &[...]`
-
-### 4. `game/` - ゲーム固有Coordinator
-**責務**: 高レベル進行管理
-
-- ゲーム固有のフロー制御
-- Systemsを組み合わせて使う
-- Framework非依存
-
-### 5. `ui/` - UI層
-**責務**: 描画・入力処理
-
-- ratatui ウィジェット利用
-- 描画ロジック
-- 入力ハンドリング
+- `GameScene::Ping` / `GameScene::Pong` are tiny scaffold scenes that only bounce back and forth.
+- Pressing Enter in either scene calls `PingPongSystem::process_bounce`, which mutates `GameContext.ping_pong_log`.
+- `PingPongSystem` consults `PingPongLogService` to format a message and injects a celebratory line every 3rd bounce (when that happens it also heals the player for +10 HP, capped at 150).
+- The latest message is displayed in the UI for each scene so you can see the Service ↔ System ↔ Context round-trip.
+- `assets::PING_PONG_*` defines flavor text. On startup we load those assets into a `PingPongMessageDeck` resource, and the system randomly pulls congrats/normal lines from it, demonstrating the flow of **Assets → Resources → Systems**.
 
 ---
 
-## ✨ Key Design Principles
+## 🧠 Data Flow
 
-### Scene/Context分離 (重要!)
+- `GameContext` contains persistent state: player/bot roster, inventory, buff cards, dungeon progression, score.
+- Each `GameScene::*SceneData` struct contains ephemeral, scene-specific data (UI selections, temporary combat log, etc.). They get discarded whenever you transition to another scene.
+- `scene_helpers.rs` centralizes recurring transitions such as `proceed_to_next_floor`, so scenes do not duplicate the same bookkeeping.
 
-```rust
-// ✅ 正しい設計
-struct GameContext {
-    player: Player,  // ← 永続化（Save/Load対象）
-    score: u32,
-}
+---
 
-enum GameScene {
-    Combat(CombatSceneData { enemies, combat_log }),  // ← 揮発性
-    Settings(SettingsSceneData),  // ← 追加しても安全！
-}
-```
+## 🖥️ UI & Input
 
-**なぜ重要？**
-- **Transaction境界**: Scene遷移 = データのクリーンアップ
-- **Save/Load安全**: 何を保存すべきか自明
-- **拡張性**: Settings/Inventory追加でも破綻しない
-
-### DDD風の層分離
-
-- `models/` = データのみ
-- `systems/` = ロジックのみ
-- `assets/` = コンテンツのみ
-
-→ テストしやすく、保守しやすい
+The game uses `ratatui` widgets to render every scene (`ui/title.rs`, `ui/combat.rs`, …) and `GameRunner::run` to glue rendering/input/scene transitions together. `main.rs` keeps the runner small and declarative – perfect hw for your own project.
 
 ---
 
 ## 🚀 Next Steps
 
-1. Copy this template
-2. Implement your game logic in `systems/`
-3. Add your enemies/items in `assets/`
-4. Define your Scenes in `models/game_scene.rs`
-5. Run and iterate!
+1. Copy this project and rename the crate.
+2. Replace entities/assets with your own data.
+3. Expand `GameScene` and UI modules to add new flows.
+4. Implement new systems or services when logic gets complex.
 
----
-
-## 📖 See Also
-
-- [MINI_GAME_ENGINE_CONCEPT.md](../../junk-bot-salvage/MINI_GAME_ENGINE_CONCEPT.md) - Full design documentation
-- [hello_issun.rs](../hello_issun.rs) - Basic ISSUN example
+Need a deeper dive? See [MINI_GAME_ENGINE_CONCEPT.md](../../junk-bot-salvage/MINI_GAME_ENGINE_CONCEPT.md) for the full design rationale.
