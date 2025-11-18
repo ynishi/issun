@@ -94,6 +94,8 @@ GameBuilder::new()
 
 ## 🚀 Quick Start
 
+### Write code
+
 ```rust
 use issun::prelude::*;
 use issun::engine::GameRunner;
@@ -151,6 +153,23 @@ async fn main() -> Result<()> {
     tui.restore()?;
     Ok(())
 }
+```
+
+### Use template
+* from repo root
+```bash
+# 1. Install cargo-generate if needed
+cargo install cargo-generate
+
+# 2. From the repository root, generate into issun/examples/
+cargo generate \
+  --path templates/ping-pong \
+  --name my-new-game \
+  --destination examples
+
+# 3. Run your new project
+cd examples/my-new-game
+cargo run
 ```
 
 ## 📦 Installation
