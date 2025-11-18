@@ -45,7 +45,7 @@ impl ResultSceneData {
                 drop(ctx);
                 SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
             }
-            _ => SceneTransition::Stay
+            _ => SceneTransition::Stay,
         }
     }
 }

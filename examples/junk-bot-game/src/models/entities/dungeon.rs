@@ -1,4 +1,4 @@
-use super::{Room, RoomBuff, RoomType, Enemy, generate_random_rooms};
+use super::{generate_random_rooms, Enemy, Room, RoomBuff, RoomType};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -141,13 +141,11 @@ impl Floor4Choice {
 fn generate_floor1_room() -> Room {
     let mut rng = rand::thread_rng();
     let enemy_names = ["Training Bot", "Scrap Drone"];
-    let enemies = vec![
-        Enemy::new(
-            enemy_names[rng.gen_range(0..enemy_names.len())],
-            20,
-            3,
-        )
-    ];
+    let enemies = vec![Enemy::new(
+        enemy_names[rng.gen_range(0..enemy_names.len())],
+        20,
+        3,
+    )];
     Room::new_combat(RoomBuff::Normal, enemies)
 }
 
@@ -161,11 +159,7 @@ fn generate_floor2_room() -> Room {
 fn generate_floor3_miniboss() -> Room {
     let mut rng = rand::thread_rng();
     let boss_names = ["Corrupted Guardian", "Scrap Titan", "Junk Overlord"];
-    let miniboss = Enemy::new(
-        boss_names[rng.gen_range(0..boss_names.len())],
-        80,
-        12,
-    );
+    let miniboss = Enemy::new(boss_names[rng.gen_range(0..boss_names.len())], 80, 12);
     let mut room = Room::new_combat(RoomBuff::Normal, vec![miniboss]);
     room.name = "FLOOR 3: Mini-Boss".to_string();
     room
@@ -174,13 +168,11 @@ fn generate_floor3_miniboss() -> Room {
 fn generate_floor4_easy() -> Room {
     let mut rng = rand::thread_rng();
     let enemy_names = ["Weak Bot", "Damaged Drone"];
-    let enemies = vec![
-        Enemy::new(
-            enemy_names[rng.gen_range(0..enemy_names.len())],
-            30,
-            6,
-        )
-    ];
+    let enemies = vec![Enemy::new(
+        enemy_names[rng.gen_range(0..enemy_names.len())],
+        30,
+        6,
+    )];
     let mut room = Room::new_combat(RoomBuff::Normal, enemies);
     room.name = "FLOOR 4: Easy Path".to_string();
     room
@@ -212,11 +204,7 @@ fn generate_floor5_boss() -> Room {
         "Final Guardian",
         "Omega Destroyer",
     ];
-    let boss = Enemy::new(
-        boss_names[rng.gen_range(0..boss_names.len())],
-        150,
-        20,
-    );
+    let boss = Enemy::new(boss_names[rng.gen_range(0..boss_names.len())], 150, 20);
     let mut room = Room::new_combat(RoomBuff::Normal, vec![boss]);
     room.name = "FLOOR 5: FINAL BOSS".to_string();
     room

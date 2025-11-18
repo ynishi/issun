@@ -1,8 +1,7 @@
 use crate::models::entities::Floor4Choice;
 use crate::models::{
     scenes::{CombatSceneData, TitleSceneData},
-    GameContext,
-    GameScene,
+    GameContext, GameScene,
 };
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
@@ -18,9 +17,7 @@ pub struct Floor4ChoiceSceneData {
 impl Floor4ChoiceSceneData {
     /// Create new Floor 4 choice scene
     pub fn new() -> Self {
-        Self {
-            cursor: 0,
-        }
+        Self { cursor: 0 }
     }
 
     /// Move cursor up
@@ -74,7 +71,9 @@ impl Floor4ChoiceSceneData {
                     dungeon.set_floor4_choice(choice);
                     // Get the room and start combat
                     if let Some(room) = dungeon.get_current_room() {
-                        return SceneTransition::Switch(GameScene::Combat(CombatSceneData::from_room(room.clone())));
+                        return SceneTransition::Switch(GameScene::Combat(
+                            CombatSceneData::from_room(room.clone()),
+                        ));
                     }
                 }
                 SceneTransition::Stay
@@ -84,7 +83,7 @@ impl Floor4ChoiceSceneData {
                 drop(ctx);
                 SceneTransition::Switch(GameScene::Title(TitleSceneData::new()))
             }
-            _ => SceneTransition::Stay
+            _ => SceneTransition::Stay,
         }
     }
 }

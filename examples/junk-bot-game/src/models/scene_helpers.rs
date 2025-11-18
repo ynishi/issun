@@ -2,14 +2,12 @@
 //!
 //! Common logic used by multiple scene handlers
 
-use super::entities::{Enemy, LootItem, generate_random_loot};
-use super::{GameContext, GameScene, scenes::*};
+use super::entities::{generate_random_loot, Enemy, LootItem};
+use super::{scenes::*, GameContext, GameScene};
 use issun::prelude::{ResourceContext, SceneTransition};
 
 /// Proceed to next floor in dungeon
-pub async fn proceed_to_next_floor(
-    resources: &mut ResourceContext,
-) -> SceneTransition<GameScene> {
+pub async fn proceed_to_next_floor(resources: &mut ResourceContext) -> SceneTransition<GameScene> {
     let mut ctx = resources
         .get_mut::<GameContext>()
         .await

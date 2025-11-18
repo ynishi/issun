@@ -2,9 +2,11 @@
 //!
 //! This data survives scene transitions and should be saved/loaded
 
+use super::entities::{
+    Bot, BuffCard, BuffType, Dungeon, ItemEffect, LootItem, Player, Weapon, WeaponEffect,
+};
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
-use super::entities::{Player, Bot, Weapon, BuffCard, BuffType, Dungeon, LootItem, ItemEffect, WeaponEffect};
 
 /// Persistent game data (survives scene transitions)
 #[derive(Serialize, Deserialize)]
@@ -50,10 +52,7 @@ impl GameContext {
     pub fn new() -> Self {
         Self {
             player: Player::new("Hero"),
-            bots: vec![
-                Bot::new("Rusty"),
-                Bot::new("Sparky"),
-            ],
+            bots: vec![Bot::new("Rusty"), Bot::new("Sparky")],
             inventory: Vec::new(),
             buff_cards: Vec::new(),
             score: 0,

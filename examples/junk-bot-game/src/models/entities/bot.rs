@@ -94,7 +94,7 @@ impl Combatant for Bot {
     }
 
     fn defense(&self) -> Option<i32> {
-        None  // Bots have no defense
+        None // Bots have no defense
     }
 
     fn take_damage(&mut self, damage: i32) {

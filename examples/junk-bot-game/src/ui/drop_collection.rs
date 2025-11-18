@@ -1,12 +1,12 @@
 //! Drop collection screen rendering
 
-use crate::models::{scenes::DropCollectionSceneData, entities::RarityExt};
+use crate::models::{entities::RarityExt, scenes::DropCollectionSceneData};
 use ratatui::{
-    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, List, ListItem},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
 };
 
 pub fn render_drop_collection(frame: &mut Frame, data: &DropCollectionSceneData) {
@@ -16,10 +16,10 @@ pub fn render_drop_collection(frame: &mut Frame, data: &DropCollectionSceneData)
         .direction(Direction::Vertical)
         .margin(2)
         .constraints([
-            Constraint::Length(3),  // Title
-            Constraint::Min(10),    // Item list
-            Constraint::Length(5),  // Item details
-            Constraint::Length(2),  // Controls
+            Constraint::Length(3), // Title
+            Constraint::Min(10),   // Item list
+            Constraint::Length(5), // Item details
+            Constraint::Length(2), // Controls
         ])
         .split(area);
 
@@ -32,7 +32,12 @@ pub fn render_drop_collection(frame: &mut Frame, data: &DropCollectionSceneData)
 fn render_title(frame: &mut Frame, area: Rect) {
     let title = Paragraph::new(Line::from(vec![
         Span::styled("🎁 ", Style::default().fg(Color::Yellow)),
-        Span::styled("Items Dropped!", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Items Dropped!",
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        ),
     ]))
     .alignment(Alignment::Center)
     .block(Block::default().borders(Borders::ALL));
@@ -90,11 +95,19 @@ fn render_item_details(frame: &mut Frame, area: Rect, data: &DropCollectionScene
         let lines = vec![
             Line::from(vec![
                 Span::styled("Name: ", Style::default().fg(Color::Gray)),
-                Span::styled(&item.name, Style::default().fg(item.rarity.ui_color()).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    &item.name,
+                    Style::default()
+                        .fg(item.rarity.ui_color())
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Rarity: ", Style::default().fg(Color::Gray)),
-                Span::styled(item.rarity.display_name(), Style::default().fg(item.rarity.ui_color())),
+                Span::styled(
+                    item.rarity.display_name(),
+                    Style::default().fg(item.rarity.ui_color()),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Effect: ", Style::default().fg(Color::Gray)),
@@ -113,9 +126,10 @@ fn render_item_details(frame: &mut Frame, area: Rect, data: &DropCollectionScene
 }
 
 fn render_controls(frame: &mut Frame, area: Rect) {
-    let controls = Paragraph::new("↑/↓: Navigate | Enter: Take Item | Space: Take All | Q: Skip All")
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::DarkGray));
+    let controls =
+        Paragraph::new("↑/↓: Navigate | Enter: Take Item | Space: Take All | Q: Skip All")
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::DarkGray));
 
     frame.render_widget(controls, area);
 }

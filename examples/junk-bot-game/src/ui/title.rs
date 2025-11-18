@@ -2,13 +2,12 @@
 
 use crate::models::scenes::TitleSceneData;
 use issun::ui::ratatui::MenuWidget;
-use issun::ui::core::Widget;
 use ratatui::{
-    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::Paragraph,
+    Frame,
 };
 
 pub fn render_title(frame: &mut Frame, data: &TitleSceneData) {
@@ -37,30 +36,33 @@ pub fn render_title(frame: &mut Frame, data: &TitleSceneData) {
 
 fn render_game_title(frame: &mut Frame, area: Rect) {
     let title_lines = vec![
-        Line::from(vec![
-            Span::styled("╔═══════════════════════════════════╗", Style::default().fg(Color::Cyan)),
-        ]),
+        Line::from(vec![Span::styled(
+            "╔═══════════════════════════════════╗",
+            Style::default().fg(Color::Cyan),
+        )]),
         Line::from(vec![
             Span::styled("║  ", Style::default().fg(Color::Cyan)),
-            Span::styled("JUNK BOT: SALVAGE RUN", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "JUNK BOT: SALVAGE RUN",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("        ║", Style::default().fg(Color::Cyan)),
         ]),
-        Line::from(vec![
-            Span::styled("╚═══════════════════════════════════╝", Style::default().fg(Color::Cyan)),
-        ]),
+        Line::from(vec![Span::styled(
+            "╚═══════════════════════════════════╝",
+            Style::default().fg(Color::Cyan),
+        )]),
     ];
 
-    let title = Paragraph::new(title_lines)
-        .alignment(Alignment::Center);
+    let title = Paragraph::new(title_lines).alignment(Alignment::Center);
 
     frame.render_widget(title, area);
 }
 
 fn render_menu(frame: &mut Frame, area: Rect, data: &TitleSceneData) {
-    let menu_items = vec![
-        "Start Game".to_string(),
-        "Quit".to_string(),
-    ];
+    let menu_items = vec!["Start Game".to_string(), "Quit".to_string()];
 
     let menu = MenuWidget::new(menu_items)
         .with_title("Main Menu")

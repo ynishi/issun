@@ -1,13 +1,13 @@
 //! Combat screen rendering
 
-use crate::models::{GameContext, scenes::CombatSceneData};
+use crate::models::{scenes::CombatSceneData, GameContext};
 use issun::ui::ratatui::GaugeWidget;
 use ratatui::{
-    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, List, ListItem},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
 };
 
 pub fn render_combat(frame: &mut Frame, ctx: &GameContext, data: &CombatSceneData) {
@@ -28,11 +28,11 @@ fn render_normal_combat(frame: &mut Frame, area: Rect, ctx: &GameContext, data: 
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3),  // Floor info
-            Constraint::Min(8),     // Party status (Player + Bots)
-            Constraint::Min(8),     // Enemy status
-            Constraint::Length(8),  // Combat log
-            Constraint::Length(2),  // Controls
+            Constraint::Length(3), // Floor info
+            Constraint::Min(8),    // Party status (Player + Bots)
+            Constraint::Min(8),    // Enemy status
+            Constraint::Length(8), // Combat log
+            Constraint::Length(2), // Controls
         ])
         .split(area);
 
@@ -43,25 +43,24 @@ fn render_normal_combat(frame: &mut Frame, area: Rect, ctx: &GameContext, data: 
     render_controls(frame, chunks[4]);
 }
 
-fn render_combat_with_inventory(frame: &mut Frame, area: Rect, ctx: &GameContext, data: &CombatSceneData) {
+fn render_combat_with_inventory(
+    frame: &mut Frame,
+    area: Rect,
+    ctx: &GameContext,
+    data: &CombatSceneData,
+) {
     // Split: [Combat info (left) | Inventory (right)]
     let h_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
     // Left side: Party + Enemies
     let left_chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(0)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(h_chunks[0]);
 
     render_party_status(frame, left_chunks[0], ctx);
@@ -81,8 +80,7 @@ fn render_inventory(frame: &mut Frame, area: Rect, ctx: &GameContext, data: &Com
     frame.render_widget(block, area);
 
     if ctx.inventory.is_empty() {
-        let msg = Paragraph::new("No weapons in inventory")
-            .alignment(Alignment::Center);
+        let msg = Paragraph::new("No weapons in inventory").alignment(Alignment::Center);
         frame.render_widget(msg, inner);
         return;
     }
@@ -92,7 +90,11 @@ fn render_inventory(frame: &mut Frame, area: Rect, ctx: &GameContext, data: &Com
         .iter()
         .enumerate()
         .map(|(i, weapon)| {
-            let prefix = if i == data.inventory_cursor { "> " } else { "  " };
+            let prefix = if i == data.inventory_cursor {
+                "> "
+            } else {
+                "  "
+            };
             let line = Line::from(vec![
                 Span::raw(prefix),
                 Span::styled(&weapon.name, Style::default().fg(Color::Yellow)),
@@ -156,15 +158,31 @@ fn render_party_status(frame: &mut Frame, area: Rect, ctx: &GameContext) {
         .split(inner);
 
     // Render player
-    render_character_status(frame, member_chunks[0], &ctx.player.name, ctx.player.hp, ctx.player.max_hp,
-                          ctx.player.attack, Some(ctx.player.defense), &ctx.player.equipped_weapon.display());
+    render_character_status(
+        frame,
+        member_chunks[0],
+        &ctx.player.name,
+        ctx.player.hp,
+        ctx.player.max_hp,
+        ctx.player.attack,
+        Some(ctx.player.defense),
+        &ctx.player.equipped_weapon.display(),
+    );
 
     // Render bots
     let mut chunk_idx = 1;
     for bot in ctx.bots.iter().filter(|b| b.is_alive()) {
         if chunk_idx < member_chunks.len() {
-            render_character_status(frame, member_chunks[chunk_idx], &bot.name, bot.hp, bot.max_hp,
-                                  bot.attack, None, &bot.equipped_weapon.display());
+            render_character_status(
+                frame,
+                member_chunks[chunk_idx],
+                &bot.name,
+                bot.hp,
+                bot.max_hp,
+                bot.attack,
+                None,
+                &bot.equipped_weapon.display(),
+            );
             chunk_idx += 1;
         }
     }
@@ -192,7 +210,12 @@ fn render_character_status(
 
     // Name and weapon
     let name_line = Line::from(vec![
-        Span::styled(name, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            name,
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" | "),
         Span::styled(weapon, Style::default().fg(Color::Cyan)),
     ]);
@@ -225,7 +248,8 @@ fn render_character_status(
 
 fn render_enemies(frame: &mut Frame, area: Rect, data: &CombatSceneData) {
     // Create title with room buff info
-    let title = format!("Enemies {} {} {}",
+    let title = format!(
+        "Enemies {} {} {}",
         data.room_buff.icon(),
         data.room_buff.name(),
         data.room_buff.icon()
@@ -275,15 +299,15 @@ fn render_enemy(frame: &mut Frame, area: Rect, enemy: &crate::models::entities::
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(0)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Length(1),
-        ])
+        .constraints([Constraint::Length(1), Constraint::Length(1)])
         .split(area);
 
     // Name and attack
     let name_line = Line::from(vec![
-        Span::styled(&enemy.name, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            &enemy.name,
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" [ATK: "),
         Span::styled(enemy.attack.to_string(), Style::default().fg(Color::Red)),
         Span::raw("]"),

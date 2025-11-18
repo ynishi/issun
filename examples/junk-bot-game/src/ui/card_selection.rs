@@ -1,4 +1,4 @@
-use crate::models::{scenes::CardSelectionSceneData, entities::RarityExt};
+use crate::models::{entities::RarityExt, scenes::CardSelectionSceneData};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
@@ -10,9 +10,9 @@ use ratatui::{
 /// Render card selection screen
 pub fn render_card_selection(frame: &mut Frame, data: &CardSelectionSceneData) {
     let chunks = Layout::vertical([
-        Constraint::Length(3),  // Title
-        Constraint::Min(0),     // Card list
-        Constraint::Length(3),  // Instructions
+        Constraint::Length(3), // Title
+        Constraint::Min(0),    // Card list
+        Constraint::Length(3), // Instructions
     ])
     .split(frame.area());
 
@@ -26,9 +26,10 @@ pub fn render_card_selection(frame: &mut Frame, data: &CardSelectionSceneData) {
     render_card_list(frame, chunks[1], data);
 
     // Instructions
-    let instructions = Paragraph::new("↑/↓: Navigate | Enter: Select | Selected card will be applied")
-        .block(Block::default().borders(Borders::ALL))
-        .style(Style::default().fg(Color::Gray));
+    let instructions =
+        Paragraph::new("↑/↓: Navigate | Enter: Select | Selected card will be applied")
+            .block(Block::default().borders(Borders::ALL))
+            .style(Style::default().fg(Color::Gray));
     frame.render_widget(instructions, chunks[2]);
 }
 
@@ -62,12 +63,11 @@ fn render_card_list(frame: &mut Frame, area: Rect, data: &CardSelectionSceneData
         })
         .collect();
 
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Available Cards"),
-        );
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Available Cards"),
+    );
 
     frame.render_widget(list, area);
 }

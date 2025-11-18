@@ -99,8 +99,8 @@ impl LootItem {
 
 /// Generate random loot based on rarity weights
 pub fn generate_random_loot() -> LootItem {
-    use rand::Rng;
     use issun::prelude::LootService;
+    use rand::Rng;
     let mut rng = rand::thread_rng();
 
     // Use LootService for weighted rarity selection
@@ -129,12 +129,8 @@ pub fn generate_random_loot() -> LootItem {
                 LootItem::consumable("Advanced Med Kit", 50, Rarity::Rare)
             }
         }
-        Rarity::Epic => {
-            LootItem::weapon("Shotgun", 25, 8, Rarity::Epic)
-        }
-        Rarity::Legendary => {
-            LootItem::weapon("Sniper Rifle", 40, 5, Rarity::Legendary)
-        }
+        Rarity::Epic => LootItem::weapon("Shotgun", 25, 8, Rarity::Epic),
+        Rarity::Legendary => LootItem::weapon("Sniper Rifle", 40, 5, Rarity::Legendary),
     }
 }
 

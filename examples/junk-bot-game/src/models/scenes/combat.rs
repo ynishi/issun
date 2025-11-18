@@ -5,18 +5,11 @@ use crate::models::{
     proceed_to_next_floor,
     scene_helpers::generate_drops,
     scenes::{DropCollectionSceneData, ResultSceneData},
-    GameContext,
-    GameScene,
+    GameContext, GameScene,
 };
 use issun::prelude::{
-    CombatService,
-    CombatSystem,
-    Combatant,
-    ResourceContext,
-    SceneTransition,
-    ServiceContext,
-    SystemContext,
-    TurnBasedCombatConfig,
+    CombatService, CombatSystem, Combatant, ResourceContext, SceneTransition, ServiceContext,
+    SystemContext, TurnBasedCombatConfig,
 };
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -69,21 +62,19 @@ impl CombatSceneData {
 
     /// Get combat engine (lazily initialized)
     fn engine(&mut self) -> &mut CombatSystem {
-        self.combat_engine.get_or_insert_with(|| {
-            CombatSystem::new(TurnBasedCombatConfig::default())
-        })
+        self.combat_engine
+            .get_or_insert_with(|| CombatSystem::new(TurnBasedCombatConfig::default()))
     }
 
     /// Get combat log
     pub fn combat_log(&self) -> &[issun::prelude::CombatLogEntry] {
-        self.combat_engine.as_ref()
-            .map(|e| e.log())
-            .unwrap_or(&[])
+        self.combat_engine.as_ref().map(|e| e.log()).unwrap_or(&[])
     }
 
     /// Get turn count
     pub fn turn_count(&self) -> u32 {
-        self.combat_engine.as_ref()
+        self.combat_engine
+            .as_ref()
             .map(|e| e.turn_count())
             .unwrap_or(0)
     }
@@ -146,9 +137,7 @@ impl CombatSceneData {
             .await
             .expect("GameContext resource not registered");
         match input {
-            InputEvent::Cancel => {
-                SceneTransition::Quit
-            }
+            InputEvent::Cancel => SceneTransition::Quit,
             InputEvent::Char('i') | InputEvent::Char('I') => {
                 // Toggle inventory
                 self.toggle_inventory();
@@ -180,7 +169,7 @@ impl CombatSceneData {
                     if self.inventory_cursor < ctx.inventory.len() {
                         let weapon = ctx.inventory[self.inventory_cursor].clone();
                         let target = self.equip_target.clone();
-                        self.equip_weapon_to_target(ctx, &target, weapon);
+                        self.equip_weapon_to_target(&mut ctx, &target, weapon);
                     }
                     self.show_inventory = false;
                 }
@@ -203,16 +192,18 @@ impl CombatSceneData {
                         return proceed_to_next_floor(resources).await;
                     }
                     // Show drop collection scene
-                    return SceneTransition::Switch(GameScene::DropCollection(
+                    SceneTransition::Switch(GameScene::DropCollection(
                         DropCollectionSceneData::new(drops),
-                    ));
+                    ))
                 } else if party_dead {
-                    SceneTransition::Switch(GameScene::Result(ResultSceneData::new(false, ctx.score)))
+                    SceneTransition::Switch(GameScene::Result(ResultSceneData::new(
+                        false, ctx.score,
+                    )))
                 } else {
                     SceneTransition::Stay
                 }
             }
-            _ => SceneTransition::Stay
+            _ => SceneTransition::Stay,
         }
     }
 
@@ -233,7 +224,8 @@ impl CombatSceneData {
         }
 
         // Build enemy trait object slice
-        let mut enemies: Vec<&mut dyn Combatant> = self.enemies
+        let mut enemies: Vec<&mut dyn Combatant> = self
+            .enemies
             .iter_mut()
             .map(|e| e as &mut dyn Combatant)
             .collect();
@@ -245,12 +237,8 @@ impl CombatSceneData {
         // Extract engine to avoid double borrow
         let engine = self.combat_engine.as_mut().unwrap();
 
-        let _result = engine.process_turn_dyn(
-            &mut party,
-            &mut enemies,
-            damage_multiplier,
-            per_turn_damage,
-        );
+        let _result =
+            engine.process_turn_dyn(&mut party, &mut enemies, damage_multiplier, per_turn_damage);
 
         // Sync score from engine to context
         ctx.score = engine.score();

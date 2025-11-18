@@ -91,9 +91,9 @@ impl DropCollectionSceneData {
                 if !self.has_drops() {
                     drop(ctx);
                     let cards = generate_random_cards(3);
-                    return SceneTransition::Switch(GameScene::CardSelection(
+                    SceneTransition::Switch(GameScene::CardSelection(
                         CardSelectionSceneData::new(cards),
-                    ));
+                    ))
                 } else {
                     SceneTransition::Stay
                 }
@@ -106,15 +106,19 @@ impl DropCollectionSceneData {
                 // Transition to card selection after taking all
                 drop(ctx);
                 let cards = generate_random_cards(3);
-                SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
+                SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(
+                    cards,
+                )))
             }
             InputEvent::Cancel => {
                 // Skip all items, transition to card selection
                 drop(ctx);
                 let cards = generate_random_cards(3);
-                SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(cards)))
+                SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(
+                    cards,
+                )))
             }
-            _ => SceneTransition::Stay
+            _ => SceneTransition::Stay,
         }
     }
 }

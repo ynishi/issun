@@ -1,31 +1,48 @@
 .PHONY: help preflight publish test check build clean doc release-check release release-patch release-minor
+.PHONY: fmt-examples clippy-examples check-examples test-examples build-examples clean-examples
+
+# Define examples directories
+EXAMPLES := examples/junk-bot-game
 
 help:
 	@echo "Available targets:"
-	@echo "  make check          - Run cargo check on all crates"
-	@echo "  make test           - Run all tests"
-	@echo "  make build          - Build all crates"
+	@echo "  make check          - Run cargo check on all crates and examples"
+	@echo "  make test           - Run all tests (workspace + examples)"
+	@echo "  make build          - Build all crates and examples"
 	@echo "  make doc            - Generate documentation"
+	@echo "  make clean          - Clean build artifacts (workspace + examples)"
 	@echo "  make preflight      - Run all checks before publishing"
+	@echo ""
+	@echo "Examples-specific targets:"
+	@echo "  make fmt-examples      - Format all examples"
+	@echo "  make clippy-examples   - Run clippy on all examples"
+	@echo "  make check-examples    - Check all examples"
+	@echo "  make test-examples     - Test all examples"
+	@echo "  make build-examples    - Build all examples"
+	@echo "  make clean-examples    - Clean all examples"
+	@echo ""
+	@echo "Release targets:"
 	@echo "  make release-check  - Dry-run release with cargo-release"
 	@echo "  make release        - Release patch version (0.x.y -> 0.x.y+1)"
 	@echo "  make release-patch  - Release patch version (same as release)"
 	@echo "  make release-minor  - Release minor version (0.x.y -> 0.x+1.0)"
 	@echo "  make publish        - Publish to crates.io manually"
-	@echo "  make clean          - Clean build artifacts"
 
 check:
 	@echo "🔍 Checking all crates..."
 	cargo check --all-targets --all-features
+	@$(MAKE) check-examples
 
 test:
 	@echo "🧪 Running tests..."
 	cargo test --all-targets --all-features
 	cargo test --doc --all-features
+	@$(MAKE) test-examples
 
 build:
 	@echo "🔨 Building all crates..."
 	cargo build --all-features
+	@$(MAKE) build-examples
 
 doc:
 	@echo "📚 Generating documentation..."
@@ -34,19 +51,66 @@ doc:
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
+	@$(MAKE) clean-examples
+
+# Examples targets
+fmt-examples:
+	@echo "🎨 Formatting examples..."
+	@for example in $(EXAMPLES); do \
+		echo "  Formatting $$example..."; \
+		cd $$example && cargo fmt && cd - > /dev/null; \
+	done
+
+clippy-examples:
+	@echo "📎 Running clippy on examples..."
+	@for example in $(EXAMPLES); do \
+		echo "  Clippy on $$example..."; \
+		cd $$example && cargo clippy --all-targets --fix --allow-dirty --allow-staged -- -D warnings && cd - > /dev/null; \
+	done
+
+check-examples:
+	@echo "🔍 Checking examples..."
+	@for example in $(EXAMPLES); do \
+		echo "  Checking $$example..."; \
+		cd $$example && cargo check --all-targets && cd - > /dev/null; \
+	done
+
+test-examples:
+	@echo "🧪 Running tests in examples..."
+	@for example in $(EXAMPLES); do \
+		echo "  Testing $$example..."; \
+		cd $$example && cargo test --all-targets && cd - > /dev/null; \
+	done
+
+build-examples:
+	@echo "🔨 Building examples..."
+	@for example in $(EXAMPLES); do \
+		echo "  Building $$example..."; \
+		cd $$example && cargo build && cd - > /dev/null; \
+	done
+
+clean-examples:
+	@echo "🧹 Cleaning examples..."
+	@for example in $(EXAMPLES); do \
+		echo "  Cleaning $$example..."; \
+		cd $$example && cargo clean && cd - > /dev/null; \
+	done
 
 preflight:
 	@echo "🚦 Running preflight checks for the entire workspace..."
 	@echo ""
 	@echo "1️⃣  Formatting code..."
 	cargo fmt --all
+	@$(MAKE) fmt-examples
 	@echo ""
 	@echo "2️⃣  Running clippy (auto-fix)..."
 	cargo clippy --all-targets --all-features --fix --allow-dirty --allow-staged -- -D warnings
+	@$(MAKE) clippy-examples
 	@echo ""
 	@echo "3️⃣  Running tests..."
 	cargo test --all-targets --all-features
 	cargo test --doc --all-features
+	@$(MAKE) test-examples
 	@echo ""
 	@echo "✅ All preflight checks passed!"
 

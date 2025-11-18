@@ -10,9 +10,9 @@ use ratatui::{
 /// Render Floor 4 choice screen
 pub fn render_floor4_choice(frame: &mut Frame, data: &Floor4ChoiceSceneData) {
     let chunks = Layout::vertical([
-        Constraint::Length(5),  // Title
-        Constraint::Min(0),     // Choice list
-        Constraint::Length(3),  // Instructions
+        Constraint::Length(5), // Title
+        Constraint::Min(0),    // Choice list
+        Constraint::Length(3), // Instructions
     ])
     .split(frame.area());
 
@@ -42,11 +42,7 @@ pub fn render_floor4_choice(frame: &mut Frame, data: &Floor4ChoiceSceneData) {
 }
 
 fn render_choice_list(frame: &mut Frame, area: Rect, data: &Floor4ChoiceSceneData) {
-    let choices = [
-        Floor4Choice::Easy,
-        Floor4Choice::Normal,
-        Floor4Choice::Hard,
-    ];
+    let choices = [Floor4Choice::Easy, Floor4Choice::Normal, Floor4Choice::Hard];
 
     let items: Vec<ListItem> = choices
         .iter()
@@ -71,22 +67,18 @@ fn render_choice_list(frame: &mut Frame, area: Rect, data: &Floor4ChoiceSceneDat
             // Description line
             let desc_line = Line::from(vec![
                 Span::raw("    "),
-                Span::styled(
-                    choice.description(),
-                    Style::default().fg(Color::DarkGray),
-                ),
+                Span::styled(choice.description(), Style::default().fg(Color::DarkGray)),
             ]);
 
             ListItem::new(vec![name_line, desc_line, Line::from("")])
         })
         .collect();
 
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Available Paths"),
-        );
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Available Paths"),
+    );
 
     frame.render_widget(list, area);
 }

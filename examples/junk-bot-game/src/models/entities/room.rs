@@ -34,11 +34,7 @@ impl Room {
     }
 
     /// Create a new room with specific buff and name
-    pub fn new_with_buff(
-        room_type: RoomType,
-        buff: RoomBuff,
-        name: impl Into<String>,
-    ) -> Self {
+    pub fn new_with_buff(room_type: RoomType, buff: RoomBuff, name: impl Into<String>) -> Self {
         Self {
             room_type,
             buff,
@@ -65,12 +61,10 @@ pub fn generate_random_rooms(count: usize, floor: u32) -> Vec<Room> {
     let mut rooms = Vec::with_capacity(count);
 
     // Available buffs
-    let buffs = vec![
-        RoomBuff::Normal,
+    let buffs = [RoomBuff::Normal,
         RoomBuff::Narrow,
         RoomBuff::Wide,
-        RoomBuff::Contaminated,
-    ];
+        RoomBuff::Contaminated];
 
     for _ in 0..count {
         let buff = buffs[rng.gen_range(0..buffs.len())].clone();
@@ -103,7 +97,12 @@ fn generate_combat_room(buff: RoomBuff, floor: u32) -> Room {
         let scaled_hp = (base_hp as f32 * difficulty) as i32;
         let scaled_attack = (base_attack as f32 * difficulty) as i32;
 
-        let enemy_names = ["Rust Monster", "Corrupted Bot", "Junk Golem", "Scrap Stalker"];
+        let enemy_names = [
+            "Rust Monster",
+            "Corrupted Bot",
+            "Junk Golem",
+            "Scrap Stalker",
+        ];
         let name = enemy_names[rng.gen_range(0..enemy_names.len())];
 
         enemies.push(Enemy::new(name, scaled_hp, scaled_attack));

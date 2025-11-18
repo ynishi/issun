@@ -3,9 +3,9 @@
 //!
 //! Demonstrates ISSUN's Scene system and UI widgets
 
+mod assets;
 mod models;
 mod systems;
-mod assets;
 // mod game; // Removed - not needed with SceneDirector
 mod ui;
 
@@ -47,10 +47,9 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize SceneDirector with initial scene
     let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());
-    let runner = GameRunner::new(
-        SceneDirector::new(initial_scene, services, systems, resources).await,
-    )
-    .with_tick_rate(TICK_RATE);
+    let runner =
+        GameRunner::new(SceneDirector::new(initial_scene, services, systems, resources).await)
+            .with_tick_rate(TICK_RATE);
 
     let result = runner
         .run(
@@ -61,7 +60,9 @@ async fn main() -> std::io::Result<()> {
                 }
             },
             |scene, services, systems, resources, input| {
-                Box::pin(handle_scene_input(scene, services, systems, resources, input))
+                Box::pin(handle_scene_input(
+                    scene, services, systems, resources, input,
+                ))
             },
         )
         .await
@@ -73,11 +74,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 /// Render the current scene
-fn render_scene(
-    frame: &mut ratatui::Frame,
-    scene: &GameScene,
-    ctx: &models::GameContext,
-) {
+fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, ctx: &models::GameContext) {
     match scene {
         GameScene::Title(data) => ui::render_title(frame, data),
         GameScene::RoomSelection(data) => ui::render_room_selection(frame, data),
@@ -110,9 +107,17 @@ fn render_result(frame: &mut ratatui::Frame, data: &models::scenes::ResultSceneD
         .split(area);
 
     let title = if data.victory {
-        Span::styled("VICTORY!", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+        Span::styled(
+            "VICTORY!",
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        )
     } else {
-        Span::styled("GAME OVER", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+        Span::styled(
+            "GAME OVER",
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        )
     };
 
     let lines = vec![
@@ -120,7 +125,10 @@ fn render_result(frame: &mut ratatui::Frame, data: &models::scenes::ResultSceneD
         Line::from(""),
         Line::from(format!("Final Score: {}", data.final_score)),
         Line::from(""),
-        Line::from(Span::styled("Press Enter to return to title", Style::default().fg(Color::DarkGray))),
+        Line::from(Span::styled(
+            "Press Enter to return to title",
+            Style::default().fg(Color::DarkGray),
+        )),
     ];
 
     let paragraph = Paragraph::new(lines).alignment(Alignment::Center);

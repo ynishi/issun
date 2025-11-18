@@ -50,7 +50,7 @@ impl Combatant for Enemy {
     }
 
     fn defense(&self) -> Option<i32> {
-        None  // Enemies have no defense (can be added per enemy type later)
+        None // Enemies have no defense (can be added per enemy type later)
     }
 
     fn take_damage(&mut self, damage: i32) {

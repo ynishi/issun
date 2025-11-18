@@ -55,7 +55,7 @@ pub fn generate_random_cards(count: usize) -> Vec<BuffCard> {
             asset.name,
             asset.description,
             asset.buff_type.clone(),
-            asset.rarity.clone(),
+            asset.rarity,
         ));
     }
 

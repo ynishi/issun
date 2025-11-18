@@ -10,9 +10,9 @@ use ratatui::{
 /// Render room selection screen
 pub fn render_room_selection(frame: &mut Frame, data: &RoomSelectionSceneData) {
     let chunks = Layout::vertical([
-        Constraint::Length(3),  // Title
-        Constraint::Min(0),     // Room list
-        Constraint::Length(3),  // Instructions
+        Constraint::Length(3), // Title
+        Constraint::Min(0),    // Room list
+        Constraint::Length(3), // Instructions
     ])
     .split(frame.area());
 
@@ -70,12 +70,11 @@ fn render_room_list(frame: &mut Frame, area: Rect, data: &RoomSelectionSceneData
         })
         .collect();
 
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Available Rooms"),
-        );
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Available Rooms"),
+    );
 
     frame.render_widget(list, area);
 }

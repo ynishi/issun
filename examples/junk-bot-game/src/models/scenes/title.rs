@@ -27,9 +27,7 @@ impl TitleSceneData {
             .await
             .expect("GameContext resource not registered");
         match input {
-            InputEvent::Cancel => {
-                SceneTransition::Quit
-            }
+            InputEvent::Cancel => SceneTransition::Quit,
             InputEvent::Up => {
                 if self.selected_index > 0 {
                     self.selected_index -= 1;
@@ -51,7 +49,9 @@ impl TitleSceneData {
                         // Get first room from dungeon
                         if let Some(dungeon) = ctx.get_dungeon() {
                             if let Some(room) = dungeon.get_current_room() {
-                                SceneTransition::Switch(GameScene::Combat(CombatSceneData::from_room(room.clone())))
+                                SceneTransition::Switch(GameScene::Combat(
+                                    CombatSceneData::from_room(room.clone()),
+                                ))
                             } else {
                                 SceneTransition::Stay
                             }
@@ -63,10 +63,10 @@ impl TitleSceneData {
                         // Quit
                         SceneTransition::Quit
                     }
-                    _ => SceneTransition::Stay
+                    _ => SceneTransition::Stay,
                 }
             }
-            _ => SceneTransition::Stay
+            _ => SceneTransition::Stay,
         }
     }
 }

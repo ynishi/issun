@@ -2,24 +2,24 @@
 //!
 //! Pure data structures representing game objects
 
-mod player;
-mod enemy;
-mod weapon;
 mod bot;
-mod rarity;
-mod loot;
 mod buff_card;
-mod room_buff;
-mod room;
 mod dungeon;
+mod enemy;
+mod loot;
+mod player;
+mod rarity;
+mod room;
+mod room_buff;
+mod weapon;
 
-pub use player::Player;
-pub use enemy::Enemy;
-pub use weapon::{Weapon, WeaponEffect};
-pub use bot::{Bot, BotState};
-pub use rarity::{Rarity, RarityExt};
-pub use loot::{LootItem, ItemEffect, generate_random_loot};
-pub use buff_card::{BuffCard, BuffType, generate_random_cards};
-pub use room_buff::RoomBuff;
-pub use room::{Room, RoomType, generate_random_rooms};
+pub use bot::Bot;
+pub use buff_card::{generate_random_cards, BuffCard, BuffType};
 pub use dungeon::{Dungeon, Floor4Choice};
+pub use enemy::Enemy;
+pub use loot::{generate_random_loot, ItemEffect, LootItem};
+pub use player::Player;
+pub use rarity::{Rarity, RarityExt};
+pub use room::{generate_random_rooms, Room, RoomType};
+pub use room_buff::RoomBuff;
+pub use weapon::{Weapon, WeaponEffect};

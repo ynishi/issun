@@ -85,7 +85,7 @@ impl CardSelectionSceneData {
                 drop(ctx);
                 proceed_to_next_floor(resources).await
             }
-            _ => SceneTransition::Stay
+            _ => SceneTransition::Stay,
         }
     }
 }
