@@ -402,10 +402,15 @@ pub fn derive_service(input: TokenStream) -> TokenStream {
 
     // Parse #[service(name = "...")] attribute
     let service_name = parse_service_name(&input.attrs);
+    let service_name_lit = syn::LitStr::new(&service_name, proc_macro2::Span::call_site());
 
     let crate_name = get_crate_name();
 
     let expanded = quote! {
+        impl #struct_name {
+            pub const NAME: &'static str = #service_name_lit;
+        }
+
         #[::async_trait::async_trait]
         impl #crate_name::service::Service for #struct_name {
             fn name(&self) -> &'static str {
@@ -485,10 +490,15 @@ pub fn derive_system(input: TokenStream) -> TokenStream {
 
     // Parse #[system(name = "...")] attribute
     let system_name = parse_system_name(&input.attrs);
+    let system_name_lit = syn::LitStr::new(&system_name, proc_macro2::Span::call_site());
 
     let crate_name = get_crate_name();
 
     let expanded = quote! {
+        impl #struct_name {
+            pub const NAME: &'static str = #system_name_lit;
+        }
+
         #[::async_trait::async_trait]
         impl #crate_name::system::System for #struct_name {
             fn name(&self) -> &'static str {
