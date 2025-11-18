@@ -18,6 +18,7 @@ ISSUN is designed for developers who want to:
 ## ✨ Features
 
 - 🧩 **System Plugins** - Reusable game systems (80% reuse, 20% customize)
+- 🔔 **Type-safe Event Bus** - Publish/subscribe between systems and scenes without tight coupling
 - 🎭 **Scene/Context Architecture** - Clean separation of persistent and transient data
 - 🎮 **TUI Support** - Built on ratatui, play over SSH
 - 💾 **Async Runtime** - Tokio-powered for future networking support
@@ -154,6 +155,32 @@ async fn main() -> Result<()> {
     Ok(())
 }
 ```
+
+### Type-safe Event Bus
+
+`GameBuilder` automatically inserts an `EventBus` resource so systems and scenes can communicate through events:
+
+```rust
+#[derive(Debug)]
+struct PlayerDamaged { amount: u32 }
+
+async fn apply_damage(resources: &ResourceContext, amount: u32) {
+    if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+        bus.publish(PlayerDamaged { amount });
+    }
+}
+
+async fn on_update(&mut self, resources: &mut ResourceContext) -> SceneTransition<Self> {
+    if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+        for evt in bus.reader::<PlayerDamaged>().iter() {
+            self.hp = self.hp.saturating_sub(evt.amount);
+        }
+    }
+    SceneTransition::Stay
+}
+```
+
+`GameRunner` calls `EventBus::dispatch()` at the end of each frame, so events published during frame *N* are consumed on frame *N + 1*. See `crates/issun/tests/event_bus_integration.rs` for a complete flow.
 
 ### Use template
 * from repo root

@@ -91,9 +91,9 @@ impl DropCollectionSceneData {
                 if !self.has_drops() {
                     drop(ctx);
                     let cards = generate_random_cards(3);
-                    SceneTransition::Switch(GameScene::CardSelection(
-                        CardSelectionSceneData::new(cards),
-                    ))
+                    SceneTransition::Switch(GameScene::CardSelection(CardSelectionSceneData::new(
+                        cards,
+                    )))
                 } else {
                     SceneTransition::Stay
                 }

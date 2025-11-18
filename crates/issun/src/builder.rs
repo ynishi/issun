@@ -105,6 +105,7 @@ impl GameBuilder {
 
         // New contexts
         let mut resource_context = crate::context::ResourceContext::new();
+        resource_context.insert(crate::event::EventBus::new());
         let mut service_context = crate::context::ServiceContext::new();
         let mut system_context = crate::context::SystemContext::new();
 

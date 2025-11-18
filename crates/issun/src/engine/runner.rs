@@ -6,6 +6,7 @@
 use crate::{
     context::{ResourceContext, ServiceContext, SystemContext},
     error::Result,
+    event::EventBus,
     scene::{Scene, SceneDirector, SceneTransition},
     ui::{input::poll_input, InputEvent, Tui},
 };
@@ -104,6 +105,10 @@ impl<S: Scene> GameRunner<S> {
 
             if self.director.should_quit() || self.director.is_empty() {
                 break;
+            }
+
+            if let Some(mut event_bus) = self.director.resources_mut().get_mut::<EventBus>().await {
+                event_bus.dispatch();
             }
         }
 

@@ -61,10 +61,12 @@ pub fn generate_random_rooms(count: usize, floor: u32) -> Vec<Room> {
     let mut rooms = Vec::with_capacity(count);
 
     // Available buffs
-    let buffs = [RoomBuff::Normal,
+    let buffs = [
+        RoomBuff::Normal,
         RoomBuff::Narrow,
         RoomBuff::Wide,
-        RoomBuff::Contaminated];
+        RoomBuff::Contaminated,
+    ];
 
     for _ in 0..count {
         let buff = buffs[rng.gen_range(0..buffs.len())].clone();

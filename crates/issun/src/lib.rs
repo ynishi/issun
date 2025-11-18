@@ -38,6 +38,7 @@ pub mod context;
 pub mod engine;
 pub mod entity;
 pub mod error;
+pub mod event;
 pub mod plugin;
 pub mod resources;
 pub mod scene;
@@ -57,6 +58,7 @@ pub mod prelude {
     };
     pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
+    pub use crate::event::{EventBus, EventReader};
     pub use crate::plugin::{
         // Room Buff
         ActiveBuff,

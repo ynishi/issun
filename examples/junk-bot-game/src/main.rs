@@ -25,14 +25,14 @@ async fn main() -> std::io::Result<()> {
     // Initialize ISSUN framework with plugins
     let game = GameBuilder::new()
         .with_plugin(TurnBasedCombatPlugin::default())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+        .map_err(|e| std::io::Error::other(e.to_string()))?
         .with_plugin(InventoryPlugin::new())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+        .map_err(|e| std::io::Error::other(e.to_string()))?
         .with_plugin(LootPlugin::new())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+        .map_err(|e| std::io::Error::other(e.to_string()))?
         .build()
         .await
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        .map_err(|e| std::io::Error::other(e.to_string()))?;
 
     // Destructure game to obtain contexts
     let Game {
@@ -66,7 +66,7 @@ async fn main() -> std::io::Result<()> {
             },
         )
         .await
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+        .map_err(|e| std::io::Error::other(e.to_string()));
 
     // Cleanup
     tui.restore()?;
