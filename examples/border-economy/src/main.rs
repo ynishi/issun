@@ -25,6 +25,12 @@ async fn main() -> std::io::Result<()> {
     let mut tui = issun::ui::Tui::new()?;
 
     let builder = GameBuilder::new()
+        // New issun built-in plugins (parallel demonstration)
+        .with_plugin(issun::plugin::BuiltInTimePlugin::default())
+        .map_err(as_io)?
+        .with_plugin(issun::plugin::BuiltInEconomyPlugin::default())
+        .map_err(as_io)?
+        // Existing border-economy plugins
         .with_plugin(plugins::FactionPlugin::default())
         .map_err(as_io)?
         .with_plugin(plugins::EconomyPlugin::default())
