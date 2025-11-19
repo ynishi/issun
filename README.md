@@ -19,11 +19,13 @@ ISSUN is designed for developers who want to:
 
 - 🧩 **System Plugins** - Reusable game systems (80% reuse, 20% customize)
 - 🔔 **Type-safe Event Bus** - Publish/subscribe between systems and scenes without tight coupling
+- 🌐 **Network-Transparent EventBus** - Same API for local and networked games
 - 🎭 **Scene/Context Architecture** - Clean separation of persistent and transient data
 - 🎮 **TUI Support** - Built on ratatui, play over SSH
-- 💾 **Async Runtime** - Tokio-powered for future networking support
+- 💾 **Async Runtime** - Tokio-powered for networking support
 - 🛠️ **Derive Macros** - Less boilerplate, more game logic (`#[derive(Service)]`, `#[derive(System)]`)
 - 📦 **Service Registry** - Access framework services from game code
+- 🚀 **Production-Ready Relay Server** - QUIC-based multiplayer with Docker/Kubernetes support
 
 ## 🏗️ Architecture
 
@@ -234,11 +236,44 @@ cargo run --example junk-bot-game
 - Service registry pattern
 - Trait extension pattern (RarityExt)
 
+### Multiplayer Pong
+
+A 2-player networked pong game demonstrating network-transparent EventBus:
+- Real-time multiplayer over QUIC
+- Same EventBus API as single-player
+- Host/client game synchronization
+- Ball physics and collision
+
+**Location**: `examples/multiplayer-pong/`
+
+**Run it**:
+```bash
+# Terminal 1: Start relay server
+make server
+
+# Terminal 2: Player 1
+cargo run -p multiplayer-pong -- --server 127.0.0.1:5000
+
+# Terminal 3: Player 2
+cargo run -p multiplayer-pong -- --server 127.0.0.1:5000
+```
+
+**Key features demonstrated**:
+- Network-transparent EventBus
+- QUIC client backend integration
+- Multiplayer game loop
+- Event-based networking
+
 ## 📚 Documentation
 
 - [Architecture Guide](docs/ARCHITECTURE.md) - Service/System/Scene/Plugin patterns
+- [Network EventBus](docs/design/network-eventbus.md) - Network-transparent event system
+- [Relay Server](docs/design/relay-server.md) - QUIC relay server design and deployment
+- [Deployment Guide](deploy/README.md) - Docker, Kubernetes, and cloud deployment
 - [API Reference](https://docs.rs/issun) - Full API documentation
-- Example game: `examples/junk-bot-game/` - Complete working example
+- Example games:
+  - `examples/junk-bot-game/` - Complete single-player roguelike
+  - `examples/multiplayer-pong/` - Network multiplayer demo
 
 ## 🤝 Contributing
 

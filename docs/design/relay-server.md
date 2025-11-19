@@ -303,7 +303,7 @@ ISSUN_CERT_PATH=/app/certs/cert.pem
 ISSUN_KEY_PATH=/app/certs/key.pem
 ISSUN_MAX_CLIENTS=1000
 ISSUN_HEARTBEAT_INTERVAL=5
-ISSUN_ENABLE_ROOMS=false
+ISSUN_METRICS_PORT=9090
 RUST_LOG=issun_server=info
 ```
 
@@ -327,14 +327,19 @@ certbot certonly --standalone -d relay.yourgame.com
 ```rust
 // crates/issun-server/src/metrics.rs
 pub struct Metrics {
-    pub active_connections: Gauge,
-    pub events_relayed: Counter,
-    pub bytes_sent: Counter,
-    pub bytes_received: Counter,
+    pub connected_clients: Gauge,
+    pub active_rooms: Gauge,
+    pub events_relayed: CounterVec,  // by scope (broadcast/targeted/to_server)
+    pub connection_duration: HistogramVec,  // by status
+    pub relay_latency: HistogramVec,  // by scope (microseconds)
+    pub bytes_sent: CounterVec,  // by client_id
+    pub bytes_received: CounterVec,  // by client_id
 }
 ```
 
-**Exposed Metrics Endpoint**: `http://localhost:9090/metrics`
+**Exposed Metrics Endpoints**:
+- `http://localhost:9090/metrics` - Prometheus format
+- `http://localhost:9090/health` - Health check
 
 #### Logging
 
@@ -367,25 +372,25 @@ info!(
 
 ### Implementation Plan
 
-#### Phase 1, Week 2 (3-4 days)
-- [ ] Create `issun-server` crate
-- [ ] Implement basic QUIC relay server
-- [ ] Implement `QuicClientBackend`
-- [ ] Add handshake protocol
-- [ ] Basic connection management
+#### Phase 1, Week 2 (Completed)
+- [x] Create `issun-server` crate
+- [x] Implement basic QUIC relay server
+- [x] Implement `QuicClientBackend`
+- [x] Add handshake protocol
+- [x] Basic connection management
 
-#### Phase 1, Week 3 (3-4 days)
-- [ ] Add Dockerfile
-- [ ] Add docker-compose.yml
-- [ ] Create multiplayer-pong example
-- [ ] Documentation
-- [ ] Integration tests
+#### Phase 1, Week 3 (Completed)
+- [x] Add Dockerfile
+- [x] Add docker-compose.yml
+- [x] Create multiplayer-pong example
+- [x] Documentation
+- [x] Integration tests
 
-#### Phase 2 (Future)
-- [ ] Room/lobby system
-- [ ] Token-based authentication
-- [ ] Prometheus metrics
-- [ ] Cloud deployment adapters (Shuttle, Fly.io)
+#### Phase 2 (Completed)
+- [x] Room/lobby system
+- [x] Prometheus metrics
+- [ ] Token-based authentication (Future)
+- [ ] Cloud deployment adapters (Shuttle, Fly.io) (Future)
 
 ### Quick Start
 
