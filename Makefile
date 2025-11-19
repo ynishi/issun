@@ -1,5 +1,6 @@
 .PHONY: help preflight publish test check build clean doc release-check release release-patch release-minor
 .PHONY: fmt-examples clippy-examples check-examples test-examples build-examples clean-examples
+.PHONY: server server-dev certs test-network
 
 # Define examples directories
 EXAMPLES := examples/junk-bot-game
@@ -8,10 +9,16 @@ help:
 	@echo "Available targets:"
 	@echo "  make check          - Run cargo check on all crates and examples"
 	@echo "  make test           - Run all tests (workspace + examples)"
+	@echo "  make test-network   - Run network tests with network feature"
 	@echo "  make build          - Build all crates and examples"
 	@echo "  make doc            - Generate documentation"
 	@echo "  make clean          - Clean build artifacts (workspace + examples)"
 	@echo "  make preflight      - Run all checks before publishing"
+	@echo ""
+	@echo "Server targets:"
+	@echo "  make server         - Run relay server (release mode)"
+	@echo "  make server-dev     - Run relay server (debug mode)"
+	@echo "  make certs          - Generate self-signed TLS certificates"
 	@echo ""
 	@echo "Examples-specific targets:"
 	@echo "  make fmt-examples      - Format all examples"
@@ -52,6 +59,26 @@ clean:
 	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
 	@$(MAKE) clean-examples
+
+# Server targets
+certs:
+	@echo "🔐 Generating self-signed TLS certificates..."
+	@mkdir -p certs
+	@openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem \
+		-days 365 -nodes -subj "/CN=localhost"
+	@echo "✅ Certificates generated in certs/"
+
+server: certs
+	@echo "🚀 Starting ISSUN relay server (release mode)..."
+	RUST_LOG=issun_server=info cargo run -p issun-server --release
+
+server-dev: certs
+	@echo "🚀 Starting ISSUN relay server (debug mode)..."
+	RUST_LOG=issun_server=debug cargo run -p issun-server
+
+test-network:
+	@echo "🧪 Running network tests..."
+	cargo test --features network
 
 # Examples targets
 fmt-examples:

@@ -387,6 +387,64 @@ info!(
 - [ ] Prometheus metrics
 - [ ] Cloud deployment adapters (Shuttle, Fly.io)
 
+### Quick Start
+
+#### 1. Generate TLS Certificates (First Time Only)
+
+For development, create self-signed certificates:
+
+```bash
+mkdir -p certs
+openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem \
+  -days 365 -nodes -subj "/CN=localhost"
+```
+
+For production, use Let's Encrypt:
+
+```bash
+certbot certonly --standalone -d relay.yourgame.com
+```
+
+#### 2. Start the Server
+
+**Development (local):**
+```bash
+# Using cargo
+RUST_LOG=issun_server=info cargo run -p issun-server --release
+
+# Or use Make
+make server
+```
+
+**Production (Docker):**
+```bash
+docker-compose up -d
+```
+
+**With custom configuration:**
+```bash
+ISSUN_BIND_ADDR=0.0.0.0:8080 \
+ISSUN_CERT_PATH=/etc/letsencrypt/live/relay.yourgame.com/fullchain.pem \
+ISSUN_KEY_PATH=/etc/letsencrypt/live/relay.yourgame.com/privkey.pem \
+cargo run -p issun-server --release
+```
+
+#### 3. Verify Server is Running
+
+Server should output:
+```
+INFO Starting ISSUN relay server...
+INFO Configuration loaded: ServerConfig { bind_addr: 0.0.0.0:5000, ... }
+INFO Relay server listening on 0.0.0.0:5000
+INFO Relay server started, waiting for connections...
+```
+
+Test connectivity:
+```bash
+# Check if port is open
+nc -zv localhost 5000
+```
+
 ### Example Usage
 
 #### Server Startup
