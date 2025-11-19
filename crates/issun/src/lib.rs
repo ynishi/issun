@@ -26,7 +26,9 @@
 //! - **Built-in Save/Load**: Automatic serialization with Serde
 
 // Re-export macros
-pub use issun_macros::{Asset, Entity, Resource, Scene, Service, System};
+pub use issun_macros::{
+    auto_pump, event, event_handler, Asset, Entity, Plugin, Resource, Scene, Service, System,
+};
 
 // Re-export async-trait for macros
 pub use async_trait;
@@ -53,12 +55,13 @@ pub mod prelude {
     pub use crate::asset::Asset;
     pub use crate::builder::Game;
     pub use crate::builder::GameBuilder;
+    pub use crate::collect_events;
     pub use crate::context::{
         Context, GameContext, ResourceContext, ServiceContext, SystemContext,
     };
     pub use crate::entity::Entity;
     pub use crate::error::{IssunError, Result};
-    pub use crate::event::{EventBus, EventReader};
+    pub use crate::event::{Event, EventBus, EventReader};
     pub use crate::plugin::{
         // Room Buff
         ActiveBuff,
@@ -106,6 +109,8 @@ pub mod prelude {
     pub use crate::service::Service;
     pub use crate::store::{EntityStore, Store};
     pub use crate::system::System;
+    // Re-export proc macros (note: Plugin trait comes from crate::plugin::Plugin above)
+    pub use issun_macros::Plugin as DerivePlugin;
 }
 
 #[cfg(test)]

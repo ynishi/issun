@@ -1,5 +1,5 @@
 use crate::models::{GameContext, GameScene};
-use crate::plugins;
+use issun::auto_pump;
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,7 @@ impl TitleSceneData {
         }
     }
 
+    #[auto_pump]
     pub async fn handle_input(
         &mut self,
         services: &ServiceContext,
@@ -25,7 +26,6 @@ impl TitleSceneData {
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
-        plugins::pump_event_systems(services, systems, resources).await;
         let transition = match input {
             InputEvent::Up => {
                 if self.selected_index > 0 {
@@ -53,7 +53,6 @@ impl TitleSceneData {
             InputEvent::Cancel => SceneTransition::Quit,
             _ => SceneTransition::Stay,
         };
-        plugins::pump_event_systems(services, systems, resources).await;
         transition
     }
 }

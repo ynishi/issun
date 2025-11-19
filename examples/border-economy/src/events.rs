@@ -8,70 +8,63 @@ use crate::models::vault::{Vault, VaultReport};
 use crate::models::{
     BudgetChannel, Currency, DemandProfile, FactionId, TerritoryId, WeaponPrototypeId,
 };
-use serde::{Deserialize, Serialize};
+use issun::event;
 
-/// Fires when the strategy scene requests a new deployment.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MissionRequested {
-    pub faction: FactionId,
-    pub target: TerritoryId,
-    pub prototype: WeaponPrototypeId,
-    pub expected_payout: Currency,
-}
+event! {
+    /// Fires when the strategy scene requests a new deployment.
+    pub MissionRequested {
+        pub faction: FactionId,
+        pub target: TerritoryId,
+        pub prototype: WeaponPrototypeId,
+        pub expected_payout: Currency,
+    }
 
-/// Published after a tactical scene resolves the battle simulation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MissionResolved {
-    pub faction: FactionId,
-    pub target: TerritoryId,
-    pub casualties: u32,
-    pub secured_share: f32,
-    pub revenue_delta: Currency,
-}
+    /// Published after a tactical scene resolves the battle simulation.
+    pub MissionResolved {
+        pub faction: FactionId,
+        pub target: TerritoryId,
+        pub casualties: u32,
+        pub secured_share: f32,
+        pub revenue_delta: Currency,
+    }
 
-/// Queues a new research allocation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResearchQueued {
-    pub prototype: WeaponPrototypeId,
-    pub budget: Currency,
-    pub targeted_segment: DemandProfile,
-}
+    /// Queues a new research allocation.
+    pub ResearchQueued {
+        pub prototype: WeaponPrototypeId,
+        pub budget: Currency,
+        pub targeted_segment: DemandProfile,
+    }
 
-/// Field telemetry from tactical ops that feed R&D quality scores.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FieldTestFeedback {
-    pub prototype: WeaponPrototypeId,
-    pub effectiveness: f32,
-    pub reliability: f32,
-}
+    /// Field telemetry from tactical ops that feed R&D quality scores.
+    pub FieldTestFeedback {
+        pub prototype: WeaponPrototypeId,
+        pub effectiveness: f32,
+        pub reliability: f32,
+    }
 
-/// Economy system snapshot for UI scenes.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MarketSnapshot {
-    pub total_share: f32,
-    pub highlighted_channel: BudgetChannel,
-    pub reputation_delta: f32,
-}
+    /// Economy system snapshot for UI scenes.
+    pub MarketSnapshot {
+        pub total_share: f32,
+        pub highlighted_channel: BudgetChannel,
+        pub reputation_delta: f32,
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VaultDiscovered {
-    pub vault: Vault,
-}
+    pub VaultDiscovered {
+        pub vault: Vault,
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VaultInvested {
-    pub vault_id: VaultId,
-    pub slot_id: String,
-    pub amount: Currency,
-    pub channel: BudgetChannel,
-}
+    pub VaultInvested {
+        pub vault_id: VaultId,
+        pub slot_id: String,
+        pub amount: Currency,
+        pub channel: BudgetChannel,
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VaultCaptured {
-    pub vault_id: VaultId,
-}
+    pub VaultCaptured {
+        pub vault_id: VaultId,
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VaultReportGenerated {
-    pub reports: Vec<VaultReport>,
+    pub VaultReportGenerated {
+        pub reports: Vec<VaultReport>,
+    }
 }

@@ -1,6 +1,5 @@
 use crate::events::{MissionRequested, MissionResolved, ResearchQueued, VaultReportGenerated};
 use crate::models::{Currency, VaultOutcome};
-use issun::event::EventBus;
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -117,10 +116,10 @@ impl EconomySystem {
         let (requests, resolved, research, vault_reports) =
             match resources.get_mut::<EventBus>().await {
                 Some(mut bus) => (
-                    super::collect_events::<MissionRequested>(&mut bus),
-                    super::collect_events::<MissionResolved>(&mut bus),
-                    super::collect_events::<ResearchQueued>(&mut bus),
-                    super::collect_events::<VaultReportGenerated>(&mut bus),
+                    collect_events!(bus, MissionRequested),
+                    collect_events!(bus, MissionResolved),
+                    collect_events!(bus, ResearchQueued),
+                    collect_events!(bus, VaultReportGenerated),
                 ),
                 None => return,
             };

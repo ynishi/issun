@@ -1,10 +1,12 @@
 use issun::context::ResourceContext;
-use issun::event::EventBus;
+use issun::event::{Event, EventBus};
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 struct PlayerDamaged {
     amount: u32,
 }
+
+impl Event for PlayerDamaged {}
 
 #[tokio::test]
 async fn system_publish_scene_read_flow() {

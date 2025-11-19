@@ -6,6 +6,12 @@
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
+/// Marker trait for types that can flow through the [`EventBus`].
+///
+/// Events must be cloneable and thread-safe because they are buffered and may
+/// be read from multiple systems during a frame.
+pub trait Event: Clone + Send + Sync + 'static {}
+
 /// Event bus stored inside [`ResourceContext`](crate::context::ResourceContext).
 ///
 /// Each event type has its own [`EventChannel`] that double-buffers events so
@@ -34,7 +40,7 @@ impl EventBus {
     /// [`EventBus::dispatch`] runs.
     pub fn publish<E>(&mut self, event: E)
     where
-        E: 'static + Send + Sync,
+        E: Event,
     {
         let channel = self.channel_mut::<E>();
         channel.push(event);
@@ -46,7 +52,7 @@ impl EventBus {
     /// prevent the channel from being mutated while iterating.
     pub fn reader<E>(&mut self) -> EventReader<'_, E>
     where
-        E: 'static + Send + Sync,
+        E: Event,
     {
         let channel = self.channel_mut::<E>();
         EventReader {
@@ -67,7 +73,7 @@ impl EventBus {
 
     fn channel_mut<E>(&mut self) -> &mut EventChannel<E>
     where
-        E: 'static + Send + Sync,
+        E: Event,
     {
         let entry = self
             .channels
@@ -82,12 +88,18 @@ impl EventBus {
 }
 
 /// Event reader that iterates over events published in the previous frame.
-pub struct EventReader<'a, E> {
+pub struct EventReader<'a, E>
+where
+    E: Event,
+{
     events: &'a [E],
     cursor: usize,
 }
 
-impl<'a, E> EventReader<'a, E> {
+impl<'a, E> EventReader<'a, E>
+where
+    E: Event,
+{
     /// Returns an iterator over the unread events.
     pub fn iter(&self) -> impl Iterator<Item = &E> {
         self.events[self.cursor..].iter()
@@ -107,12 +119,18 @@ impl<'a, E> EventReader<'a, E> {
 /// Internal event channel for a specific event type `E`.
 ///
 /// `a` is the write buffer; `b` is the read buffer.
-struct EventChannel<E> {
+struct EventChannel<E>
+where
+    E: Event,
+{
     a: Vec<E>,
     b: Vec<E>,
 }
 
-impl<E> EventChannel<E> {
+impl<E> EventChannel<E>
+where
+    E: Event,
+{
     fn new() -> Self {
         Self {
             a: Vec::new(),
@@ -141,7 +159,7 @@ trait EventChannelStorage: Any + Send + Sync {
 
 impl<E> EventChannelStorage for EventChannel<E>
 where
-    E: 'static + Send + Sync,
+    E: Event,
 {
     fn swap_buffers(&mut self) {
         EventChannel::swap_buffers(self);
@@ -152,12 +170,34 @@ where
     }
 }
 
+/// Convenience macro for collecting events from an EventBus into a Vec.
+///
+/// # Examples
+///
+/// ```ignore
+/// use issun::event::{EventBus, collect_events};
+///
+/// let mut bus = EventBus::new();
+/// let events = collect_events!(bus, MyEvent);
+/// ```
+#[macro_export]
+macro_rules! collect_events {
+    ($bus:expr, $event_type:ty) => {{
+        $bus.reader::<$event_type>()
+            .iter()
+            .cloned()
+            .collect::<Vec<$event_type>>()
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq)]
     struct Damage(u32);
+
+    impl Event for Damage {}
 
     #[test]
     fn publish_requires_dispatch() {

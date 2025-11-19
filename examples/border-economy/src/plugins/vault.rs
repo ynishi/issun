@@ -1,7 +1,6 @@
 use crate::events::{VaultCaptured, VaultDiscovered, VaultInvested, VaultReportGenerated};
 use crate::models::vault::VaultReport;
 use crate::models::GameContext;
-use issun::event::EventBus;
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -61,9 +60,9 @@ impl VaultSystem {
     ) {
         let (discovered, invested, captured) = match resources.get_mut::<EventBus>().await {
             Some(mut bus) => (
-                super::collect_events::<VaultDiscovered>(&mut bus),
-                super::collect_events::<VaultInvested>(&mut bus),
-                super::collect_events::<VaultCaptured>(&mut bus),
+                collect_events!(bus, VaultDiscovered),
+                collect_events!(bus, VaultInvested),
+                collect_events!(bus, VaultCaptured),
             ),
             None => return,
         };

@@ -8,9 +8,21 @@
 //! - `#[derive(Asset)]` - Auto-generate asset loading
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use proc_macro_crate::{crate_name, FoundCrate};
-use quote::{format_ident, quote};
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit};
+use quote::{format_ident, quote, ToTokens};
+use std::collections::HashMap;
+use std::mem;
+use syn::{
+    braced,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    Attribute, Block, Data, DeriveInput, Fields, FnArg, Ident, ImplItem, ImplItemFn, ItemFn,
+    ItemImpl, Lit, LitStr, Meta, Pat, PatIdent, PatType, Path, Result, Signature, Stmt, Token,
+    Type, Visibility,
+};
 
 /// Helper function to get the issun crate identifier
 /// Returns `crate` if called from within issun crate, otherwise `::issun`
@@ -602,4 +614,1164 @@ pub fn derive_resource(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Derive macro for Plugin trait
+///
+/// # Example
+/// ```ignore
+/// #[derive(Default, Plugin)]
+/// #[plugin(name = "my_plugin")]
+/// #[plugin(service = MyService)]
+/// #[plugin(system = MySystem)]
+/// #[plugin(state = MyState)]
+/// pub struct MyPlugin;
+/// ```
+#[proc_macro_derive(Plugin, attributes(plugin))]
+pub fn derive_plugin(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+    let crate_name = get_crate_name();
+
+    // Parse plugin attributes
+    let mut plugin_name = None;
+    let mut services = Vec::new();
+    let mut systems = Vec::new();
+    let mut states = Vec::new();
+    let mut resources = Vec::new();
+
+    for attr in &input.attrs {
+        if !attr.path().is_ident("plugin") {
+            continue;
+        }
+
+        let result: Result<()> = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("name") {
+                let value = meta.value()?;
+                let lit: LitStr = value.parse()?;
+                plugin_name = Some(lit.value());
+                Ok(())
+            } else if meta.path.is_ident("service") {
+                let value = meta.value()?;
+                let ty: Type = value.parse()?;
+                services.push(ty);
+                Ok(())
+            } else if meta.path.is_ident("system") {
+                let value = meta.value()?;
+                let ty: Type = value.parse()?;
+                systems.push(ty);
+                Ok(())
+            } else if meta.path.is_ident("state") {
+                let value = meta.value()?;
+                let ty: Type = value.parse()?;
+                states.push(ty);
+                Ok(())
+            } else if meta.path.is_ident("resource") {
+                let value = meta.value()?;
+                let ty: Type = value.parse()?;
+                resources.push(ty);
+                Ok(())
+            } else {
+                Err(meta.error("expected `name`, `service`, `system`, `state`, or `resource`"))
+            }
+        });
+
+        if let Err(err) = result {
+            return err.to_compile_error().into();
+        }
+    }
+
+    let plugin_name = plugin_name.unwrap_or_else(|| {
+        // Default: convert MyPlugin -> "my_plugin"
+        let name_str = name.to_string();
+        name_str
+            .trim_end_matches("Plugin")
+            .chars()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                if i > 0 && c.is_uppercase() {
+                    vec!['_', c.to_ascii_lowercase()]
+                } else {
+                    vec![c.to_ascii_lowercase()]
+                }
+            })
+            .collect::<String>()
+    });
+
+    // Generate service registrations
+    let service_registrations = services.iter().map(|ty| {
+        quote! {
+            builder.register_service(Box::new(#ty::default()));
+        }
+    });
+
+    // Generate system registrations
+    let system_registrations = systems.iter().map(|ty| {
+        quote! {
+            builder.register_system(Box::new(#ty::default()));
+        }
+    });
+
+    // Generate state registrations
+    let state_registrations = states.iter().map(|ty| {
+        quote! {
+            builder.register_runtime_state(#ty::default());
+        }
+    });
+
+    // Generate resource registrations
+    let resource_registrations = resources.iter().map(|ty| {
+        quote! {
+            builder.register_resource(#ty::default());
+        }
+    });
+
+    let expanded = quote! {
+        #[::async_trait::async_trait]
+        impl #crate_name::plugin::Plugin for #name {
+            fn name(&self) -> &'static str {
+                #plugin_name
+            }
+
+            fn build(&self, builder: &mut dyn #crate_name::plugin::PluginBuilder) {
+                use #crate_name::plugin::PluginBuilderExt;
+                #(#service_registrations)*
+                #(#system_registrations)*
+                #(#state_registrations)*
+                #(#resource_registrations)*
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Attribute macro that generates `process_events` for systems reacting to events.
+#[proc_macro_attribute]
+pub fn event_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as EventHandlerArgs);
+    let mut item_impl = parse_macro_input!(item as ItemImpl);
+
+    if item_impl.trait_.is_some() {
+        return syn::Error::new(
+            item_impl.impl_token.span(),
+            "#[event_handler] can only be used on inherent impl blocks",
+        )
+        .to_compile_error()
+        .into();
+    }
+
+    let crate_name = get_crate_name();
+    let mut context = match EventHandlerContext::new(args) {
+        Ok(ctx) => ctx,
+        Err(err) => return err.to_compile_error().into(),
+    };
+
+    for impl_item in &mut item_impl.items {
+        if let ImplItem::Fn(method) = impl_item {
+            let mut subscribe_attr = None;
+            method.attrs.retain(|attr| {
+                if attr.path().is_ident("subscribe") {
+                    subscribe_attr = Some(attr.clone());
+                    false
+                } else {
+                    true
+                }
+            });
+
+            if let Some(attr) = subscribe_attr {
+                if let Err(err) = context.register_handler(method, attr) {
+                    return err.to_compile_error().into();
+                }
+            }
+        }
+    }
+
+    if context.handlers.is_empty() {
+        return syn::Error::new(
+            item_impl.impl_token.span(),
+            "#[event_handler] requires at least one #[subscribe] method",
+        )
+        .to_compile_error()
+        .into();
+    }
+
+    match context.generate_process_fn(&crate_name) {
+        Ok(process_fn) => {
+            item_impl.items.push(ImplItem::Fn(process_fn));
+            TokenStream::from(quote! { #item_impl })
+        }
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+#[derive(Default)]
+struct EventHandlerArgs {
+    default_state: Option<DefaultState>,
+}
+
+struct DefaultState {
+    ty: Type,
+    repr: String,
+}
+
+impl Parse for EventHandlerArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut args = EventHandlerArgs::default();
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            input.parse::<Token![=]>()?;
+
+            match ident.to_string().as_str() {
+                "state" | "default_state" => {
+                    let ty = parse_type_value(input)?;
+                    let repr = type_to_key(&ty);
+                    args.default_state = Some(DefaultState { ty, repr });
+                }
+                "system" => {
+                    // Consume the value for validation but ignore it for now.
+                    let _ = parse_type_value(input)?;
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        ident.span(),
+                        format!("Unknown event_handler attribute key `{}`", other),
+                    ));
+                }
+            }
+
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
+            }
+        }
+
+        Ok(args)
+    }
+}
+
+struct EventHandlerContext {
+    default_state: Option<DefaultState>,
+    events: Vec<EventCollection>,
+    event_lookup: HashMap<String, usize>,
+    handlers: Vec<Handler>,
+    uses_services: bool,
+}
+
+impl EventHandlerContext {
+    fn new(args: EventHandlerArgs) -> Result<Self> {
+        Ok(Self {
+            default_state: args.default_state,
+            events: Vec::new(),
+            event_lookup: HashMap::new(),
+            handlers: Vec::new(),
+            uses_services: false,
+        })
+    }
+
+    fn register_handler(
+        &mut self,
+        method: &mut ImplItemFn,
+        subscribe_attr: Attribute,
+    ) -> Result<()> {
+        if method.sig.asyncness.is_none() {
+            return Err(syn::Error::new(
+                method.sig.fn_token.span(),
+                "#[subscribe] handlers must be async",
+            ));
+        }
+
+        if method.sig.inputs.is_empty() {
+            return Err(syn::Error::new(
+                method.sig.fn_token.span(),
+                "Event handler must accept &mut self",
+            ));
+        }
+
+        let mut inputs_iter = method.sig.inputs.iter_mut();
+
+        match inputs_iter.next() {
+            Some(FnArg::Receiver(receiver)) => {
+                if receiver.mutability.is_none() {
+                    return Err(syn::Error::new(
+                        receiver.self_token.span(),
+                        "event handlers must take `&mut self`",
+                    ));
+                }
+            }
+            _ => {
+                return Err(syn::Error::new(
+                    method.sig.fn_token.span(),
+                    "event handlers must start with `&mut self`",
+                ));
+            }
+        }
+
+        let subscribe = parse_subscribe_attr(subscribe_attr)?;
+        let event_index = self.register_event(&subscribe.event_type);
+
+        let event_input = inputs_iter.next().ok_or_else(|| {
+            syn::Error::new(
+                method.sig.fn_token.span(),
+                "event handler must accept event parameter",
+            )
+        })?;
+
+        let event_ty = match event_input {
+            FnArg::Typed(pat_type) => match pat_type.ty.as_ref() {
+                Type::Reference(reference) => {
+                    if reference.mutability.is_some() {
+                        return Err(syn::Error::new(
+                            reference.and_token.span(),
+                            "event parameter must be `&EventType`",
+                        ));
+                    }
+                    reference.elem.as_ref().clone()
+                }
+                _ => {
+                    return Err(syn::Error::new(
+                        pat_type.ty.span(),
+                        "event parameter must be a reference",
+                    ))
+                }
+            },
+            _ => {
+                return Err(syn::Error::new(
+                    method.sig.fn_token.span(),
+                    "event parameter must be named",
+                ))
+            }
+        };
+
+        let requested_event = subscribe.event_type.to_token_stream().to_string();
+        let actual_event = event_ty.to_token_stream().to_string();
+        if requested_event != actual_event {
+            return Err(syn::Error::new(
+                method.sig.ident.span(),
+                "event parameter type must match #[subscribe(...)]",
+            ));
+        }
+
+        let mut args = Vec::new();
+        for input in inputs_iter {
+            let pat_type = match input {
+                FnArg::Typed(pat_type) => pat_type,
+                FnArg::Receiver(_) => {
+                    return Err(syn::Error::new(
+                        input.span(),
+                        "unexpected self parameter in handler",
+                    ))
+                }
+            };
+
+            let arg = parse_handler_arg(pat_type, self.default_state.as_ref())?;
+            if matches!(arg.kind, HandlerArgKind::Service { .. }) {
+                self.uses_services = true;
+            }
+            args.push(arg);
+        }
+
+        self.handlers.push(Handler {
+            method_ident: method.sig.ident.clone(),
+            event_index,
+            filter: subscribe.filter,
+            args,
+        });
+
+        Ok(())
+    }
+
+    fn register_event(&mut self, ty: &Type) -> usize {
+        let key = type_to_key(ty);
+        if let Some(index) = self.event_lookup.get(&key) {
+            *index
+        } else {
+            let ident = format_ident!("__events_{}", sanitize_ident(&key));
+            let index = self.events.len();
+            self.events.push(EventCollection {
+                ty: ty.clone(),
+                ident,
+            });
+            self.event_lookup.insert(key, index);
+            index
+        }
+    }
+
+    fn generate_process_fn(&self, crate_name: &proc_macro2::TokenStream) -> Result<ImplItemFn> {
+        let event_bus_ty = quote! { #crate_name::event::EventBus };
+        let resource_ctx_ty = quote! { #crate_name::context::ResourceContext };
+        let service_ctx_ty = quote! { #crate_name::context::ServiceContext };
+
+        let collects = self.events.iter().map(|event| {
+            let ident = &event.ident;
+            let ty = &event.ty;
+            quote! {
+                let #ident: ::std::vec::Vec<#ty> =
+                    event_bus.reader::<#ty>().iter().cloned().collect();
+            }
+        });
+
+        let empty_check = if self.events.is_empty() {
+            quote! {}
+        } else {
+            let empties = self.events.iter().map(|event| {
+                let ident = &event.ident;
+                quote! { #ident.is_empty() }
+            });
+            quote! {
+                if true #(&& #empties)* {
+                    return;
+                }
+            }
+        };
+
+        let handler_blocks = self
+            .handlers
+            .iter()
+            .map(|handler| handler.expand(self.events.as_slice()));
+
+        let service_usage = if self.uses_services {
+            quote! {}
+        } else {
+            quote! { let _ = services; }
+        };
+
+        let body = quote! {
+            let mut event_bus = match resources.get_mut::<#event_bus_ty>().await {
+                Some(bus) => bus,
+                None => return,
+            };
+
+            #(#collects)*
+
+            #empty_check
+
+            drop(event_bus);
+
+            #service_usage
+            #(#handler_blocks)*
+        };
+
+        let process_fn: ImplItemFn = syn::parse_quote! {
+            pub async fn process_events(
+                &mut self,
+                services: &#service_ctx_ty,
+                resources: &mut #resource_ctx_ty,
+            ) {
+                #body
+            }
+        };
+
+        Ok(process_fn)
+    }
+}
+
+struct EventCollection {
+    ty: Type,
+    ident: Ident,
+}
+
+struct Handler {
+    method_ident: Ident,
+    event_index: usize,
+    filter: Option<Ident>,
+    args: Vec<HandlerArg>,
+}
+
+impl Handler {
+    fn expand(&self, events: &[EventCollection]) -> proc_macro2::TokenStream {
+        let event_ident = &events[self.event_index].ident;
+        let method_ident = &self.method_ident;
+        let filter_check = if let Some(filter) = &self.filter {
+            quote! {
+                if !self.#filter(event) {
+                    continue;
+                }
+            }
+        } else {
+            quote! {}
+        };
+
+        let arg_exprs: Vec<_> = self
+            .args
+            .iter()
+            .map(|arg| arg.argument_expression())
+            .collect();
+
+        let mut block = quote! {
+            for event in #event_ident.iter() {
+                #filter_check
+                self.#method_ident(event #(, #arg_exprs)*).await;
+            }
+        };
+
+        for arg in self.args.iter().rev() {
+            block = arg.wrap_block(block);
+        }
+
+        quote! {
+            if !#event_ident.is_empty() {
+                #block
+            }
+        }
+    }
+}
+
+struct HandlerArg {
+    ident: Ident,
+    kind: HandlerArgKind,
+}
+
+impl HandlerArg {
+    fn argument_expression(&self) -> proc_macro2::TokenStream {
+        let ident = &self.ident;
+        match &self.kind {
+            HandlerArgKind::State { mutable, .. } => {
+                if *mutable {
+                    quote! { &mut *#ident }
+                } else {
+                    quote! { &*#ident }
+                }
+            }
+            HandlerArgKind::Service { .. } => quote! { #ident },
+        }
+    }
+
+    fn wrap_block(&self, block: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+        let ident = &self.ident;
+        match &self.kind {
+            HandlerArgKind::State { ty, mutable } => {
+                if *mutable {
+                    quote! {
+                        if let Some(mut #ident) = resources.get_mut::<#ty>().await {
+                            #block
+                        }
+                    }
+                } else {
+                    quote! {
+                        if let Some(#ident) = resources.get::<#ty>().await {
+                            #block
+                        }
+                    }
+                }
+            }
+            HandlerArgKind::Service { ty, service_name } => {
+                let name = service_name.as_str();
+                quote! {
+                    if let Some(#ident) = services.get_as::<#ty>(#name) {
+                        #block
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum HandlerArgKind {
+    State { ty: Type, mutable: bool },
+    Service { ty: Type, service_name: String },
+}
+
+struct SubscribeAttr {
+    event_type: Type,
+    filter: Option<Ident>,
+}
+
+fn parse_subscribe_attr(attr: Attribute) -> Result<SubscribeAttr> {
+    attr.parse_args_with(|input: ParseStream| {
+        let event_type: Type = input.parse()?;
+        let mut filter = None;
+
+        while input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            let key: Ident = input.parse()?;
+            if key == "filter" {
+                input.parse::<Token![=]>()?;
+                let lit: LitStr = input.parse()?;
+                let ident = Ident::new(&lit.value(), lit.span());
+                filter = Some(ident);
+            } else {
+                return Err(syn::Error::new(key.span(), "unknown #[subscribe] option"));
+            }
+        }
+
+        Ok(SubscribeAttr { event_type, filter })
+    })
+}
+
+fn parse_handler_arg(
+    pat_type: &mut PatType,
+    default_state: Option<&DefaultState>,
+) -> Result<HandlerArg> {
+    let ident = extract_ident(&pat_type.pat)?;
+    let mut kind = None;
+    let attrs = mem::take(&mut pat_type.attrs);
+
+    for attr in attrs {
+        if attr.path().is_ident("state") {
+            if !matches!(attr.meta, Meta::Path(_)) {
+                return Err(syn::Error::new(
+                    attr.span(),
+                    "#[state] does not take arguments",
+                ));
+            }
+            kind = Some(create_state_arg(&pat_type.ty, attr.span())?);
+        } else if attr.path().is_ident("service") {
+            let service_name = parse_service_attr(&attr)?;
+            kind = Some(create_service_arg(&pat_type.ty, service_name, attr.span())?);
+        } else {
+            pat_type.attrs.push(attr);
+        }
+    }
+
+    if let Some(kind) = kind {
+        return Ok(HandlerArg { ident, kind });
+    }
+
+    if let Some(default_state) = default_state {
+        if state_matches(&pat_type.ty, default_state)? {
+            return Ok(HandlerArg {
+                ident,
+                kind: HandlerArgKind::State {
+                    ty: default_state.ty.clone(),
+                    mutable: true,
+                },
+            });
+        }
+    }
+
+    Err(syn::Error::new(
+        pat_type.ty.span(),
+        "additional parameters must be marked with #[state] or #[service]",
+    ))
+}
+
+fn create_state_arg(ty: &Type, span: Span) -> Result<HandlerArgKind> {
+    if let Type::Reference(reference) = ty {
+        if reference.mutability.is_none() {
+            return Err(syn::Error::new(span, "state parameters must be `&mut T`"));
+        }
+        Ok(HandlerArgKind::State {
+            ty: reference.elem.as_ref().clone(),
+            mutable: true,
+        })
+    } else {
+        Err(syn::Error::new(span, "state parameters must be references"))
+    }
+}
+
+fn create_service_arg(ty: &Type, service_name: String, span: Span) -> Result<HandlerArgKind> {
+    if let Type::Reference(reference) = ty {
+        if reference.mutability.is_some() {
+            return Err(syn::Error::new(
+                span,
+                "services must be borrowed immutably as `&T`",
+            ));
+        }
+        Ok(HandlerArgKind::Service {
+            ty: reference.elem.as_ref().clone(),
+            service_name,
+        })
+    } else {
+        Err(syn::Error::new(
+            span,
+            "service parameters must be references",
+        ))
+    }
+}
+
+fn state_matches(param_ty: &Type, default: &DefaultState) -> Result<bool> {
+    if let Type::Reference(reference) = param_ty {
+        if reference.mutability.is_none() {
+            return Err(syn::Error::new(
+                reference.and_token.span(),
+                "default state parameter must be `&mut` reference",
+            ));
+        }
+        let repr = type_to_key(reference.elem.as_ref());
+        Ok(repr == default.repr)
+    } else {
+        Err(syn::Error::new(
+            param_ty.span(),
+            "default state parameter must be a reference",
+        ))
+    }
+}
+
+fn extract_ident(pat: &Pat) -> Result<Ident> {
+    if let Pat::Ident(PatIdent { ident, .. }) = pat {
+        Ok(ident.clone())
+    } else {
+        Err(syn::Error::new(
+            pat.span(),
+            "parameters must be simple identifiers",
+        ))
+    }
+}
+
+fn parse_service_attr(attr: &Attribute) -> Result<String> {
+    if matches!(attr.meta, Meta::Path(_)) {
+        return Err(syn::Error::new(
+            attr.span(),
+            "#[service] requires a `name = \"...\"` argument",
+        ));
+    }
+
+    attr.parse_args_with(|input: ParseStream| {
+        if input.peek(LitStr) {
+            Ok(input.parse::<LitStr>()?.value())
+        } else {
+            let ident: Ident = input.parse()?;
+            if ident == "name" {
+                input.parse::<Token![=]>()?;
+                Ok(input.parse::<LitStr>()?.value())
+            } else {
+                Err(syn::Error::new(
+                    ident.span(),
+                    "expected `name = \"...\"` for #[service]",
+                ))
+            }
+        }
+    })
+}
+
+fn parse_type_value(input: ParseStream) -> Result<Type> {
+    if input.peek(LitStr) {
+        let lit: LitStr = input.parse()?;
+        lit.parse()
+    } else {
+        input.parse()
+    }
+}
+
+fn type_to_key(ty: &Type) -> String {
+    ty.to_token_stream().to_string().replace(' ', "")
+}
+
+fn sanitize_ident(raw: &str) -> String {
+    raw.chars()
+        .map(|ch| match ch {
+            '<' | '>' | ':' | ',' | '&' | '*' | '(' | ')' | '[' | ']' | '{' | '}' => '_',
+            other if other.is_whitespace() => '_',
+            other => other,
+        })
+        .collect()
+}
+
+/// Function-like macro that declares ISSUN events with common derives.
+///
+/// Generates a struct definition for each event along with the required derives
+/// and an implementation of [`issun::event::Event`].
+#[proc_macro]
+pub fn event(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as EventMacroInput);
+    let crate_name = get_crate_name();
+
+    let expanded = input
+        .events
+        .into_iter()
+        .map(|event| event.expand(&crate_name));
+
+    TokenStream::from(quote! {
+        #(#expanded)*
+    })
+}
+
+struct EventMacroInput {
+    events: Vec<EventDefinition>,
+}
+
+impl Parse for EventMacroInput {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut events = Vec::new();
+        while !input.is_empty() {
+            events.push(input.parse()?);
+
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
+            }
+        }
+        Ok(Self { events })
+    }
+}
+
+struct EventDefinition {
+    attrs: Vec<Attribute>,
+    additional_derives: Vec<Path>,
+    visibility: Visibility,
+    name: Ident,
+    fields: EventFields,
+}
+
+impl EventDefinition {
+    fn expand(self, crate_name: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+        let mut derives = vec![
+            syn::parse_quote!(Debug),
+            syn::parse_quote!(Clone),
+            syn::parse_quote!(::serde::Serialize),
+            syn::parse_quote!(::serde::Deserialize),
+        ];
+
+        for path in self.additional_derives {
+            push_unique_path(&mut derives, path);
+        }
+
+        let derive_attr = quote! {
+            #[derive(#(#derives),*)]
+        };
+
+        let body = match self.fields {
+            EventFields::Unit => quote!(;),
+            EventFields::Struct(fields) => {
+                let rendered_fields = fields.into_iter().map(|field| {
+                    let attrs = field.attrs;
+                    let vis = field.visibility;
+                    let name = field.name;
+                    let ty = field.ty;
+                    quote! {
+                        #(#attrs)*
+                        #vis #name: #ty
+                    }
+                });
+
+                quote! {
+                    {
+                        #(#rendered_fields,)*
+                    }
+                }
+            }
+        };
+
+        let attrs = self.attrs;
+        let vis = self.visibility;
+        let name = self.name;
+
+        quote! {
+            #(#attrs)*
+            #derive_attr
+            #vis struct #name #body
+
+            impl #crate_name::event::Event for #name {}
+        }
+    }
+}
+
+impl Parse for EventDefinition {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let outer_attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = Vec::new();
+        let mut derives = Vec::new();
+
+        for attr in outer_attrs {
+            if attr.path().is_ident("derive") {
+                let parsed: Punctuated<Path, Token![,]> =
+                    attr.parse_args_with(Punctuated::parse_terminated)?;
+                derives.extend(parsed.into_iter());
+            } else {
+                attrs.push(attr);
+            }
+        }
+
+        let visibility = if input.peek(Token![pub]) {
+            input.parse()?
+        } else {
+            Visibility::Inherited
+        };
+
+        if input.peek(Token![struct]) {
+            input.parse::<Token![struct]>()?;
+        }
+
+        let name: Ident = input.parse()?;
+
+        let fields = if input.peek(Token![;]) {
+            input.parse::<Token![;]>()?;
+            EventFields::Unit
+        } else {
+            let content;
+            braced!(content in input);
+
+            let mut parsed_fields = Vec::new();
+            while !content.is_empty() {
+                let attrs = content.call(Attribute::parse_outer)?;
+                if content.is_empty() {
+                    return Err(content.error("expected field definition after attributes"));
+                }
+
+                let visibility = if content.peek(Token![pub]) {
+                    content.parse()?
+                } else {
+                    Visibility::Inherited
+                };
+                let name: Ident = content.parse()?;
+                content.parse::<Token![:]>()?;
+                let ty: Type = content.parse()?;
+
+                if content.peek(Token![,]) {
+                    content.parse::<Token![,]>()?;
+                } else if content.peek(Token![;]) {
+                    content.parse::<Token![;]>()?;
+                } else if !content.is_empty() {
+                    return Err(content.error("expected `,` or `;` after field"));
+                }
+
+                parsed_fields.push(EventField {
+                    attrs,
+                    visibility,
+                    name,
+                    ty,
+                });
+            }
+
+            EventFields::Struct(parsed_fields)
+        };
+
+        if input.peek(Token![;]) {
+            input.parse::<Token![;]>()?;
+        }
+
+        Ok(Self {
+            attrs,
+            additional_derives: derives,
+            visibility,
+            name,
+            fields,
+        })
+    }
+}
+
+enum EventFields {
+    Unit,
+    Struct(Vec<EventField>),
+}
+
+struct EventField {
+    attrs: Vec<Attribute>,
+    visibility: Visibility,
+    name: Ident,
+    ty: Type,
+}
+
+fn push_unique_path(paths: &mut Vec<Path>, new_path: Path) {
+    let repr = path_to_string(&new_path);
+    if paths
+        .iter()
+        .all(|existing| path_to_string(existing) != repr)
+    {
+        paths.push(new_path);
+    }
+}
+
+fn path_to_string(path: &Path) -> String {
+    path.to_token_stream().to_string()
+}
+
+/// Attribute macro that injects `pump_event_systems` calls before/after input handlers.
+#[proc_macro_attribute]
+pub fn auto_pump(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as AutoPumpArgs);
+
+    let item_clone = item.clone();
+    if let Ok(mut function) = syn::parse::<ItemFn>(item_clone) {
+        match apply_auto_pump(&function.sig, &mut function.block, &args) {
+            Ok(()) => return TokenStream::from(quote! { #function }),
+            Err(err) => return err.to_compile_error().into(),
+        }
+    }
+
+    let mut method = parse_macro_input!(item as ImplItemFn);
+    match apply_auto_pump(&method.sig, &mut method.block, &args) {
+        Ok(()) => TokenStream::from(quote! { #method }),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+#[derive(Clone)]
+struct AutoPumpArgs {
+    before: bool,
+    after: bool,
+    pump_fn: Option<Path>,
+    sides_specified: bool,
+}
+
+impl Default for AutoPumpArgs {
+    fn default() -> Self {
+        Self {
+            before: true,
+            after: true,
+            pump_fn: None,
+            sides_specified: false,
+        }
+    }
+}
+
+impl Parse for AutoPumpArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.is_empty() {
+            return Ok(Self::default());
+        }
+
+        let mut args = AutoPumpArgs {
+            before: false,
+            after: false,
+            pump_fn: None,
+            sides_specified: false,
+        };
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            match ident.to_string().as_str() {
+                "before" => {
+                    args.before = true;
+                    args.sides_specified = true;
+                }
+                "after" => {
+                    args.after = true;
+                    args.sides_specified = true;
+                }
+                "pump_fn" => {
+                    input.parse::<Token![=]>()?;
+                    let path = if input.peek(LitStr) {
+                        input.parse::<LitStr>()?.parse::<Path>()?
+                    } else {
+                        input.parse::<Path>()?
+                    };
+                    args.pump_fn = Some(path);
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        ident.span(),
+                        format!("Unknown auto_pump option `{}`", other),
+                    ));
+                }
+            }
+
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
+            }
+        }
+
+        if !args.sides_specified {
+            args.before = true;
+            args.after = true;
+        }
+
+        Ok(args)
+    }
+}
+
+struct PumpParams {
+    services: Ident,
+    systems: Ident,
+    resources: Ident,
+}
+
+fn apply_auto_pump(signature: &Signature, block: &mut Block, args: &AutoPumpArgs) -> Result<()> {
+    if !args.before && !args.after {
+        return Ok(());
+    }
+
+    let params = extract_pump_params(signature)?;
+    let pump_path = args.pump_fn.clone().unwrap_or_else(|| {
+        syn::parse_str::<Path>("crate::plugins::pump_event_systems").expect("valid path")
+    });
+
+    let mut original = mem::take(&mut block.stmts);
+    let mut stmts = Vec::new();
+
+    // Add 'before' pump call
+    if args.before {
+        stmts.push(build_pump_stmt(&pump_path, &params));
+    }
+
+    // Check if the last statement is a trailing expression (no semicolon)
+    // If so, we need to insert 'after' pump BEFORE it to preserve return value
+    let has_trailing_expr = original
+        .last()
+        .map_or(false, |stmt| matches!(stmt, Stmt::Expr(_, None)));
+
+    if args.after && has_trailing_expr {
+        // Insert all but last statement
+        if original.len() > 1 {
+            stmts.extend(original.drain(..original.len() - 1));
+        }
+        // Insert 'after' pump
+        stmts.push(build_pump_stmt(&pump_path, &params));
+        // Insert trailing expression last
+        stmts.extend(original);
+    } else {
+        // No trailing expression, just append everything
+        stmts.extend(original);
+        if args.after {
+            stmts.push(build_pump_stmt(&pump_path, &params));
+        }
+    }
+
+    block.stmts = stmts;
+    Ok(())
+}
+
+fn build_pump_stmt(path: &Path, params: &PumpParams) -> Stmt {
+    let services = &params.services;
+    let systems = &params.systems;
+    let resources = &params.resources;
+
+    // Use quote! to generate tokens, then parse into Stmt
+    let tokens = quote! {
+        #path(#services, #systems, #resources).await;
+    };
+    syn::parse2(tokens).expect("failed to parse pump statement")
+}
+
+fn extract_pump_params(signature: &Signature) -> Result<PumpParams> {
+    let mut services = None;
+    let mut systems = None;
+    let mut resources = None;
+
+    for input in signature.inputs.iter() {
+        if let FnArg::Typed(pat_type) = input {
+            if let Ok(ident) = extract_ident(&pat_type.pat) {
+                if matches_context(&pat_type.ty, "ServiceContext") {
+                    services = Some(ident);
+                } else if matches_context(&pat_type.ty, "SystemContext") {
+                    systems = Some(ident);
+                } else if matches_context(&pat_type.ty, "ResourceContext") {
+                    resources = Some(ident);
+                }
+            }
+        }
+    }
+
+    match (services, systems, resources) {
+        (Some(sv), Some(sys), Some(res)) => Ok(PumpParams {
+            services: sv,
+            systems: sys,
+            resources: res,
+        }),
+        _ => Err(syn::Error::new(
+            signature.fn_token.span(),
+            "#[auto_pump] requires parameters for ServiceContext, SystemContext, and ResourceContext",
+        )),
+    }
+}
+
+fn matches_context(ty: &Type, expected: &str) -> bool {
+    match ty {
+        Type::Reference(reference) => match reference.elem.as_ref() {
+            Type::Path(path) => path
+                .path
+                .segments
+                .last()
+                .map(|segment| segment.ident == expected)
+                .unwrap_or(false),
+            _ => false,
+        },
+        Type::Path(path) => path
+            .path
+            .segments
+            .last()
+            .map(|segment| segment.ident == expected)
+            .unwrap_or(false),
+        _ => false,
+    }
 }

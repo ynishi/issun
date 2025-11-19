@@ -6,7 +6,6 @@ pub mod territory;
 pub mod vault;
 pub mod weapon_prototype;
 
-use issun::event::EventBus;
 use issun::prelude::{ResourceContext, ServiceContext, SystemContext};
 
 pub use economy::EconomyPlugin;
@@ -59,11 +58,4 @@ pub async fn pump_event_systems(
     if let Some(system) = systems.get_mut::<VaultSystem>() {
         system.process_events(services, resources).await;
     }
-}
-
-pub(crate) fn collect_events<E>(bus: &mut EventBus) -> Vec<E>
-where
-    E: Clone + Send + Sync + 'static,
-{
-    bus.reader::<E>().iter().cloned().collect()
 }

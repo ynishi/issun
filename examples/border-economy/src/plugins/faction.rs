@@ -1,26 +1,15 @@
 use crate::events::{MissionRequested, MissionResolved};
 use crate::models::TerritoryId;
-use issun::event::EventBus;
-use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 
-#[derive(Default)]
+#[derive(Default, DerivePlugin)]
+#[plugin(name = "faction_plugin")]
+#[plugin(service = MissionPlannerService)]
+#[plugin(system = FactionSystem)]
+#[plugin(state = FactionOpsState)]
 pub struct FactionPlugin;
-
-#[async_trait::async_trait]
-impl Plugin for FactionPlugin {
-    fn name(&self) -> &'static str {
-        "faction_plugin"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        builder.register_service(Box::new(MissionPlannerService::default()));
-        builder.register_system(Box::new(FactionSystem::default()));
-        builder.register_runtime_state(FactionOpsState::default());
-    }
-}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FactionOpsState {
@@ -62,50 +51,39 @@ impl Default for FactionSystem {
     }
 }
 
+#[issun::event_handler]
 impl FactionSystem {
-    pub async fn process_events(
+    #[subscribe(MissionRequested)]
+    async fn on_mission_requested(
         &mut self,
-        _services: &ServiceContext,
-        resources: &mut ResourceContext,
+        event: &MissionRequested,
+        #[state] ops: &mut FactionOpsState,
     ) {
-        let (requests, resolved) = match resources.get_mut::<EventBus>().await {
-            Some(mut bus) => (
-                super::collect_events::<MissionRequested>(&mut bus),
-                super::collect_events::<MissionResolved>(&mut bus),
+        ops.sorties_launched = ops.sorties_launched.saturating_add(1);
+        ops.active_operations.push(event.target.clone());
+        ops.recent_reports
+            .insert(0, format!("{} deploys to {}", event.faction, event.target));
+        ops.recent_reports.truncate(5);
+    }
+
+    #[subscribe(MissionResolved)]
+    async fn on_mission_resolved(
+        &mut self,
+        event: &MissionResolved,
+        #[state] ops: &mut FactionOpsState,
+    ) {
+        ops.recent_reports.insert(
+            0,
+            format!(
+                "{} secured {:.0}% share in {}",
+                event.faction,
+                event.secured_share * 100.0,
+                event.target
             ),
-            None => return,
-        };
-
-        if requests.is_empty() && resolved.is_empty() {
-            return;
-        }
-
-        if let Some(mut ops) = resources.get_mut::<FactionOpsState>().await {
-            for request in requests {
-                ops.sorties_launched = ops.sorties_launched.saturating_add(1);
-                ops.active_operations.push(request.target.clone());
-                ops.recent_reports.insert(
-                    0,
-                    format!("{} deploys to {}", request.faction, request.target),
-                );
-            }
-
-            for result in resolved {
-                ops.recent_reports.insert(
-                    0,
-                    format!(
-                        "{} secured {:.0}% share in {}",
-                        result.faction,
-                        result.secured_share * 100.0,
-                        result.target
-                    ),
-                );
-                ops.active_operations.retain(|t| t != &result.target);
-                ops.total_casualties += result.casualties as u64;
-            }
-
-            ops.recent_reports.truncate(5);
-        }
+        );
+        ops.active_operations.retain(|t| t != &event.target);
+        ops.total_casualties += event.casualties as u64;
+        ops.recent_reports.truncate(5);
     }
 }
 

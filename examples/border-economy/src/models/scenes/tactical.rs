@@ -1,7 +1,7 @@
 use crate::events::{FieldTestFeedback, MissionResolved};
 use crate::models::scenes::EconomicSceneData;
 use crate::models::{Currency, GameContext, GameScene};
-use crate::plugins;
+use issun::auto_pump;
 use issun::event::EventBus;
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
@@ -32,6 +32,7 @@ impl TacticalSceneData {
         }
     }
 
+    #[auto_pump]
     pub async fn handle_input(
         &mut self,
         services: &ServiceContext,
@@ -39,7 +40,6 @@ impl TacticalSceneData {
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
-        plugins::pump_event_systems(services, systems, resources).await;
         let transition = match input {
             InputEvent::Select => {
                 if self.resolved {
@@ -55,7 +55,6 @@ impl TacticalSceneData {
             )),
             _ => SceneTransition::Stay,
         };
-        plugins::pump_event_systems(services, systems, resources).await;
         transition
     }
 

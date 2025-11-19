@@ -1,5 +1,4 @@
 use crate::events::{FieldTestFeedback, ResearchQueued};
-use issun::event::EventBus;
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -75,44 +74,31 @@ impl System for PrototypeSystem {
     }
 }
 
+#[issun::event_handler(default_state = PrototypeBacklog)]
 impl PrototypeSystem {
-    pub async fn process_events(
+    #[subscribe(ResearchQueued)]
+    async fn on_research_queued(&mut self, event: &ResearchQueued, backlog: &mut PrototypeBacklog) {
+        backlog
+            .queued
+            .insert(0, format!("{} +{}c", event.prototype, event.budget.0));
+        backlog.queued.truncate(6);
+    }
+
+    #[subscribe(FieldTestFeedback)]
+    async fn on_field_test_feedback(
         &mut self,
-        _services: &ServiceContext,
-        resources: &mut ResourceContext,
+        event: &FieldTestFeedback,
+        backlog: &mut PrototypeBacklog,
     ) {
-        let (queued, feedback) = match resources.get_mut::<EventBus>().await {
-            Some(mut bus) => (
-                super::collect_events::<ResearchQueued>(&mut bus),
-                super::collect_events::<FieldTestFeedback>(&mut bus),
+        backlog.field_reports.insert(
+            0,
+            format!(
+                "{} eff {:>3.0}% / rel {:>3.0}%",
+                event.prototype,
+                event.effectiveness * 100.0,
+                event.reliability * 100.0
             ),
-            None => return,
-        };
-
-        if queued.is_empty() && feedback.is_empty() {
-            return;
-        }
-
-        if let Some(mut backlog) = resources.get_mut::<PrototypeBacklog>().await {
-            for order in queued {
-                backlog
-                    .queued
-                    .insert(0, format!("{} +{}c", order.prototype, order.budget.0));
-            }
-            backlog.queued.truncate(6);
-
-            for report in feedback {
-                backlog.field_reports.insert(
-                    0,
-                    format!(
-                        "{} eff {:>3.0}% / rel {:>3.0}%",
-                        report.prototype,
-                        report.effectiveness * 100.0,
-                        report.reliability * 100.0
-                    ),
-                );
-            }
-            backlog.field_reports.truncate(6);
-        }
+        );
+        backlog.field_reports.truncate(6);
     }
 }

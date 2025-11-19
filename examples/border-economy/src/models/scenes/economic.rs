@@ -1,6 +1,7 @@
 use crate::models::scenes::{IntelReportSceneData, MissionBrief};
 use crate::models::{BudgetChannel, Currency, GameContext, GameScene};
-use crate::plugins::{self, EconomyState};
+use crate::plugins::EconomyState;
+use issun::auto_pump;
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -49,6 +50,7 @@ impl EconomicSceneData {
         data
     }
 
+    #[auto_pump]
     pub async fn handle_input(
         &mut self,
         services: &ServiceContext,
@@ -56,7 +58,6 @@ impl EconomicSceneData {
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
-        plugins::pump_event_systems(services, systems, resources).await;
         let transition = match input {
             InputEvent::Up => {
                 if self.cursor == 0 {
@@ -120,7 +121,6 @@ impl EconomicSceneData {
             )),
             _ => SceneTransition::Stay,
         };
-        plugins::pump_event_systems(services, systems, resources).await;
         transition
     }
 

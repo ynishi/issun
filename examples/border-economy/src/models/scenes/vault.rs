@@ -2,7 +2,7 @@ use crate::events::VaultInvested;
 use crate::models::{
     BudgetChannel, Currency, GameContext, GameScene, SlotType, VaultInvestmentError,
 };
-use crate::plugins;
+use issun::auto_pump;
 use issun::event::EventBus;
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
@@ -33,6 +33,7 @@ impl VaultSceneData {
         }
     }
 
+    #[auto_pump]
     pub async fn handle_input(
         &mut self,
         services: &ServiceContext,
@@ -40,7 +41,6 @@ impl VaultSceneData {
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
-        plugins::pump_event_systems(services, systems, resources).await;
         let transition = match input {
             InputEvent::Up => {
                 self.shift_vault(resources, -1).await;
@@ -81,7 +81,6 @@ impl VaultSceneData {
             )),
             _ => SceneTransition::Stay,
         };
-        plugins::pump_event_systems(services, systems, resources).await;
         transition
     }
 

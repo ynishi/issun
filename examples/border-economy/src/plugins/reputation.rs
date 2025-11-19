@@ -1,6 +1,5 @@
 use crate::events::MissionResolved;
 use crate::models::GameContext;
-use issun::event::EventBus;
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -75,41 +74,21 @@ impl System for ReputationSystem {
     }
 }
 
+#[issun::event_handler(default_state = ReputationLedger)]
 impl ReputationSystem {
-    pub async fn process_events(
+    #[subscribe(MissionResolved)]
+    async fn on_mission_resolved(
         &mut self,
-        services: &ServiceContext,
-        resources: &mut ResourceContext,
+        event: &MissionResolved,
+        ledger: &mut ReputationLedger,
+        #[service(name = "reputation_service")] service: &ReputationService,
+        #[state] ctx: &mut GameContext,
     ) {
-        let resolved = match resources.get_mut::<EventBus>().await {
-            Some(mut bus) => super::collect_events::<MissionResolved>(&mut bus),
-            None => return,
-        };
-
-        if resolved.is_empty() {
-            return;
-        }
-
-        let deltas: Vec<f32> = resolved
-            .iter()
-            .map(|event| (event.secured_share * 50.0) - (event.casualties as f32 * 0.05))
-            .collect();
-
-        if let Some(service) = services.get_as::<ReputationService>("reputation_service") {
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                for delta in &deltas {
-                    service.apply_delta(&mut ctx, *delta);
-                }
-            }
-        }
-
-        if let Some(mut ledger) = resources.get_mut::<ReputationLedger>().await {
-            for (event, delta) in resolved.into_iter().zip(deltas.into_iter()) {
-                ledger
-                    .events
-                    .insert(0, format!("{}: Δrep {:+.1}", event.target.as_str(), delta));
-            }
-            ledger.events.truncate(8);
-        }
+        let delta = (event.secured_share * 50.0) - (event.casualties as f32 * 0.05);
+        service.apply_delta(ctx, delta);
+        ledger
+            .events
+            .insert(0, format!("{}: Δrep {:+.1}", event.target.as_str(), delta));
+        ledger.events.truncate(8);
     }
 }

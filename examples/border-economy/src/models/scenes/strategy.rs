@@ -4,7 +4,8 @@ use crate::models::scenes::{
 };
 use crate::models::{BudgetChannel, Currency, TerritoryId};
 use crate::models::{DemandProfile, GameContext, GameScene, WeaponPrototypeState};
-use crate::plugins::{self, EconomyState};
+use crate::plugins::EconomyState;
+use issun::auto_pump;
 use issun::event::EventBus;
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
@@ -52,6 +53,7 @@ impl StrategySceneData {
         }
     }
 
+    #[auto_pump]
     pub async fn handle_input(
         &mut self,
         services: &ServiceContext,
@@ -59,7 +61,6 @@ impl StrategySceneData {
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
-        plugins::pump_event_systems(services, systems, resources).await;
         let transition = match input {
             InputEvent::Up => {
                 if self.cursor > 0 {
@@ -112,7 +113,6 @@ impl StrategySceneData {
             }
             _ => SceneTransition::Stay,
         };
-        plugins::pump_event_systems(services, systems, resources).await;
         transition
     }
 

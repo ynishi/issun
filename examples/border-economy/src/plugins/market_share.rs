@@ -1,6 +1,4 @@
 use crate::events::MissionResolved;
-use crate::models::GameContext;
-use issun::event::EventBus;
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -75,36 +73,19 @@ impl System for MarketShareSystem {
     }
 }
 
+#[issun::event_handler(default_state = MarketPulse)]
 impl MarketShareSystem {
-    pub async fn process_events(
+    #[subscribe(MissionResolved)]
+    async fn on_mission_resolved(
         &mut self,
-        services: &ServiceContext,
-        resources: &mut ResourceContext,
+        event: &MissionResolved,
+        pulse: &mut MarketPulse,
+        #[service(name = "market_intel")] intel: &MarketIntelService,
+        #[state] ctx: &mut crate::models::GameContext,
     ) {
-        let resolved = match resources.get_mut::<EventBus>().await {
-            Some(mut bus) => super::collect_events::<MissionResolved>(&mut bus),
-            None => return,
-        };
-
-        if resolved.is_empty() {
-            return;
-        }
-
-        let base_share = if let (Some(intel), Some(ctx)) = (
-            services.get_as::<MarketIntelService>("market_intel"),
-            resources.get::<GameContext>().await,
-        ) {
-            intel.estimate_share(&ctx)
-        } else {
-            0.0
-        };
-
-        if let Some(mut pulse) = resources.get_mut::<MarketPulse>().await {
-            pulse.snapshots.push(base_share);
-            for report in resolved {
-                pulse.snapshots.push(report.secured_share);
-            }
-            pulse.snapshots.truncate(10);
-        }
+        let base_share = intel.estimate_share(ctx);
+        pulse.snapshots.push(base_share);
+        pulse.snapshots.push(event.secured_share);
+        pulse.snapshots.truncate(10);
     }
 }
