@@ -19,6 +19,7 @@ issun-macros = { path = "../issun-macros", version = "0.2.0" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 ron = { workspace = true }
+bincode = { workspace = true, optional = true }
 ratatui = { workspace = true }
 crossterm = { workspace = true }
 rand = { workspace = true }
@@ -27,6 +28,8 @@ anyhow = { workspace = true }
 figlet-rs = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+quinn = { workspace = true, optional = true }
+rustls = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -35,5 +38,6 @@ tempfile = "3.8"
 default = ["ui", "storage"]
 ui = []           # TUI support
 storage = []      # Save/Load support
-full = ["ui", "storage"]
+network = ["quinn", "rustls", "bincode"]  # Network support
+full = ["ui", "storage", "network"]
 tty_tests = []    # Enable TTY-dependent tests

@@ -50,6 +50,10 @@ pub mod store;
 pub mod system;
 pub mod ui;
 
+// Network module (optional)
+#[cfg(feature = "network")]
+pub mod network;
+
 // Prelude for convenient imports
 pub mod prelude {
     pub use crate::asset::Asset;
