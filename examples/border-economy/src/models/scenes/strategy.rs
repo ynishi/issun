@@ -1,0 +1,351 @@
+use crate::events::{MissionRequested, ResearchQueued};
+use crate::models::scenes::{
+    EconomicSceneData, IntelReportSceneData, TacticalSceneData, VaultSceneData,
+};
+use crate::models::{BudgetChannel, Currency, TerritoryId};
+use crate::models::{DemandProfile, GameContext, GameScene, WeaponPrototypeState};
+use crate::plugins::{self, EconomyState};
+use issun::event::EventBus;
+use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
+use issun::ui::InputEvent;
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StrategyAction {
+    DeployOperation,
+    FundResearch,
+    InspectIntel,
+    ManageBudget,
+    InvestDevelopment,
+    DiplomaticAction,
+    SetPolicy,
+    FortifyFront,
+    ManageVaults,
+    EndDay,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StrategySceneData {
+    pub cursor: usize,
+    pub status_line: String,
+    pub actions: Vec<StrategyAction>,
+}
+
+impl StrategySceneData {
+    pub fn new() -> Self {
+        Self {
+            cursor: 0,
+            status_line: "作戦を選択".into(),
+            actions: vec![
+                StrategyAction::DeployOperation,
+                StrategyAction::FundResearch,
+                StrategyAction::InspectIntel,
+                StrategyAction::ManageBudget,
+                StrategyAction::InvestDevelopment,
+                StrategyAction::DiplomaticAction,
+                StrategyAction::SetPolicy,
+                StrategyAction::FortifyFront,
+                StrategyAction::ManageVaults,
+                StrategyAction::EndDay,
+            ],
+        }
+    }
+
+    pub async fn handle_input(
+        &mut self,
+        services: &ServiceContext,
+        systems: &mut SystemContext,
+        resources: &mut ResourceContext,
+        input: InputEvent,
+    ) -> SceneTransition<GameScene> {
+        plugins::pump_event_systems(services, systems, resources).await;
+        let transition = match input {
+            InputEvent::Up => {
+                if self.cursor > 0 {
+                    self.cursor -= 1;
+                }
+                SceneTransition::Stay
+            }
+            InputEvent::Down => {
+                if self.cursor + 1 < self.actions.len() {
+                    self.cursor += 1;
+                }
+                SceneTransition::Stay
+            }
+            InputEvent::Cancel => {
+                SceneTransition::Switch(GameScene::Title(super::title::TitleSceneData::new()))
+            }
+            InputEvent::Select => {
+                let action = self.actions[self.cursor].clone();
+                match action {
+                    StrategyAction::DeployOperation => self.launch_operation(resources).await,
+                    StrategyAction::FundResearch => self.allocate_research(resources).await,
+                    StrategyAction::InspectIntel => self.open_report(resources).await,
+                    StrategyAction::ManageBudget => {
+                        SceneTransition::Switch(GameScene::Economic(EconomicSceneData::new()))
+                    }
+                    StrategyAction::InvestDevelopment => {
+                        self.invest_in_development(resources).await;
+                        SceneTransition::Stay
+                    }
+                    StrategyAction::DiplomaticAction => {
+                        self.execute_diplomacy(resources).await;
+                        SceneTransition::Stay
+                    }
+                    StrategyAction::SetPolicy => {
+                        self.set_policy(resources).await;
+                        SceneTransition::Stay
+                    }
+                    StrategyAction::FortifyFront => {
+                        self.fortify_battlefront(resources).await;
+                        SceneTransition::Stay
+                    }
+                    StrategyAction::ManageVaults => {
+                        SceneTransition::Switch(GameScene::Vault(VaultSceneData::new()))
+                    }
+                    StrategyAction::EndDay => {
+                        self.end_day_now(resources).await;
+                        SceneTransition::Stay
+                    }
+                }
+            }
+            _ => SceneTransition::Stay,
+        };
+        plugins::pump_event_systems(services, systems, resources).await;
+        transition
+    }
+
+    async fn launch_operation(
+        &mut self,
+        resources: &mut ResourceContext,
+    ) -> SceneTransition<GameScene> {
+        let mut ctx = match resources.get_mut::<GameContext>().await {
+            Some(ctx) => ctx,
+            None => return SceneTransition::Stay,
+        };
+
+        let ops_multiplier = ctx.active_policy().effects.ops_cost_multiplier;
+        let deployment_cost = Currency::new(((150.0 * ops_multiplier).round() as i64).max(80));
+        if !ctx
+            .ledger
+            .try_spend(BudgetChannel::Operations, deployment_cost)
+        {
+            self.status_line = "作戦資金が不足しています".into();
+            drop(ctx);
+            push_econ_warning(resources, "Ops資金不足: 作戦が延期されました").await;
+            return SceneTransition::Stay;
+        }
+
+        let faction = match ctx.pick_ready_faction() {
+            Some(faction) => faction,
+            None => {
+                self.status_line = "待機中の部隊なし".into();
+                return SceneTransition::Stay;
+            }
+        };
+        ctx.record_ops_spend(deployment_cost);
+        let territory = ctx
+            .territories
+            .iter()
+            .max_by(|a, b| a.unrest.partial_cmp(&b.unrest).unwrap())
+            .cloned()
+            .unwrap_or_else(|| ctx.territories[0].clone());
+        let prototype = ctx.prototypes[0].clone();
+
+        let expected_payout =
+            Currency::new(((territory.unrest + faction.readiness as f32 / 100.0) * 500.0) as i64);
+        let brief = super::tactical::MissionBrief {
+            faction: faction.id.clone(),
+            target: territory.id.clone(),
+            prototype: prototype.id.clone(),
+            expected_payout,
+            threat_level: territory.unrest,
+        };
+
+        ctx.mark_faction_deployed(&brief.faction);
+        ctx.record(format!(
+            "{} が {} に展開",
+            faction.codename,
+            territory.id.as_str()
+        ));
+        ctx.consume_action("作戦展開");
+
+        drop(ctx);
+
+        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            bus.publish(MissionRequested {
+                faction: brief.faction.clone(),
+                target: brief.target.clone(),
+                prototype: brief.prototype.clone(),
+                expected_payout,
+            });
+        }
+
+        SceneTransition::Switch(GameScene::Tactical(TacticalSceneData::from_brief(brief)))
+    }
+
+    async fn allocate_research(
+        &mut self,
+        resources: &mut ResourceContext,
+    ) -> SceneTransition<GameScene> {
+        let mut ctx = match resources.get_mut::<GameContext>().await {
+            Some(ctx) => ctx,
+            None => return SceneTransition::Stay,
+        };
+        let WeaponPrototypeState { id, codename, .. } = ctx.prototypes[0].clone();
+        let budget = Currency::new(120);
+        if !ctx.ledger.try_spend(BudgetChannel::Research, budget) {
+            self.status_line = "R&D資金が不足しています".into();
+            drop(ctx);
+            push_econ_warning(resources, "R&D資金不足: 投資要求を却下").await;
+            return SceneTransition::Stay;
+        }
+        ctx.record_rnd_spend(budget);
+        ctx.queue_research(&id, 0.08);
+        ctx.record(format!("{} へR&D投資", codename));
+        ctx.consume_action("R&D投資");
+        let demand = ctx
+            .territories
+            .iter()
+            .find(|t| t.id == TerritoryId::new("nova-harbor"))
+            .map(|t| t.demand.clone())
+            .unwrap_or_else(DemandProfile::frontier);
+
+        drop(ctx);
+
+        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            bus.publish(ResearchQueued {
+                prototype: id.clone(),
+                budget: Currency::new(120),
+                targeted_segment: demand,
+            });
+        }
+        self.status_line = "研究ラインに追加".into();
+        SceneTransition::Stay
+    }
+
+    async fn open_report(&mut self, resources: &mut ResourceContext) -> SceneTransition<GameScene> {
+        if let Some(ctx) = resources.get::<GameContext>().await {
+            return SceneTransition::Switch(GameScene::IntelReport(
+                IntelReportSceneData::from_context(&ctx),
+            ));
+        }
+        SceneTransition::Stay
+    }
+
+    async fn end_day_now(&mut self, resources: &mut ResourceContext) {
+        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+            ctx.force_end_of_day("司令部が日次を終了しました");
+        }
+    }
+
+    async fn fortify_battlefront(&mut self, resources: &mut ResourceContext) {
+        let mut ctx = match resources.get_mut::<GameContext>().await {
+            Some(ctx) => ctx,
+            None => return,
+        };
+
+        let Some(front_index) = ctx.territories.iter().position(|t| t.battlefront) else {
+            self.status_line = "現在の前線はありません".into();
+            return;
+        };
+
+        let ops_multiplier = ctx.active_policy().effects.ops_cost_multiplier;
+        let cost = Currency::new(((120.0 * ops_multiplier).round() as i64).max(60));
+        if !ctx.ledger.try_spend(BudgetChannel::Operations, cost) {
+            self.status_line = "Ops資金が不足しています".into();
+            drop(ctx);
+            push_econ_warning(resources, "防衛強化失敗: Ops不足").await;
+            return;
+        }
+        ctx.record_ops_spend(cost);
+
+        let front_name;
+        {
+            let front = &mut ctx.territories[front_index];
+            front.conflict_intensity = (front.conflict_intensity * 0.6).clamp(0.05, 1.0);
+            front.unrest = (front.unrest - 0.05).clamp(0.0, 1.0);
+            front.enemy_share = (front.enemy_share - 0.05).clamp(0.0, 1.0);
+            front_name = front.id.as_str().to_string();
+        }
+
+        ctx.record(format!("{} に防衛部隊を派遣 (Ops {})", front_name, cost));
+        ctx.consume_action("防衛強化");
+        self.status_line = format!("{} を要塞化", front_name);
+    }
+
+    async fn invest_in_development(&mut self, resources: &mut ResourceContext) {
+        let mut ctx = match resources.get_mut::<GameContext>().await {
+            Some(ctx) => ctx,
+            None => return,
+        };
+
+        let Some(target_index) = ctx
+            .territories
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| !t.battlefront)
+            .min_by(|(_, a), (_, b)| {
+                let a_score = a.development_level;
+                let b_score = b.development_level;
+                a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal)
+            })
+            .map(|(idx, _)| idx)
+        else {
+            self.status_line = "投資可能なエリアが見つかりません".into();
+            return;
+        };
+
+        let amount = Currency::new(200);
+        let territory_id = ctx.territories[target_index].id.clone();
+        if !ctx.invest_in_territory(&territory_id, amount) {
+            self.status_line = "Innovation資金が不足しています".into();
+            return;
+        }
+
+        ctx.consume_action("開拓投資");
+        self.status_line = format!("{} に基盤投資 ({} )", territory_id.as_str(), amount);
+    }
+
+    async fn set_policy(&mut self, resources: &mut ResourceContext) {
+        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+            let policy = ctx.cycle_policy();
+            self.status_line = format!("政策を「{}」に切替", policy.name);
+        }
+    }
+
+    async fn execute_diplomacy(&mut self, resources: &mut ResourceContext) {
+        let mut ctx = match resources.get_mut::<GameContext>().await {
+            Some(ctx) => ctx,
+            None => return,
+        };
+
+        if ctx.ledger.reserve.0 < 100 {
+            self.status_line = "予備資金が不足しています".into();
+            return;
+        }
+        ctx.ledger.reserve -= Currency::new(100);
+
+        if let Some(front) = ctx
+            .territories
+            .iter()
+            .find(|t| t.battlefront)
+            .map(|t| (t.enemy_faction.clone(), t.id.as_str().to_string()))
+        {
+            let (faction_id, front_name) = front;
+            ctx.apply_campaign_response(&faction_id, 0.1);
+            self.status_line = format!("{} へ警告外交を実施", front_name);
+        } else if let Some(faction_id) = ctx.territories.get(0).map(|t| t.enemy_faction.clone()) {
+            ctx.apply_campaign_response(&faction_id, 0.1);
+            self.status_line = format!("{} 勢力と限定協力を実施", faction_id.as_str());
+        }
+    }
+}
+
+async fn push_econ_warning(resources: &mut ResourceContext, message: impl Into<String>) {
+    if let Some(mut econ) = resources.get_mut::<EconomyState>().await {
+        econ.warnings.insert(0, message.into());
+        econ.warnings.truncate(5);
+    }
+}

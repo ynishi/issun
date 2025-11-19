@@ -1,0 +1,14 @@
+[package]
+name = "border-economy"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+issun = { path = "../../crates/issun" }
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+async-trait = "0.1"
+ratatui = "0.28"
+thiserror = "1"
