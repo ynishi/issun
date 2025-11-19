@@ -42,14 +42,58 @@ pub struct EventBus {
 struct NetworkState {
     backend: std::sync::Arc<dyn crate::network::NetworkBackend>,
     tx: tokio::sync::mpsc::Sender<NetworkTask>,
+    rx: std::sync::Arc<std::sync::Mutex<tokio::sync::mpsc::Receiver<crate::network::backend::RawNetworkEvent>>>,
     sequence: std::sync::atomic::AtomicU64,
     current_metadata: Option<NetworkMetadata>,
+    deserializers: HashMap<String, Box<dyn EventDeserializer>>,
 }
 
 #[cfg(feature = "network")]
 enum NetworkTask {
     Send(Vec<u8>), // Serialized RawNetworkEvent
     Shutdown,
+}
+
+#[cfg(feature = "network")]
+trait EventDeserializer: Send + Sync {
+    fn deserialize_and_push(
+        &self,
+        payload: &[u8],
+        channels: &mut HashMap<TypeId, Box<dyn EventChannelStorage>>,
+    );
+}
+
+#[cfg(feature = "network")]
+struct TypedEventDeserializer<E: Event + serde::de::DeserializeOwned> {
+    _phantom: std::marker::PhantomData<E>,
+}
+
+#[cfg(feature = "network")]
+impl<E: Event + serde::de::DeserializeOwned> TypedEventDeserializer<E> {
+    fn new() -> Self {
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+#[cfg(feature = "network")]
+impl<E: Event + serde::de::DeserializeOwned> EventDeserializer for TypedEventDeserializer<E> {
+    fn deserialize_and_push(
+        &self,
+        payload: &[u8],
+        channels: &mut HashMap<TypeId, Box<dyn EventChannelStorage>>,
+    ) {
+        if let Ok(event) = bincode::deserialize::<E>(payload) {
+            let entry = channels
+                .entry(TypeId::of::<E>())
+                .or_insert_with(|| Box::new(EventChannel::<E>::new()));
+
+            if let Some(channel) = entry.as_any_mut().downcast_mut::<EventChannel<E>>() {
+                channel.push(event);
+            }
+        }
+    }
 }
 
 impl Default for EventBus {
@@ -153,23 +197,29 @@ impl EventBus {
     /// Enable network support (network feature only)
     #[cfg(feature = "network")]
     pub fn with_network(mut self, backend: impl crate::network::NetworkBackend) -> Self {
-        use std::sync::Arc;
+        use std::sync::{Arc, Mutex};
         use tokio::sync::mpsc;
 
         let backend = Arc::new(backend);
-        let (tx, rx) = mpsc::channel(1000);
+        let (tx, send_rx) = mpsc::channel(1000);
+
+        // Get receive stream from backend
+        let recv_rx = backend.receive_stream();
+        let recv_rx = Arc::new(Mutex::new(recv_rx));
 
         // Spawn background worker for sending events
         let backend_clone = backend.clone();
         tokio::spawn(async move {
-            network_send_worker(rx, backend_clone).await;
+            network_send_worker(send_rx, backend_clone).await;
         });
 
         self.network = Some(NetworkState {
             backend,
             tx,
+            rx: recv_rx,
             sequence: std::sync::atomic::AtomicU64::new(0),
             current_metadata: None,
+            deserializers: HashMap::new(),
         });
 
         self
@@ -187,6 +237,61 @@ impl EventBus {
     #[cfg(feature = "network")]
     pub fn is_networked(&self) -> bool {
         self.network.is_some()
+    }
+
+    /// Register an event type for network deserialization
+    #[cfg(feature = "network")]
+    pub fn register_networked_event<E>(&mut self)
+    where
+        E: Event + serde::de::DeserializeOwned + 'static,
+    {
+        if let Some(ref mut net) = self.network {
+            let type_name = std::any::type_name::<E>().to_string();
+            net.deserializers
+                .insert(type_name, Box::new(TypedEventDeserializer::<E>::new()));
+        }
+    }
+
+    /// Poll and process incoming network events
+    #[cfg(feature = "network")]
+    pub fn poll_network(&mut self) {
+        use crate::network::backend::RawNetworkEvent;
+
+        // Collect events first to avoid holding mutable borrows
+        let events: Vec<RawNetworkEvent> = if let Some(ref net) = self.network {
+            let rx = net.rx.clone();
+            let result = if let Ok(mut rx_guard) = rx.try_lock() {
+                let mut collected = Vec::new();
+                while let Ok(raw_event) = rx_guard.try_recv() {
+                    collected.push(raw_event);
+                }
+                collected
+            } else {
+                Vec::new()
+            };
+            result
+        } else {
+            Vec::new()
+        };
+
+        // Process collected events
+        for raw_event in events {
+            if let Some(ref mut net) = self.network {
+                // Store metadata for access during event processing
+                net.current_metadata = Some(raw_event.metadata.clone());
+
+                // Get type name and payload
+                let type_name = &raw_event.type_name;
+
+                // Deserialize and inject into appropriate channel
+                if let Some(deserializer) = net.deserializers.get(type_name) {
+                    deserializer.deserialize_and_push(&raw_event.payload, &mut self.channels);
+                }
+
+                // Clear metadata after processing
+                net.current_metadata = None;
+            }
+        }
     }
 }
 
@@ -358,6 +463,27 @@ mod tests {
         assert_eq!(reader.iter().map(|d| d.0).collect::<Vec<_>>(), vec![2, 3]);
 
         // Ensure old events cleared
+        bus.dispatch();
+        let reader = bus.reader::<Damage>();
+        assert!(reader.is_empty());
+    }
+
+    #[cfg(feature = "network")]
+    #[tokio::test]
+    async fn network_event_registration_and_polling() {
+        use crate::network::backend::LocalOnlyBackend;
+
+        let backend = LocalOnlyBackend::new();
+        let mut bus = EventBus::new().with_network(backend);
+
+        // Register the event type for deserialization
+        bus.register_networked_event::<Damage>();
+
+        // Verify network is enabled
+        assert!(bus.is_networked());
+
+        // Poll network (should be empty)
+        bus.poll_network();
         bus.dispatch();
         let reader = bus.reader::<Damage>();
         assert!(reader.is_empty());
