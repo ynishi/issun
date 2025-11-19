@@ -3,6 +3,9 @@ members = [
     "crates/issun",
     "crates/issun-macros", "crates/issun-server",
 ]
+exclude = [
+    "examples/*",
+]
 resolver = "2"
 
 [workspace.package]

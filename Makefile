@@ -3,7 +3,7 @@
 .PHONY: server server-dev certs test-network
 
 # Define examples directories
-EXAMPLES := examples/junk-bot-game
+EXAMPLES := examples/junk-bot-game examples/multiplayer-pong
 
 help:
 	@echo "Available targets:"
@@ -79,6 +79,12 @@ server-dev: certs
 test-network:
 	@echo "🧪 Running network tests..."
 	cargo test --features network
+
+# Multiplayer pong demo
+pong:
+	@echo "🎮 Starting multiplayer pong..."
+	@echo "📝 Server should be running: make server"
+	cargo run -p multiplayer-pong -- --server 127.0.0.1:5000
 
 # Examples targets
 fmt-examples:
