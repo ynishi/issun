@@ -1,6 +1,6 @@
 //! Economy system for settlement orchestration
 
-use super::{BudgetLedger, EconomyConfig, EconomyService};
+use super::{EconomyConfig, SettlementSystem};
 use crate::context::{ResourceContext, ServiceContext};
 use crate::event::EventBus;
 use crate::plugin::time::DayPassedEvent;
@@ -11,35 +11,72 @@ use std::any::Any;
 /// Economy system handling periodic settlements
 ///
 /// This system listens for `DayPassedEvent` and runs settlement logic
-/// when the configured period elapses.
+/// when the configured period elapses. It delegates actual settlement
+/// calculations to a `SettlementSystem` implementation.
+///
+/// # Architecture
+///
+/// The system is responsible for:
+/// - Listening to `DayPassedEvent` from the Time plugin
+/// - Checking if settlement period has elapsed
+/// - Delegating to `SettlementSystem` for calculations
+///
+/// The `SettlementSystem` trait provides extension points for:
+/// - Income calculation
+/// - Upkeep calculation
+/// - Pre/post settlement hooks
 ///
 /// # Example
 ///
 /// ```ignore
-/// use issun::plugin::economy::EconomySystem;
+/// use issun::plugin::economy::{EconomySystem, DefaultSettlementSystem};
 /// use issun::context::{ResourceContext, ServiceContext};
 ///
-/// let mut system = EconomySystem::new();
+/// let mut system = EconomySystem::new(Box::new(DefaultSettlementSystem::default()));
 /// system.update(&services, &mut resources).await;
 /// ```
 #[derive(Default)]
 pub struct EconomySystem {
     /// Last day settlement was run
     last_settlement_day: u32,
+    /// Settlement logic implementation
+    settlement: Option<Box<dyn SettlementSystem>>,
 }
 
 impl EconomySystem {
-    /// Create a new economy system
-    pub fn new() -> Self {
+    /// Create a new economy system with custom settlement logic
+    ///
+    /// # Arguments
+    ///
+    /// * `settlement` - Custom settlement system implementation
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use issun::plugin::economy::{EconomySystem, DefaultSettlementSystem};
+    ///
+    /// let system = EconomySystem::new(Box::new(DefaultSettlementSystem::default()));
+    /// ```
+    pub fn new(settlement: Box<dyn SettlementSystem>) -> Self {
         Self {
             last_settlement_day: 0,
+            settlement: Some(settlement),
         }
+    }
+
+    /// Create with default settlement system
+    pub fn with_default_settlement() -> Self {
+        Self::new(Box::new(super::DefaultSettlementSystem::default()))
     }
 
     /// Update method called each frame
     ///
     /// Checks for `DayPassedEvent` and runs settlement if conditions are met.
-    pub async fn update(&mut self, services: &ServiceContext, resources: &mut ResourceContext) {
+    pub async fn update(
+        &mut self,
+        services: &ServiceContext,
+        resources: &mut ResourceContext,
+    ) {
         // Check for day passed events
         let day_events = {
             let mut bus = match resources.get_mut::<EventBus>().await {
@@ -84,62 +121,12 @@ impl EconomySystem {
 
         self.last_settlement_day = current_day;
 
-        // Run settlement logic
-        self.run_settlement(current_day, services, resources).await;
-    }
-
-    async fn run_settlement(
-        &mut self,
-        _day: u32,
-        services: &ServiceContext,
-        resources: &mut ResourceContext,
-    ) {
-        // Get economy service
-        let economy_service = match services.get_as::<EconomyService>("economy_service") {
-            Some(s) => s,
-            None => return,
-        };
-
-        // Get config for calculations
-        let config = match resources.get::<EconomyConfig>().await {
-            Some(c) => c,
-            None => return,
-        };
-
-        // Get ledger for reading
-        let ledger_snapshot = {
-            let ledger = match resources.get::<BudgetLedger>().await {
-                Some(l) => l,
-                None => {
-                    drop(config);
-                    return;
-                }
-            };
-            ledger.clone() // Clone to release lock quickly
-        };
-
-        // Calculate dividend (example calculation)
-        let dividend = economy_service.calculate_dividend(&config, &ledger_snapshot);
-
-        drop(config); // Release config lock
-
-        // Apply dividend to ledger (deduct from reserve/cash)
-        let mut ledger = match resources.get_mut::<BudgetLedger>().await {
-            Some(l) => l,
-            None => return,
-        };
-
-        // Simple implementation: deduct dividend from reserve first, then cash
-        if ledger.reserve.amount() >= dividend.amount() {
-            ledger.reserve = ledger.reserve.saturating_sub(dividend);
-        } else {
-            let from_reserve = ledger.reserve;
-            ledger.reserve = ledger.reserve.saturating_sub(from_reserve);
-            let remaining = dividend.saturating_sub(from_reserve);
-            ledger.cash = ledger.cash.saturating_sub(remaining);
+        // Delegate to settlement system
+        if let Some(ref mut settlement) = self.settlement {
+            settlement
+                .run_settlement(current_day, services, resources)
+                .await;
         }
-
-        // TODO: Publish SettlementCompletedEvent for other systems to react
     }
 }
 
@@ -167,26 +154,29 @@ impl System for EconomySystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plugin::economy::Currency;
+    use crate::plugin::economy::{BudgetLedger, Currency};
     use crate::plugin::time::GameClock;
 
     #[tokio::test]
     async fn test_economy_system_creation() {
-        let system = EconomySystem::new();
+        let system = EconomySystem::with_default_settlement();
         assert_eq!(system.last_settlement_day, 0);
     }
 
     #[tokio::test]
     async fn test_economy_system_name() {
-        let system = EconomySystem::new();
+        let system = EconomySystem::with_default_settlement();
         assert_eq!(system.name(), "economy_system");
     }
 
     #[tokio::test]
     async fn test_economy_system_settlement_on_period() {
-        let mut system = EconomySystem::new();
+        let mut system = EconomySystem::with_default_settlement();
         let mut resources = ResourceContext::new();
-        let services = ServiceContext::new();
+        let mut services = ServiceContext::new();
+
+        // Register economy service
+        services.register(Box::new(super::super::EconomyService::new()));
 
         // Setup resources
         resources.insert(EventBus::new());
@@ -209,7 +199,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_economy_system_no_settlement_on_non_period() {
-        let mut system = EconomySystem::new();
+        let mut system = EconomySystem::with_default_settlement();
         let mut resources = ResourceContext::new();
         let services = ServiceContext::new();
 

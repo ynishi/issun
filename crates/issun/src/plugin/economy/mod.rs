@@ -57,6 +57,7 @@ mod config;
 mod plugin;
 mod resources;
 mod service;
+mod settlement;
 mod system;
 mod types;
 
@@ -64,5 +65,6 @@ pub use config::EconomyConfig;
 pub use plugin::BuiltInEconomyPlugin;
 pub use resources::{BudgetChannel, BudgetLedger, PolicyDeck};
 pub use service::EconomyService;
+pub use settlement::{DefaultSettlementSystem, SettlementSystem};
 pub use system::EconomySystem;
 pub use types::Currency;

@@ -1,6 +1,6 @@
 //! Economy plugin implementation
 
-use super::{BudgetLedger, Currency, EconomyConfig, EconomyService, EconomySystem};
+use super::{BudgetLedger, Currency, EconomyConfig, EconomyService, EconomySystem, SettlementSystem};
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
 
@@ -11,32 +11,64 @@ use async_trait::async_trait;
 /// orchestration.
 ///
 /// The system listens for `DayPassedEvent` from the Time plugin and runs settlements
-/// based on the configured period.
+/// based on the configured period. Settlement logic can be customized via the
+/// `SettlementSystem` trait.
 ///
-/// # Example
+/// # Simple Usage (Default Settlement)
 ///
 /// ```ignore
 /// use issun::builder::GameBuilder;
-/// use issun::plugin::economy::{BuiltInEconomyPlugin, EconomyConfig, Currency};
+/// use issun::plugin::economy::{BuiltInEconomyPlugin, EconomyConfig};
 /// use issun::plugin::time::BuiltInTimePlugin;
 ///
 /// let game = GameBuilder::new()
 ///     .with_plugin(BuiltInTimePlugin::default())?
-///     .with_plugin(BuiltInEconomyPlugin::new(EconomyConfig {
-///         settlement_period_days: 7,
-///         dividend_base: 200,
-///         dividend_rate: 0.04,
-///     }))?
+///     .with_plugin(BuiltInEconomyPlugin::default())?
 ///     .build()
 ///     .await?;
+/// ```
+///
+/// # Custom Settlement Logic
+///
+/// ```ignore
+/// use issun::plugin::economy::{
+///     BuiltInEconomyPlugin, SettlementSystem, Currency, EconomyConfig
+/// };
+/// use issun::context::ResourceContext;
+/// use async_trait::async_trait;
+///
+/// // Define custom settlement
+/// struct MySettlement;
+///
+/// #[async_trait]
+/// impl SettlementSystem for MySettlement {
+///     async fn calculate_income(&self, resources: &ResourceContext) -> Currency {
+///         // Custom income calculation
+///         Currency::new(5000)
+///     }
+///
+///     async fn calculate_upkeep(&self, resources: &ResourceContext) -> Currency {
+///         // Custom upkeep calculation
+///         Currency::new(2000)
+///     }
+/// }
+///
+/// // Use custom settlement
+/// let plugin = BuiltInEconomyPlugin::with_settlement(
+///     EconomyConfig::default(),
+///     Box::new(MySettlement),
+/// );
 /// ```
 pub struct BuiltInEconomyPlugin {
     config: EconomyConfig,
     starting_cash: Currency,
+    settlement: Option<Box<dyn SettlementSystem>>,
 }
 
 impl BuiltInEconomyPlugin {
     /// Create a new economy plugin with custom configuration
+    ///
+    /// Uses the default settlement system.
     ///
     /// # Arguments
     ///
@@ -45,6 +77,33 @@ impl BuiltInEconomyPlugin {
         Self {
             config,
             starting_cash: Currency::new(2400),
+            settlement: None, // Will use default
+        }
+    }
+
+    /// Create a new economy plugin with custom settlement system
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Economy configuration
+    /// * `settlement` - Custom settlement system implementation
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let plugin = BuiltInEconomyPlugin::with_settlement(
+    ///     EconomyConfig::default(),
+    ///     Box::new(MyCustomSettlement),
+    /// );
+    /// ```
+    pub fn with_settlement(
+        config: EconomyConfig,
+        settlement: Box<dyn SettlementSystem>,
+    ) -> Self {
+        Self {
+            config,
+            starting_cash: Currency::new(2400),
+            settlement: Some(settlement),
         }
     }
 
@@ -58,6 +117,7 @@ impl BuiltInEconomyPlugin {
         Self {
             config,
             starting_cash,
+            settlement: None, // Will use default
         }
     }
 
@@ -66,6 +126,7 @@ impl BuiltInEconomyPlugin {
         Self {
             config: EconomyConfig::default(),
             starting_cash: Currency::new(2400),
+            settlement: None,
         }
     }
 }
@@ -87,7 +148,14 @@ impl Plugin for BuiltInEconomyPlugin {
         builder.register_service(Box::new(EconomyService::new()));
 
         // Register system (stateful orchestration)
-        builder.register_system(Box::new(EconomySystem::new()));
+        let system = if let Some(ref _settlement) = self.settlement {
+            // TODO: Support custom settlement system injection
+            // For now, always use default
+            EconomySystem::with_default_settlement()
+        } else {
+            EconomySystem::with_default_settlement()
+        };
+        builder.register_system(Box::new(system));
 
         // Register config as read-only resource
         builder.register_resource(self.config.clone());

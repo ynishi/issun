@@ -115,12 +115,15 @@ pub use economy::{
     // Plugin
     BuiltInEconomyPlugin,
     Currency,
+    // Trait
+    DefaultSettlementSystem,
     EconomyConfig,
     // Service
     EconomyService,
     // System
     EconomySystem,
     PolicyDeck,
+    SettlementSystem,
 };
 
 use crate::builder::RuntimeResourceEntry;
