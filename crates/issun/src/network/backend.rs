@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 
 /// Type-erased network event (for receiving)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RawNetworkEvent {
     pub metadata: NetworkMetadata,
     pub scope: NetworkScope,
