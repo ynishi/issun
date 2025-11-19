@@ -26,9 +26,11 @@ use async_trait::async_trait;
 // Built-in plugins
 pub mod combat;
 pub mod dungeon;
+pub mod economy;
 pub mod inventory;
 pub mod loot;
 pub mod room_buff;
+pub mod time;
 
 // Re-exports for convenience
 pub use combat::{
@@ -94,6 +96,31 @@ pub use room_buff::{
     RoomBuffDatabase,
     // Plugin
     RoomBuffPlugin,
+};
+
+pub use time::{
+    // Types
+    ActionConsumedEvent,
+    // Plugin
+    BuiltInTimePlugin,
+    DayPassedEvent,
+    GameClock,
+    TimeConfig,
+};
+
+pub use economy::{
+    // Types
+    BudgetChannel,
+    BudgetLedger,
+    // Plugin
+    BuiltInEconomyPlugin,
+    Currency,
+    EconomyConfig,
+    // Service
+    EconomyService,
+    // System
+    EconomySystem,
+    PolicyDeck,
 };
 
 use crate::builder::RuntimeResourceEntry;

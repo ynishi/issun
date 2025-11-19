@@ -40,10 +40,7 @@ impl Metrics {
                 "Number of currently connected clients"
             )?,
 
-            active_rooms: register_gauge!(
-                "issun_active_rooms",
-                "Number of active game rooms"
-            )?,
+            active_rooms: register_gauge!("issun_active_rooms", "Number of active game rooms")?,
 
             events_relayed: register_counter_vec!(
                 "issun_events_relayed_total",

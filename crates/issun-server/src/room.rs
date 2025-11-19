@@ -157,7 +157,12 @@ impl RoomManager {
     }
 
     /// Create a new room
-    pub async fn create_room(&self, host: NodeId, max_clients: usize, name: Option<String>) -> Result<RoomId> {
+    pub async fn create_room(
+        &self,
+        host: NodeId,
+        max_clients: usize,
+        name: Option<String>,
+    ) -> Result<RoomId> {
         // Check if host is already in a room
         {
             let client_rooms = self.client_rooms.read().await;
@@ -198,7 +203,8 @@ impl RoomManager {
         // Add client to room
         {
             let mut rooms = self.rooms.write().await;
-            let room = rooms.get_mut(&room_id)
+            let room = rooms
+                .get_mut(&room_id)
                 .ok_or_else(|| anyhow::anyhow!("Room not found"))?;
 
             room.add_client(client)?;
@@ -217,7 +223,8 @@ impl RoomManager {
     pub async fn leave_room(&self, client: NodeId) -> Result<()> {
         let room_id = {
             let mut client_rooms = self.client_rooms.write().await;
-            client_rooms.remove(&client)
+            client_rooms
+                .remove(&client)
                 .ok_or_else(|| anyhow::anyhow!("Client is not in any room"))?
         };
 
@@ -265,7 +272,8 @@ impl RoomManager {
         };
 
         let rooms = self.rooms.read().await;
-        rooms.get(&room_id)
+        rooms
+            .get(&room_id)
             .map(|room| room.clients.iter().copied().collect())
             .unwrap_or_default()
     }
@@ -273,7 +281,8 @@ impl RoomManager {
     /// List all available rooms
     pub async fn list_rooms(&self) -> Vec<Room> {
         let rooms = self.rooms.read().await;
-        rooms.values()
+        rooms
+            .values()
             .filter(|room| room.state == RoomState::Waiting)
             .cloned()
             .collect()
@@ -282,7 +291,8 @@ impl RoomManager {
     /// Start a game in a room
     pub async fn start_game(&self, room_id: RoomId, requester: NodeId) -> Result<()> {
         let mut rooms = self.rooms.write().await;
-        let room = rooms.get_mut(&room_id)
+        let room = rooms
+            .get_mut(&room_id)
             .ok_or_else(|| anyhow::anyhow!("Room not found"))?;
 
         // Only host can start the game
@@ -298,7 +308,8 @@ impl RoomManager {
     /// Delete a room
     async fn delete_room(&self, room_id: RoomId) -> Result<()> {
         let mut rooms = self.rooms.write().await;
-        rooms.remove(&room_id)
+        rooms
+            .remove(&room_id)
             .ok_or_else(|| anyhow::anyhow!("Room not found"))?;
 
         // Remove all client mappings for this room
@@ -333,7 +344,10 @@ mod tests {
         let client = NodeId::from_u64(2);
 
         // Create room
-        let room_id = manager.create_room(host, 4, Some("Test Room".to_string())).await.unwrap();
+        let room_id = manager
+            .create_room(host, 4, Some("Test Room".to_string()))
+            .await
+            .unwrap();
 
         // Join room
         manager.join_room(room_id, client).await.unwrap();
@@ -376,8 +390,14 @@ mod tests {
     async fn test_list_rooms() {
         let manager = RoomManager::new();
 
-        manager.create_room(NodeId::from_u64(1), 4, Some("Room 1".to_string())).await.unwrap();
-        manager.create_room(NodeId::from_u64(2), 2, Some("Room 2".to_string())).await.unwrap();
+        manager
+            .create_room(NodeId::from_u64(1), 4, Some("Room 1".to_string()))
+            .await
+            .unwrap();
+        manager
+            .create_room(NodeId::from_u64(2), 2, Some("Room 2".to_string()))
+            .await
+            .unwrap();
 
         let rooms = manager.list_rooms().await;
         assert_eq!(rooms.len(), 2);
