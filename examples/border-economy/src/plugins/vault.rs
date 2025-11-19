@@ -28,29 +28,9 @@ pub struct VaultState {
     pub last_settlement_day: u32,
 }
 
-#[derive(Default)]
-pub struct VaultSystem {
-    frames: u32,
-}
-
-#[async_trait::async_trait]
-impl System for VaultSystem {
-    fn name(&self) -> &'static str {
-        "vault_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {
-        self.frames += 1;
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+#[derive(Default, DeriveSystem)]
+#[system(name = "vault_system")]
+pub struct VaultSystem;
 
 impl VaultSystem {
     pub async fn process_events(

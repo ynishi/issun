@@ -20,31 +20,13 @@ impl Plugin for WeaponPrototypePlugin {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, DeriveService)]
+#[service(name = "field_telemetry")]
 pub struct FieldTelemetryService;
 
 impl FieldTelemetryService {
     pub fn quality_modifier(&self, reliability: f32) -> f32 {
         reliability.clamp(0.2, 1.2)
-    }
-}
-
-#[async_trait::async_trait]
-impl Service for FieldTelemetryService {
-    fn name(&self) -> &'static str {
-        "field_telemetry"
-    }
-
-    fn clone_box(&self) -> Box<dyn Service> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 
@@ -54,25 +36,9 @@ pub struct PrototypeBacklog {
     pub field_reports: Vec<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, DeriveSystem)]
+#[system(name = "prototype_system")]
 pub struct PrototypeSystem;
-
-#[async_trait::async_trait]
-impl System for PrototypeSystem {
-    fn name(&self) -> &'static str {
-        "prototype_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 
 #[issun::event_handler(default_state = PrototypeBacklog)]
 impl PrototypeSystem {

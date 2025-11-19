@@ -21,31 +21,13 @@ impl Plugin for TerritoryPlugin {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, DeriveService)]
+#[service(name = "territory_demand")]
 pub struct TerritoryDemandService;
 
 impl TerritoryDemandService {
     pub fn score(&self, demand: &crate::models::DemandProfile) -> f32 {
         demand.stability_bias * 0.5 + demand.violence_index * 0.5
-    }
-}
-
-#[async_trait::async_trait]
-impl Service for TerritoryDemandService {
-    fn name(&self) -> &'static str {
-        "territory_demand"
-    }
-
-    fn clone_box(&self) -> Box<dyn Service> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 
@@ -57,25 +39,9 @@ pub struct TerritoryStateCache {
     pub faction_reports: Vec<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, DeriveSystem)]
+#[system(name = "territory_system")]
 pub struct TerritorySystem;
-
-#[async_trait::async_trait]
-impl System for TerritorySystem {
-    fn name(&self) -> &'static str {
-        "territory_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 
 #[issun::event_handler(default_state = TerritoryStateCache)]
 impl TerritorySystem {

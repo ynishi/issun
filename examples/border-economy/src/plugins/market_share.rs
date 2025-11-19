@@ -20,7 +20,8 @@ impl Plugin for MarketSharePlugin {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, DeriveService)]
+#[service(name = "market_intel")]
 pub struct MarketIntelService;
 
 impl MarketIntelService {
@@ -29,49 +30,14 @@ impl MarketIntelService {
     }
 }
 
-#[async_trait::async_trait]
-impl Service for MarketIntelService {
-    fn name(&self) -> &'static str {
-        "market_intel"
-    }
-
-    fn clone_box(&self) -> Box<dyn Service> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MarketPulse {
     pub snapshots: Vec<f32>,
 }
 
-#[derive(Default)]
+#[derive(Default, DeriveSystem)]
+#[system(name = "market_share_system")]
 pub struct MarketShareSystem;
-
-#[async_trait::async_trait]
-impl System for MarketShareSystem {
-    fn name(&self) -> &'static str {
-        "market_share_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 
 #[issun::event_handler(default_state = MarketPulse)]
 impl MarketShareSystem {

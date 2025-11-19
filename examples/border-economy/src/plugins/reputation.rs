@@ -21,7 +21,8 @@ impl Plugin for ReputationPlugin {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, DeriveService)]
+#[service(name = "reputation_service")]
 pub struct ReputationService;
 
 impl ReputationService {
@@ -30,49 +31,14 @@ impl ReputationService {
     }
 }
 
-#[async_trait::async_trait]
-impl Service for ReputationService {
-    fn name(&self) -> &'static str {
-        "reputation_service"
-    }
-
-    fn clone_box(&self) -> Box<dyn Service> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ReputationLedger {
     pub events: Vec<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, DeriveSystem)]
+#[system(name = "reputation_system")]
 pub struct ReputationSystem;
-
-#[async_trait::async_trait]
-impl System for ReputationSystem {
-    fn name(&self) -> &'static str {
-        "reputation_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 
 #[issun::event_handler(default_state = ReputationLedger)]
 impl ReputationSystem {

@@ -55,7 +55,8 @@ pub struct SettlementKpi {
     pub net_margin: f32,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, DeriveService)]
+#[service(name = "ledger_forecast")]
 pub struct LedgerForecastService;
 
 impl LedgerForecastService {
@@ -64,48 +65,9 @@ impl LedgerForecastService {
     }
 }
 
-#[async_trait::async_trait]
-impl Service for LedgerForecastService {
-    fn name(&self) -> &'static str {
-        "ledger_forecast"
-    }
-
-    fn clone_box(&self) -> Box<dyn Service> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
-#[derive(Default)]
-pub struct EconomySystem {
-    pub frames: u32,
-}
-
-#[async_trait::async_trait]
-impl System for EconomySystem {
-    fn name(&self) -> &'static str {
-        "economy_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {
-        self.frames += 1;
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+#[derive(Default, DeriveSystem)]
+#[system(name = "economy_system")]
+pub struct EconomySystem;
 
 impl EconomySystem {
     pub async fn process_events(

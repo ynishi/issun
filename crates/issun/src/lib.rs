@@ -109,8 +109,10 @@ pub mod prelude {
     pub use crate::service::Service;
     pub use crate::store::{EntityStore, Store};
     pub use crate::system::System;
-    // Re-export proc macros (note: Plugin trait comes from crate::plugin::Plugin above)
+    // Re-export proc macros (note: traits come from their respective modules above)
     pub use issun_macros::Plugin as DerivePlugin;
+    pub use issun_macros::Service as DeriveService;
+    pub use issun_macros::System as DeriveSystem;
 }
 
 #[cfg(test)]

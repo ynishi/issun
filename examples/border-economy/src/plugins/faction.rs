@@ -19,37 +19,13 @@ pub struct FactionOpsState {
     pub total_casualties: u64,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, DeriveService)]
+#[service(name = "mission_planner")]
 pub struct MissionPlannerService;
 
-#[async_trait::async_trait]
-impl Service for MissionPlannerService {
-    fn name(&self) -> &'static str {
-        "mission_planner"
-    }
-
-    fn clone_box(&self) -> Box<dyn Service> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
-pub struct FactionSystem {
-    pub ticks: u32,
-}
-
-impl Default for FactionSystem {
-    fn default() -> Self {
-        Self { ticks: 0 }
-    }
-}
+#[derive(Default, DeriveSystem)]
+#[system(name = "faction_system")]
+pub struct FactionSystem;
 
 #[issun::event_handler]
 impl FactionSystem {
@@ -84,24 +60,5 @@ impl FactionSystem {
         ops.active_operations.retain(|t| t != &event.target);
         ops.total_casualties += event.casualties as u64;
         ops.recent_reports.truncate(5);
-    }
-}
-
-#[async_trait::async_trait]
-impl System for FactionSystem {
-    fn name(&self) -> &'static str {
-        "faction_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {
-        self.ticks += 1;
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
