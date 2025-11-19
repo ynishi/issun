@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+.github
+
+# Build artifacts
+target/
+**/target/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Examples (not needed for server build)
+examples/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+
+# Certificates (will be mounted)
+certs/
+*.pem
+
+# CI/CD
+.travis.yml
+.gitlab-ci.yml

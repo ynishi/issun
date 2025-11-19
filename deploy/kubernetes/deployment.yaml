@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: issun-relay-server
+  labels:
+    app: issun-relay
+    component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: issun-relay
+  template:
+    metadata:
+      labels:
+        app: issun-relay
+        component: server
+    spec:
+      containers:
+      - name: relay-server
+        image: issun-relay-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: quic
+          containerPort: 5000
+          protocol: UDP
+        env:
+        - name: RUST_LOG
+          value: "issun_server=info"
+        - name: ISSUN_BIND_ADDR
+          value: "0.0.0.0:5000"
+        - name: ISSUN_MAX_CLIENTS
+          value: "1000"
+        - name: ISSUN_HEARTBEAT_INTERVAL
+          value: "5"
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /app/certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - -x
+            - issun-server
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - pgrep
+            - -x
+            - issun-server
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: issun-tls-certs
+          items:
+          - key: tls.crt
+            path: cert.pem
+          - key: tls.key
+            path: key.pem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: issun-relay-service
+  labels:
+    app: issun-relay
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5000
+    targetPort: 5000
+    protocol: UDP
+    name: quic
+  selector:
+    app: issun-relay

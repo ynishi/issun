@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  relay-server:
+    build:
+      context: .
+      dockerfile: crates/issun-server/Dockerfile
+    image: issun-relay-server:latest
+    container_name: issun-relay
+    ports:
+      - "5000:5000/udp"  # QUIC relay port
+    environment:
+      - RUST_LOG=issun_server=info
+      - ISSUN_BIND_ADDR=0.0.0.0:5000
+      - ISSUN_MAX_CLIENTS=1000
+      - ISSUN_HEARTBEAT_INTERVAL=5
+    volumes:
+      # Mount TLS certificates (create these before running)
+      - ./certs:/app/certs:ro
+    restart: unless-stopped
+    networks:
+      - issun-network
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "issun-server"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  issun-network:
+    driver: bridge

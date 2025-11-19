@@ -1,6 +1,7 @@
 .PHONY: help preflight publish test check build clean doc release-check release release-patch release-minor
 .PHONY: fmt-examples clippy-examples check-examples test-examples build-examples clean-examples
-.PHONY: server server-dev certs test-network
+.PHONY: server server-dev certs test-network pong
+.PHONY: docker-build docker-up docker-down docker-logs
 
 # Define examples directories
 EXAMPLES := examples/junk-bot-game examples/multiplayer-pong
@@ -19,6 +20,12 @@ help:
 	@echo "  make server         - Run relay server (release mode)"
 	@echo "  make server-dev     - Run relay server (debug mode)"
 	@echo "  make certs          - Generate self-signed TLS certificates"
+	@echo ""
+	@echo "Docker targets:"
+	@echo "  make docker-build   - Build Docker image"
+	@echo "  make docker-up      - Start server with Docker Compose"
+	@echo "  make docker-down    - Stop Docker Compose"
+	@echo "  make docker-logs    - View Docker Compose logs"
 	@echo ""
 	@echo "Examples-specific targets:"
 	@echo "  make fmt-examples      - Format all examples"
@@ -212,3 +219,21 @@ publish: preflight
 	@echo "✅ issun published successfully!"
 	@echo ""
 	@echo "🎉 All crates have been successfully published to crates.io!"
+
+# Docker targets
+docker-build: certs
+	@echo "🐳 Building Docker image..."
+	docker build -f crates/issun-server/Dockerfile -t issun-relay-server:latest .
+
+docker-up: certs
+	@echo "🐳 Starting server with Docker Compose..."
+	docker-compose up -d
+	@echo "✅ Server started! View logs with: make docker-logs"
+
+docker-down:
+	@echo "🛑 Stopping Docker Compose..."
+	docker-compose down
+
+docker-logs:
+	@echo "📋 Viewing Docker Compose logs..."
+	docker-compose logs -f relay-server
