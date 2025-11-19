@@ -2,12 +2,13 @@
 
 use crate::config::ServerConfig;
 use crate::connection::ClientConnection;
+use crate::room::RoomManager;
 use anyhow::Result;
 use issun::network::{backend::RawNetworkEvent, NodeId};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Relay server that routes events between clients
 pub struct RelayServer {
@@ -16,6 +17,9 @@ pub struct RelayServer {
 
     /// Active client connections
     clients: Arc<RwLock<HashMap<NodeId, ClientConnection>>>,
+
+    /// Room manager for lobby system
+    room_manager: Arc<RoomManager>,
 
     /// Configuration
     config: ServerConfig,
@@ -48,6 +52,7 @@ impl RelayServer {
         Ok(Self {
             endpoint,
             clients: Arc::new(RwLock::new(HashMap::new())),
+            room_manager: Arc::new(RoomManager::new()),
             config,
         })
     }
@@ -60,6 +65,7 @@ impl RelayServer {
             // Accept incoming connections
             if let Some(connecting) = self.endpoint.accept().await {
                 let clients = self.clients.clone();
+                let room_manager = self.room_manager.clone();
                 let config = self.config.clone();
 
                 tokio::spawn(async move {
@@ -69,7 +75,8 @@ impl RelayServer {
                             info!("New connection established from {}", remote_addr);
 
                             if let Err(e) =
-                                Self::handle_connection(connection, clients, config).await
+                                Self::handle_connection(connection, clients, room_manager, config)
+                                    .await
                             {
                                 error!("Connection handler error: {}", e);
                             }
@@ -87,6 +94,7 @@ impl RelayServer {
     async fn handle_connection(
         connection: quinn::Connection,
         clients: Arc<RwLock<HashMap<NodeId, ClientConnection>>>,
+        room_manager: Arc<RoomManager>,
         _config: ServerConfig,
     ) -> Result<()> {
         // Perform handshake to get NodeId
@@ -117,7 +125,7 @@ impl RelayServer {
             match client.receive_events().await {
                 Ok(events) if !events.is_empty() => {
                     for event in events {
-                        Self::relay_event(node_id, event, &clients).await;
+                        Self::relay_event(node_id, event, &clients, &room_manager).await;
                     }
                 }
                 Ok(_) => {
@@ -137,7 +145,8 @@ impl RelayServer {
             }
         }
 
-        // Remove client
+        // Remove client and cleanup room
+        room_manager.handle_disconnect(node_id).await;
         clients.write().await.remove(&node_id);
         let total_clients = clients.read().await.len();
         info!(
@@ -168,22 +177,43 @@ impl RelayServer {
         Ok(node_id)
     }
 
-    /// Relay an event to all other clients
+    /// Relay an event to all other clients (room-aware)
     async fn relay_event(
         from: NodeId,
         event: RawNetworkEvent,
         clients: &Arc<RwLock<HashMap<NodeId, ClientConnection>>>,
+        room_manager: &Arc<RoomManager>,
     ) {
         let clients_guard = clients.read().await;
 
         let target_clients: Vec<_> = match event.scope {
             issun::network::NetworkScope::Broadcast => {
-                // Send to all clients except sender
-                clients_guard
-                    .iter()
-                    .filter(|(id, _)| **id != from)
-                    .map(|(id, _)| *id)
-                    .collect()
+                // Check if sender is in a room
+                if let Some(_room_id) = room_manager.get_client_room(from).await {
+                    // Room-scoped broadcast: send to all clients in the same room except sender
+                    debug!("Room-scoped broadcast from {:?}", from);
+                    room_manager
+                        .get_room_clients(from)
+                        .await
+                        .into_iter()
+                        .filter(|id| *id != from)
+                        .collect()
+                } else {
+                    // Global broadcast: send to all clients except sender (not in any room)
+                    debug!("Global broadcast from {:?}", from);
+                    clients_guard
+                        .iter()
+                        .filter(|(id, _)| {
+                            **id != from
+                                && tokio::task::block_in_place(|| {
+                                    tokio::runtime::Handle::current().block_on(async {
+                                        room_manager.get_client_room(**id).await.is_none()
+                                    })
+                                })
+                        })
+                        .map(|(id, _)| *id)
+                        .collect()
+                }
             }
             issun::network::NetworkScope::Targeted(target) => {
                 // Send to specific client

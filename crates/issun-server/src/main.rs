@@ -5,6 +5,7 @@
 mod config;
 mod connection;
 mod relay;
+mod room;
 
 use config::ServerConfig;
 use relay::RelayServer;
