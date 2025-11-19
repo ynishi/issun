@@ -2,11 +2,13 @@
 
 use crate::config::ServerConfig;
 use crate::connection::ClientConnection;
+use crate::metrics::SharedMetrics;
 use crate::room::RoomManager;
 use anyhow::Result;
 use issun::network::{backend::RawNetworkEvent, NodeId};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
@@ -21,13 +23,16 @@ pub struct RelayServer {
     /// Room manager for lobby system
     room_manager: Arc<RoomManager>,
 
+    /// Metrics collector
+    metrics: SharedMetrics,
+
     /// Configuration
     config: ServerConfig,
 }
 
 impl RelayServer {
     /// Create a new relay server
-    pub async fn new(config: ServerConfig) -> Result<Self> {
+    pub async fn new(config: ServerConfig, metrics: SharedMetrics) -> Result<Self> {
         info!("Initializing relay server on {}", config.bind_addr);
 
         // Load TLS certificates
@@ -53,6 +58,7 @@ impl RelayServer {
             endpoint,
             clients: Arc::new(RwLock::new(HashMap::new())),
             room_manager: Arc::new(RoomManager::new()),
+            metrics,
             config,
         })
     }
@@ -66,6 +72,7 @@ impl RelayServer {
             if let Some(connecting) = self.endpoint.accept().await {
                 let clients = self.clients.clone();
                 let room_manager = self.room_manager.clone();
+                let metrics = self.metrics.clone();
                 let config = self.config.clone();
 
                 tokio::spawn(async move {
@@ -74,9 +81,14 @@ impl RelayServer {
                             let remote_addr = connection.remote_address();
                             info!("New connection established from {}", remote_addr);
 
-                            if let Err(e) =
-                                Self::handle_connection(connection, clients, room_manager, config)
-                                    .await
+                            if let Err(e) = Self::handle_connection(
+                                connection,
+                                clients,
+                                room_manager,
+                                metrics,
+                                config,
+                            )
+                            .await
                             {
                                 error!("Connection handler error: {}", e);
                             }
@@ -95,8 +107,10 @@ impl RelayServer {
         connection: quinn::Connection,
         clients: Arc<RwLock<HashMap<NodeId, ClientConnection>>>,
         room_manager: Arc<RoomManager>,
+        metrics: SharedMetrics,
         _config: ServerConfig,
     ) -> Result<()> {
+        let connection_start = Instant::now();
         // Perform handshake to get NodeId
         let node_id = Self::handshake(&connection).await?;
 
@@ -114,6 +128,8 @@ impl RelayServer {
             clients_guard.insert(node_id, ClientConnection::new(node_id, connection));
         }
 
+        // Update metrics
+        metrics.increment_connected_clients();
         let total_clients = clients.read().await.len();
         info!(
             "Client connected: {:?}, total clients: {}",
@@ -125,7 +141,7 @@ impl RelayServer {
             match client.receive_events().await {
                 Ok(events) if !events.is_empty() => {
                     for event in events {
-                        Self::relay_event(node_id, event, &clients, &room_manager).await;
+                        Self::relay_event(node_id, event, &clients, &room_manager, &metrics).await;
                     }
                 }
                 Ok(_) => {
@@ -148,10 +164,16 @@ impl RelayServer {
         // Remove client and cleanup room
         room_manager.handle_disconnect(node_id).await;
         clients.write().await.remove(&node_id);
+
+        // Update metrics
+        metrics.decrement_connected_clients();
+        let connection_duration = connection_start.elapsed().as_secs_f64();
+        metrics.record_connection_duration("completed", connection_duration);
+
         let total_clients = clients.read().await.len();
         info!(
-            "Client disconnected: {:?}, total clients: {}",
-            node_id, total_clients
+            "Client disconnected: {:?}, total clients: {}, duration: {:.2}s",
+            node_id, total_clients, connection_duration
         );
 
         Ok(())
@@ -183,7 +205,9 @@ impl RelayServer {
         event: RawNetworkEvent,
         clients: &Arc<RwLock<HashMap<NodeId, ClientConnection>>>,
         room_manager: &Arc<RoomManager>,
+        metrics: &SharedMetrics,
     ) {
+        let relay_start = Instant::now();
         let clients_guard = clients.read().await;
 
         let target_clients: Vec<_> = match event.scope {
@@ -231,6 +255,14 @@ impl RelayServer {
 
         drop(clients_guard);
 
+        // Record metrics
+        let scope_str = match event.scope {
+            issun::network::NetworkScope::Broadcast => "broadcast",
+            issun::network::NetworkScope::Targeted(_) => "targeted",
+            issun::network::NetworkScope::ToServer => "to_server",
+        };
+        metrics.record_event_relayed(scope_str);
+
         // Send to target clients
         for target_id in target_clients {
             let clients_guard = clients.read().await;
@@ -243,6 +275,10 @@ impl RelayServer {
                 }
             }
         }
+
+        // Record relay latency
+        let relay_duration_micros = relay_start.elapsed().as_micros() as f64;
+        metrics.record_relay_latency(scope_str, relay_duration_micros);
     }
 
     /// Load TLS certificates from files

@@ -4,11 +4,15 @@
 
 mod config;
 mod connection;
+mod http_server;
+mod metrics;
 mod relay;
 mod room;
 
 use config::ServerConfig;
+use metrics::Metrics;
 use relay::RelayServer;
+use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -30,8 +34,23 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Configuration loaded: {:?}", config);
 
+    // Initialize metrics
+    let metrics = Arc::new(Metrics::new()?);
+    info!("Metrics initialized");
+
+    // Start HTTP server for metrics endpoint
+    let metrics_addr = format!("0.0.0.0:{}", config.metrics_port)
+        .parse()
+        .expect("Invalid metrics address");
+    let metrics_clone = metrics.clone();
+    tokio::spawn(async move {
+        if let Err(e) = http_server::start_http_server(metrics_addr, metrics_clone).await {
+            tracing::error!("HTTP server error: {}", e);
+        }
+    });
+
     // Create and run server
-    let mut server = RelayServer::new(config).await?;
+    let mut server = RelayServer::new(config, metrics).await?;
     server.run().await?;
 
     Ok(())

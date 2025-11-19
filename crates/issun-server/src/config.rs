@@ -19,6 +19,9 @@ pub struct ServerConfig {
 
     /// Heartbeat interval in seconds
     pub heartbeat_interval: u64,
+
+    /// Metrics HTTP server port
+    pub metrics_port: u16,
 }
 
 impl Default for ServerConfig {
@@ -29,6 +32,7 @@ impl Default for ServerConfig {
             key_path: PathBuf::from("certs/key.pem"),
             max_clients: 1000,
             heartbeat_interval: 5,
+            metrics_port: 9090,
         }
     }
 }
@@ -58,12 +62,17 @@ impl ServerConfig {
             .unwrap_or_else(|_| "5".to_string())
             .parse()?;
 
+        let metrics_port = std::env::var("ISSUN_METRICS_PORT")
+            .unwrap_or_else(|_| "9090".to_string())
+            .parse()?;
+
         Ok(Self {
             bind_addr,
             cert_path,
             key_path,
             max_clients,
             heartbeat_interval,
+            metrics_port,
         })
     }
 }
