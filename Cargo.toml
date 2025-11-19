@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "crates/issun",
-    "crates/issun-macros",
+    "crates/issun-macros", "crates/issun-server",
 ]
 resolver = "2"
 
@@ -37,6 +37,7 @@ async-trait = "0.1"
 # Networking
 quinn = "0.11"
 rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2.0"
 
 # Proc macros
 syn = { version = "2.0", features = ["full"] }
