@@ -32,6 +32,11 @@ pub enum IssunError {
     /// Asset loading error
     #[error("Asset loading error: {0}")]
     AssetLoad(String),
+
+    /// Network error
+    #[cfg(feature = "network")]
+    #[error("Network error: {0}")]
+    NetworkError(String),
 }
 
 /// ISSUN result type

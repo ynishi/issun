@@ -1,7 +1,7 @@
 use issun::context::ResourceContext;
 use issun::event::{Event, EventBus};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 struct PlayerDamaged {
     amount: u32,
 }

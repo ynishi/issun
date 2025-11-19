@@ -13,4 +13,4 @@ pub mod backend;
 pub use types::{NetworkMetadata, NetworkScope, NetworkedEvent, NodeId};
 
 #[cfg(feature = "network")]
-pub use backend::NetworkBackend;
+pub use backend::{NetworkBackend, QuicClientBackend};

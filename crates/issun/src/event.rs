@@ -42,7 +42,9 @@ pub struct EventBus {
 struct NetworkState {
     backend: std::sync::Arc<dyn crate::network::NetworkBackend>,
     tx: tokio::sync::mpsc::Sender<NetworkTask>,
-    rx: std::sync::Arc<std::sync::Mutex<tokio::sync::mpsc::Receiver<crate::network::backend::RawNetworkEvent>>>,
+    rx: std::sync::Arc<
+        std::sync::Mutex<tokio::sync::mpsc::Receiver<crate::network::backend::RawNetworkEvent>>,
+    >,
     sequence: std::sync::atomic::AtomicU64,
     current_metadata: Option<NetworkMetadata>,
     deserializers: HashMap<String, Box<dyn EventDeserializer>>,

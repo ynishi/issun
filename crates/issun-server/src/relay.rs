@@ -35,9 +35,8 @@ impl RelayServer {
         // Set transport parameters
         let mut transport_config = quinn::TransportConfig::default();
         transport_config.max_concurrent_uni_streams(100_u32.into());
-        transport_config.max_idle_timeout(Some(
-            std::time::Duration::from_secs(60).try_into().unwrap(),
-        ));
+        transport_config
+            .max_idle_timeout(Some(std::time::Duration::from_secs(60).try_into().unwrap()));
 
         server_config.transport_config(Arc::new(transport_config));
 
@@ -69,7 +68,8 @@ impl RelayServer {
                             let remote_addr = connection.remote_address();
                             info!("New connection established from {}", remote_addr);
 
-                            if let Err(e) = Self::handle_connection(connection, clients, config).await
+                            if let Err(e) =
+                                Self::handle_connection(connection, clients, config).await
                             {
                                 error!("Connection handler error: {}", e);
                             }
@@ -107,7 +107,10 @@ impl RelayServer {
         }
 
         let total_clients = clients.read().await.len();
-        info!("Client connected: {:?}, total clients: {}", node_id, total_clients);
+        info!(
+            "Client connected: {:?}, total clients: {}",
+            node_id, total_clients
+        );
 
         // Event loop: receive events and relay to other clients
         loop {
@@ -137,7 +140,10 @@ impl RelayServer {
         // Remove client
         clients.write().await.remove(&node_id);
         let total_clients = clients.read().await.len();
-        info!("Client disconnected: {:?}, total clients: {}", node_id, total_clients);
+        info!(
+            "Client disconnected: {:?}, total clients: {}",
+            node_id, total_clients
+        );
 
         Ok(())
     }
@@ -154,7 +160,9 @@ impl RelayServer {
 
         // Send ack
         let mut send_stream = connection.open_uni().await?;
-        send_stream.write_all(&node_id.as_u64().to_le_bytes()).await?;
+        send_stream
+            .write_all(&node_id.as_u64().to_le_bytes())
+            .await?;
         send_stream.finish()?;
 
         Ok(node_id)
@@ -198,7 +206,10 @@ impl RelayServer {
             let clients_guard = clients.read().await;
             if let Some(client) = clients_guard.get(&target_id) {
                 if let Err(e) = client.send_event(&event).await {
-                    warn!("Failed to relay event from {:?} to {:?}: {}", from, target_id, e);
+                    warn!(
+                        "Failed to relay event from {:?} to {:?}: {}",
+                        from, target_id, e
+                    );
                 }
             }
         }
@@ -207,12 +218,15 @@ impl RelayServer {
     /// Load TLS certificates from files
     fn load_certificates(
         config: &ServerConfig,
-    ) -> Result<(Vec<rustls::pki_types::CertificateDer<'static>>, rustls::pki_types::PrivateKeyDer<'static>)> {
+    ) -> Result<(
+        Vec<rustls::pki_types::CertificateDer<'static>>,
+        rustls::pki_types::PrivateKeyDer<'static>,
+    )> {
         let cert_data = std::fs::read(&config.cert_path)?;
         let key_data = std::fs::read(&config.key_path)?;
 
-        let cert_chain = rustls_pemfile::certs(&mut cert_data.as_slice())
-            .collect::<Result<Vec<_>, _>>()?;
+        let cert_chain =
+            rustls_pemfile::certs(&mut cert_data.as_slice()).collect::<Result<Vec<_>, _>>()?;
 
         let key = rustls_pemfile::pkcs8_private_keys(&mut key_data.as_slice())
             .next()
