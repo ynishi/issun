@@ -31,6 +31,7 @@ pub mod economy;
 pub mod faction;
 pub mod inventory;
 pub mod loot;
+pub mod metrics;
 pub mod policy;
 pub mod reputation;
 pub mod research;
@@ -236,6 +237,42 @@ pub use research::{
     ResearchCompletedEvent,
     ResearchProgressUpdatedEvent,
     ResearchCancelledEvent,
+};
+
+pub use metrics::{
+    // Plugin
+    MetricsPlugin,
+    // Hook
+    MetricsHook,
+    NoOpMetricsHook,
+    // Types
+    MetricId,
+    MetricType,
+    MetricValue,
+    MetricDefinition,
+    AggregationType,
+    AggregatedMetric,
+    // Resource
+    MetricsRegistry,
+    MetricsConfig,
+    // Reporting
+    MetricReport,
+    MetricSnapshot,
+    // System
+    MetricsSystem,
+    // Events
+    DefineMetricRequested,
+    RecordMetricRequested,
+    CreateSnapshotRequested,
+    GenerateReportRequested,
+    RemoveMetricRequested,
+    ClearMetricsRequested,
+    MetricDefined,
+    MetricRecorded,
+    SnapshotCreated,
+    ReportGenerated,
+    MetricRemoved,
+    MetricsCleared,
 };
 
 pub use time::{
