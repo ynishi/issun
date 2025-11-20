@@ -161,7 +161,10 @@ impl EconomySystem {
         use crate::models::context::SETTLEMENT_PERIOD_DAYS;
         use crate::models::GameContext;
 
-        let (day, due) = if let Some(ctx) = resources.get::<GameContext>().await {
+        // Try issun GameClock first, fallback to GameContext
+        let (day, due) = if let Some(clock) = resources.get::<issun::plugin::GameClock>().await {
+            (clock.day, clock.day % SETTLEMENT_PERIOD_DAYS == 0)
+        } else if let Some(ctx) = resources.get::<GameContext>().await {
             (ctx.day, ctx.day % SETTLEMENT_PERIOD_DAYS == 0)
         } else {
             return;
