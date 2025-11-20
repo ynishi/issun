@@ -17,7 +17,7 @@ pub use vault::VaultPlugin;
 pub use weapon_prototype::WeaponPrototypePlugin;
 
 use self::economy::EconomySystem;
-use self::faction::FactionSystem;
+use self::faction::FactionBridgeSystem;
 use self::market_share::MarketShareSystem;
 use self::reputation::ReputationSystem;
 use self::territory::TerritorySystem;
@@ -37,7 +37,7 @@ pub async fn pump_event_systems(
     systems: &mut SystemContext,
     resources: &mut ResourceContext,
 ) {
-    if let Some(system) = systems.get_mut::<FactionSystem>() {
+    if let Some(system) = systems.get_mut::<FactionBridgeSystem>() {
         system.process_events(services, resources).await;
     }
     if let Some(system) = systems.get_mut::<EconomySystem>() {
