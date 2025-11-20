@@ -192,10 +192,10 @@ impl VaultSceneData {
                 );
                 drop(ctx);
 
-                // Sync GameClock if day advanced
+                // Sync GameTimer if day advanced
                 if day_advanced {
-                    if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
-                        clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+                    if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
+                        timer.increment_day();
                     }
                 }
                 if let Some(mut bus) = resources.get_mut::<EventBus>().await {

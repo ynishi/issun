@@ -91,7 +91,7 @@ async fn main() -> std::io::Result<()> {
 
 fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &ResourceContext) {
     let ctx_guard = resources.try_get::<GameContext>();
-    let clock_guard = resources.try_get::<issun::plugin::GameClock>();
+    let clock_guard = resources.try_get::<issun::plugin::GameTimer>();
     let ledger_guard = resources.try_get::<issun::plugin::BudgetLedger>();
     let ops_guard = resources.try_get::<FactionOpsState>();
     let econ_guard = resources.try_get::<EconomyState>();

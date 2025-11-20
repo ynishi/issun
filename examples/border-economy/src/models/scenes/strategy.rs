@@ -184,10 +184,10 @@ impl StrategySceneData {
 
         drop(ctx);
 
-        // Sync GameClock if day advanced
+        // Sync GameTimer if day advanced
         if day_advanced {
-            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
-                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
+                timer.increment_day();
             }
         }
 
@@ -255,10 +255,10 @@ impl StrategySceneData {
 
         drop(ctx);
 
-        // Sync GameClock if day advanced
+        // Sync GameTimer if day advanced
         if day_advanced {
-            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
-                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
+                timer.increment_day();
             }
         }
 
@@ -288,9 +288,9 @@ impl StrategySceneData {
             ctx.force_end_of_day("司令部が日次を終了しました");
         }
 
-        // Update issun GameClock day
-        if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
-            clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+        // Update issun GameTimer day
+        if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
+            timer.increment_day();
         }
     }
 
@@ -347,10 +347,10 @@ impl StrategySceneData {
 
         drop(ctx);
 
-        // Sync GameClock if day advanced
+        // Sync GameTimer if day advanced
         if day_advanced {
-            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
-                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
+                timer.increment_day();
             }
         }
     }
@@ -407,10 +407,10 @@ impl StrategySceneData {
 
         drop(ctx);
 
-        // Sync GameClock if day advanced
+        // Sync GameTimer if day advanced
         if day_advanced {
-            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
-                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
+                timer.increment_day();
             }
         }
     }
