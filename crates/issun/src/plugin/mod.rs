@@ -31,6 +31,7 @@ pub mod economy;
 pub mod inventory;
 pub mod loot;
 pub mod room_buff;
+pub mod territory;
 pub mod time;
 
 // Re-exports for convenience
@@ -106,6 +107,29 @@ pub use room_buff::{
     RoomBuffDatabase,
     // Plugin
     RoomBuffPlugin,
+};
+
+pub use territory::{
+    // Plugin
+    TerritoryPlugin,
+    // Hook
+    TerritoryHook,
+    DefaultTerritoryHook,
+    // Types
+    Territory,
+    TerritoryId,
+    TerritoryEffects,
+    TerritoryError,
+    ControlChanged,
+    Developed,
+    // Resource
+    TerritoryRegistry,
+    // Events
+    TerritoryControlChangeRequested,
+    TerritoryControlChangedEvent,
+    TerritoryDevelopmentRequested,
+    TerritoryDevelopedEvent,
+    TerritoryEffectsUpdatedEvent,
 };
 
 pub use time::{
