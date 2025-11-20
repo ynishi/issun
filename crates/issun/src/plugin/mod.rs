@@ -31,6 +31,7 @@ pub mod economy;
 pub mod faction;
 pub mod inventory;
 pub mod loot;
+pub mod policy;
 pub mod room_buff;
 pub mod territory;
 pub mod time;
@@ -157,6 +158,28 @@ pub use faction::{
     OperationResolveRequested,
     OperationCompletedEvent,
     OperationFailedEvent,
+};
+
+pub use policy::{
+    // Plugin
+    PolicyPlugin,
+    // Hook
+    PolicyHook,
+    DefaultPolicyHook,
+    // Types
+    Policy,
+    PolicyId,
+    AggregationStrategy,
+    PolicyError,
+    // Resource
+    PolicyRegistry,
+    PolicyConfig,
+    // Events
+    PolicyActivateRequested,
+    PolicyActivatedEvent,
+    PolicyDeactivateRequested,
+    PolicyDeactivatedEvent,
+    PolicyCycleRequested,
 };
 
 pub use time::{
