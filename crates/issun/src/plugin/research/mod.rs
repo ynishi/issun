@@ -75,6 +75,7 @@ mod events;
 mod hook;
 mod plugin;
 mod registry;
+mod service;
 mod system;
 mod types;
 
@@ -83,5 +84,6 @@ pub use events::*;
 pub use hook::{DefaultResearchHook, ResearchHook};
 pub use plugin::ResearchPlugin;
 pub use registry::{ProgressModel, ResearchConfig, ResearchRegistry};
+pub use service::ResearchService;
 pub use system::ResearchSystem;
 pub use types::{ResearchError, ResearchId, ResearchProject, ResearchResult, ResearchStatus};

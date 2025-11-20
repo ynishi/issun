@@ -175,10 +175,13 @@ impl ResearchRegistry {
 
         for project in self.projects.values_mut() {
             if project.status == ResearchStatus::InProgress {
-                project.progress += amount;
+                // Delegate to Service for pure calculation logic
+                project.progress = super::service::ResearchService::add_progress(
+                    project.progress,
+                    amount,
+                );
 
                 if project.progress >= 1.0 {
-                    project.progress = 1.0;
                     project.status = ResearchStatus::Completed;
                     completed.push(project.id.clone());
                 }
