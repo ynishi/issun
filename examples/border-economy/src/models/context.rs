@@ -159,138 +159,10 @@ impl WeaponPrototypeState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BudgetLedger {
-    pub cash: Currency,
-    pub research_pool: Currency,
-    pub ops_pool: Currency,
-    pub reserve: Currency,
-    pub innovation_fund: Currency,
-    pub security_fund: Currency,
-}
-
-impl BudgetLedger {
-    pub fn new(starting_cash: Currency) -> Self {
-        Self {
-            cash: starting_cash,
-            research_pool: Currency::new(600),
-            ops_pool: Currency::new(600),
-            reserve: Currency::new(400),
-            innovation_fund: Currency::new(0),
-            security_fund: Currency::new(0),
-        }
-    }
-
-    pub fn channel_mut(&mut self, channel: BudgetChannel) -> &mut Currency {
-        match channel {
-            BudgetChannel::Research => &mut self.research_pool,
-            BudgetChannel::Operations => &mut self.ops_pool,
-            BudgetChannel::Reserve => &mut self.reserve,
-            BudgetChannel::Innovation => &mut self.innovation_fund,
-            BudgetChannel::Security => &mut self.security_fund,
-        }
-    }
-
-    pub fn channel_ref(&self, channel: BudgetChannel) -> &Currency {
-        match channel {
-            BudgetChannel::Research => &self.research_pool,
-            BudgetChannel::Operations => &self.ops_pool,
-            BudgetChannel::Reserve => &self.reserve,
-            BudgetChannel::Innovation => &self.innovation_fund,
-            BudgetChannel::Security => &self.security_fund,
-        }
-    }
-
-    pub fn shift(&mut self, from: BudgetChannel, to: BudgetChannel, delta: Currency) -> bool {
-        if from == to {
-            return false;
-        }
-        let from_balance = *self.channel_mut(from);
-        if from_balance.amount() < delta.amount() {
-            return false;
-        }
-        *self.channel_mut(from) -= delta;
-        *self.channel_mut(to) += delta;
-        true
-    }
-
-    pub fn can_spend(&self, channel: BudgetChannel, amount: Currency) -> bool {
-        self.channel_ref(channel).amount() >= amount.amount()
-    }
-
-    pub fn try_spend(&mut self, channel: BudgetChannel, amount: Currency) -> bool {
-        let balance = self.channel_mut(channel);
-        if balance.amount() < amount.amount() {
-            return false;
-        }
-        *balance -= amount;
-        true
-    }
-
-    pub fn transfer_from_cash(&mut self, amount: Currency) -> bool {
-        if self.cash.amount() < amount.amount() {
-            return false;
-        }
-        self.cash -= amount;
-        true
-    }
-
-    pub fn direct_invest(&mut self, channel: BudgetChannel, amount: Currency) {
-        let target = self.channel_mut(channel);
-        *target += amount;
-    }
-
-    pub fn innovation_multiplier(&self) -> f32 {
-        ((self.innovation_fund.amount() as f32) / 2000.0).clamp(0.0, 0.35)
-    }
-
-    pub fn investment_income_bonus(&self) -> i64 {
-        ((self.innovation_fund.amount() as f32) * 0.05) as i64
-    }
-
-    pub fn security_upkeep_offset(&self) -> i64 {
-        ((self.security_fund.amount() as f32) * 0.08) as i64
-    }
-
-    pub fn apply_investment_decay(&mut self) -> Option<String> {
-        let mut notes = Vec::new();
-        let innovation_loss = ((self.innovation_fund.amount() as f32) * 0.08) as i64;
-        if innovation_loss > 0 {
-            let deduction = Currency::new(innovation_loss);
-            if deduction.amount() > 0 {
-                self.innovation_fund -= deduction;
-                notes.push(format!("Innovation維持費 {}", deduction));
-            }
-        }
-
-        let security_loss = ((self.security_fund.amount() as f32) * 0.05) as i64;
-        if security_loss > 0 {
-            let deduction = Currency::new(security_loss);
-            if deduction.amount() > 0 {
-                self.security_fund -= deduction;
-                notes.push(format!("Security維持費 {}", deduction));
-            }
-        }
-
-        if notes.is_empty() {
-            None
-        } else {
-            Some(notes.join(" / "))
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BudgetAllocation {
-    pub channel: BudgetChannel,
-    pub amount: Currency,
-}
-
-impl BudgetAllocation {
-    pub fn new(channel: BudgetChannel, amount: Currency) -> Self {
-        Self { channel, amount }
-    }
-}
+// NOTE: BudgetLedger and BudgetAllocation removed
+// Now using issun::plugin::BudgetLedger from ResourceContext
+// border-economy specific budget logic should be implemented as helper functions
+// or moved to EconomyPlugin
 
 #[derive(Debug, Clone, Copy)]
 pub struct SettlementResult {
@@ -594,11 +466,9 @@ impl GameContext {
         }
     }
 
-    pub fn invest_in_territory(&mut self, territory_id: &TerritoryId, amount: Currency) -> bool {
-        if self.ledger.innovation_fund.amount() < amount.amount() {
-            return false;
-        }
-        self.ledger.innovation_fund -= amount;
+    // NOTE: invest_in_territory now requires caller to manage issun::plugin::BudgetLedger
+    // Returns (success, bonus multiplier) for caller to apply investment
+    pub fn apply_territory_investment(&mut self, territory_id: &TerritoryId, amount: Currency) -> bool {
         let bonus = self.active_policy().effects.investment_bonus;
         self.record_dev_spend(amount);
         if let Some(territory) = self.territories.iter_mut().find(|t| &t.id == territory_id) {
@@ -673,12 +543,8 @@ impl GameContext {
             });
         }
 
-        if !self.ledger.try_spend(channel, amount) {
-            return Err(VaultInvestmentError::InsufficientFunds {
-                required: amount,
-                channel,
-            });
-        }
+        // NOTE: Caller must spend from issun::plugin::BudgetLedger before calling this method
+        // This method now only applies the investment to vault slot state
 
         let (before, after) = slot.apply_investment(amount);
         let activated = slot.active;
@@ -713,11 +579,65 @@ impl GameContext {
         reports
     }
 
-    pub fn apply_vault_effects(&mut self) {
+    // NOTE: apply_vault_effects and resolve_vault_outcome now require external ledger management
+    // Returns list of (operation, amount) tuples for caller to apply to issun::plugin::BudgetLedger
+    pub fn get_vault_ledger_operations(&self) -> Vec<(String, Currency)> {
+        let mut operations = Vec::new();
+        let reports = &self.last_vault_reports;
+
+        for report in reports {
+            if let Some(vault) = self.vaults.iter().find(|v| v.id == report.vault_id) {
+                // Captured vault penalty
+                if matches!(vault.status, VaultStatus::Captured { .. }) {
+                    let penalty = Currency::new((200.0 * vault.volatility).round() as i64);
+                    operations.push(("ops_penalty".into(), penalty));
+                }
+
+                // Vault outcome rewards/costs
+                if let Some(outcome) = &report.outcome {
+                    match outcome {
+                        VaultOutcome::Jackpot { credits, .. } => {
+                            operations.push(("cash_reward".into(), *credits));
+                        }
+                        VaultOutcome::Success { credits } => {
+                            operations.push(("cash_reward".into(), *credits));
+                        }
+                        VaultOutcome::Mediocre { credits, .. } => {
+                            operations.push(("cash_reward".into(), *credits));
+                        }
+                        VaultOutcome::Disaster { debt, .. } => {
+                            operations.push(("cash_penalty".into(), *debt));
+                        }
+                        VaultOutcome::Catastrophe { .. } => {}
+                    }
+                }
+
+                // Ops relief rebate
+                for slot in &vault.slots {
+                    if !slot.active {
+                        continue;
+                    }
+                    if let SlotEffect::OpsRelief { ops_cost_multiplier, .. } = slot.effect {
+                        if self.weekly_ops_spent.amount() > 0 {
+                            let rebate = (self.weekly_ops_spent.amount() as f32
+                                * (1.0 - ops_cost_multiplier))
+                                .max(0.0) as i64;
+                            if rebate > 0 {
+                                operations.push(("ops_rebate".into(), Currency::new(rebate)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        operations
+    }
+
+    pub fn apply_vault_non_ledger_effects(&mut self) {
         let reports = self.last_vault_reports.clone();
         for report in &reports {
             if let Some(index) = self.vaults.iter().position(|v| v.id == report.vault_id) {
-                let (vault_codename, status, volatility) = {
+                let (vault_codename, status, _volatility) = {
                     let vault = &self.vaults[index];
                     (
                         vault.codename.clone(),
@@ -733,12 +653,10 @@ impl GameContext {
 
                 match status {
                     VaultStatus::Captured { lockout_weeks } => {
-                        let penalty = Currency::new((200.0 * volatility).round() as i64);
-                        self.ledger.ops_pool -= penalty;
                         self.reputation.adjust(-4.0);
                         self.pending_logs.push(format!(
-                            "Vault {} を失いOps {}喪失 (再稼働まで{}週)",
-                            vault_codename, penalty, lockout_weeks
+                            "Vault {} を失いOps損失 (再稼働まで{}週)",
+                            vault_codename, lockout_weeks
                         ));
                         continue;
                     }
@@ -752,7 +670,7 @@ impl GameContext {
                 }
 
                 if let Some(outcome) = &report.outcome {
-                    self.resolve_vault_outcome(outcome);
+                    self.apply_vault_reputation_effects(outcome);
                 }
 
                 let slots = self.vaults[index].slots.clone();
@@ -778,25 +696,11 @@ impl GameContext {
                         }
                         SlotEffect::OpsRelief {
                             hostility_drop,
-                            ops_cost_multiplier,
+                            ..
                         } => {
                             for faction in &mut self.enemy_factions {
                                 faction.hostility =
                                     (faction.hostility - hostility_drop).clamp(0.1, 2.5);
-                            }
-                            // Treat multiplier as rebate percentage applied to recent Ops spend.
-                            if self.weekly_ops_spent.amount() > 0 {
-                                let rebate = (self.weekly_ops_spent.amount() as f32
-                                    * (1.0 - ops_cost_multiplier))
-                                    .max(0.0) as i64;
-                                if rebate > 0 {
-                                    let credit = Currency::new(rebate);
-                                    self.ledger.ops_pool += credit;
-                                    self.pending_logs.push(format!(
-                                        "Vault {} の防衛ラインでOpsコスト{}返還",
-                                        vault_codename, credit
-                                    ));
-                                }
                             }
                         }
                         SlotEffect::SpecialCard { ref card_id } => {
@@ -831,33 +735,26 @@ impl GameContext {
         }
     }
 
-    fn resolve_vault_outcome(&mut self, outcome: &VaultOutcome) {
+    fn apply_vault_reputation_effects(&mut self, outcome: &VaultOutcome) {
         match outcome {
-            VaultOutcome::Jackpot {
-                credits,
-                reputation,
-            } => {
-                self.ledger.cash += *credits;
+            VaultOutcome::Jackpot { credits, reputation } => {
                 self.reputation.adjust(*reputation as f32);
                 self.pending_logs
                     .push(format!("Vault投資でJACKPOT! +{}", credits));
             }
             VaultOutcome::Success { credits } => {
-                self.ledger.cash += *credits;
                 self.pending_logs.push(format!("Vault収益 +{}", credits));
             }
             VaultOutcome::Mediocre {
                 credits,
                 antiquities,
             } => {
-                self.ledger.cash += *credits;
                 self.pending_logs.push(format!(
                     "Vault調査: 収益 {} / 遺物{}点",
                     credits, antiquities
                 ));
             }
             VaultOutcome::Disaster { debt, casualties } => {
-                self.ledger.cash -= *debt;
                 self.reputation.adjust(-5.0);
                 self.pending_logs.push(format!(
                     "Vault事故で損失 {} / Casualties {}",
@@ -965,7 +862,9 @@ impl GameContext {
 
         let territory = self.territories.iter_mut().find(|t| t.id == op.territory)?;
 
-        let mitigation = (self.ledger.security_fund.amount() as f32 / 2500.0).clamp(0.0, 0.5);
+        // NOTE: Security fund mitigation now needs to be calculated externally
+        // For now, use 0.0 as default (no mitigation)
+        let mitigation = 0.0;
         let effective = (op.intensity * (1.0 - mitigation)).clamp(0.01, 0.3);
 
         territory.control = (territory.control - effective).clamp(0.0, 1.0);
@@ -1007,9 +906,8 @@ impl GameContext {
         self.day % SETTLEMENT_PERIOD_DAYS == 0
     }
 
-    pub fn forecast_income(&self) -> Currency {
-        let total = self
-            .territories
+    pub fn base_income(&self) -> i64 {
+        self.territories
             .iter()
             .map(|territory| {
                 let control = territory.control;
@@ -1017,11 +915,10 @@ impl GameContext {
                 let logistics = territory.demand.logistics_weight;
                 ((control * 650.0) + (stability * 400.0) + (logistics * 250.0)) as i64
             })
-            .sum::<i64>();
-        Currency::new(total + self.ledger.investment_income_bonus())
+            .sum::<i64>()
     }
 
-    pub fn forecast_upkeep(&self) -> Currency {
+    pub fn base_upkeep(&self) -> i64 {
         let faction_cost = (self.factions.len() as i64) * 120;
         let prototype_cost = (self.prototypes.len() as i64) * 80;
         let security = self
@@ -1029,73 +926,29 @@ impl GameContext {
             .iter()
             .map(|t| ((t.unrest + 0.1) * 90.0) as i64)
             .sum::<i64>();
-        let base = faction_cost + prototype_cost + security;
-        let reduction = self.ledger.security_upkeep_offset();
-        Currency::new((base - reduction).max(0))
+        faction_cost + prototype_cost + security
     }
 
-    pub fn apply_settlement(&mut self, income: Currency, upkeep: Currency) -> SettlementResult {
-        self.ledger.cash += income;
-        self.ledger.cash -= upkeep;
-        let net_amount = income.amount() - upkeep.amount();
-        let mut reserve_bonus = Currency::new(0);
-        let mut innovation_allocation = Currency::new(0);
-        let mut security_allocation = Currency::new(0);
+    // NOTE: apply_settlement moved to EconomyPlugin.run_settlement()
+    // It now operates directly on issun::plugin::BudgetLedger
 
-        if net_amount > 0 {
-            reserve_bonus = Currency::new((net_amount as f32 * 0.25) as i64);
-            if reserve_bonus.amount() > 0 {
-                self.ledger.reserve += reserve_bonus;
-            }
-
-            let invest_total = Currency::new((net_amount as f32 * 0.3) as i64);
-            if invest_total.amount() > 0 {
-                innovation_allocation = Currency::new((invest_total.amount() as f32 * 0.6) as i64);
-                security_allocation = Currency::new(invest_total.amount() - innovation_allocation.amount());
-                if innovation_allocation.amount() > 0 {
-                    self.ledger.innovation_fund += innovation_allocation;
-                }
-                if security_allocation.amount() > 0 {
-                    self.ledger.security_fund += security_allocation;
-                }
-            }
-        }
-
-        let net = Currency::new(net_amount);
-        self.record(format!(
-            "決算処理 収益{} - コスト{} → 純益{}",
-            income, upkeep, net
-        ));
-        if innovation_allocation.amount() > 0 || security_allocation.amount() > 0 {
-            self.record(format!(
-                "自動投資: Innovation {} / Security {}",
-                innovation_allocation, security_allocation
-            ));
-        }
-        if let Some(note) = self.ledger.apply_investment_decay() {
-            self.record(note);
-        }
-        let ops_spent = self.weekly_ops_spent;
-        let rnd_spent = self.weekly_rnd_spent;
-        let dev_spent = self.weekly_dev_spent;
+    pub fn reset_weekly_spending(&mut self) -> (Currency, Currency, Currency) {
+        let ops = self.weekly_ops_spent;
+        let rnd = self.weekly_rnd_spent;
+        let dev = self.weekly_dev_spent;
         self.weekly_ops_spent = Currency::ZERO;
         self.weekly_rnd_spent = Currency::ZERO;
         self.weekly_dev_spent = Currency::ZERO;
-
-        SettlementResult {
-            net,
-            reserve_bonus,
-            innovation_allocation,
-            security_allocation,
-            ops_spent,
-            rnd_spent,
-            dev_spent,
-        }
+        (ops, rnd, dev)
     }
 
-    pub fn queue_research(&mut self, id: &WeaponPrototypeId, delta: f32) {
+    pub fn get_policy_dividend_multiplier(&self) -> f32 {
+        self.active_policy().effects.dividend_multiplier
+    }
+
+    pub fn queue_research(&mut self, id: &WeaponPrototypeId, delta: f32, innovation_multiplier: f32) {
         if let Some(proto) = self.prototypes.iter_mut().find(|p| &p.id == id) {
-            let multiplier = 1.0 + self.ledger.innovation_multiplier();
+            let multiplier = 1.0 + innovation_multiplier;
             proto.progress = (proto.progress + delta * multiplier).min(1.0);
             proto.quality = (proto.quality + delta * 0.5 * multiplier).min(1.0);
         }
