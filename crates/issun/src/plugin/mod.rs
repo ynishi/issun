@@ -24,6 +24,7 @@
 use async_trait::async_trait;
 
 // Built-in plugins
+pub mod action;
 pub mod combat;
 pub mod dungeon;
 pub mod economy;
@@ -33,6 +34,11 @@ pub mod room_buff;
 pub mod time;
 
 // Re-exports for convenience
+pub use action::{
+    // Types
+    ActionPoints,
+};
+
 pub use combat::{
     CombatLogEntry,
     CombatResult,
@@ -105,6 +111,7 @@ pub use time::{
     BuiltInTimePlugin,
     DayPassedEvent,
     GameClock,
+    GameTimer,
     TimeConfig,
 };
 

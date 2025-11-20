@@ -62,4 +62,4 @@ mod resources;
 pub use config::TimeConfig;
 pub use events::{ActionConsumedEvent, DayPassedEvent};
 pub use plugin::BuiltInTimePlugin;
-pub use resources::GameClock;
+pub use resources::{GameClock, GameTimer};

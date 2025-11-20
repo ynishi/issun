@@ -1,80 +1,106 @@
-//! Time-related resources for game clock management
+//! Time-related resources for game timer management
 
 use serde::{Deserialize, Serialize};
 
-/// Game clock resource tracking in-game time progression
+// Re-export old GameClock temporarily for backwards compatibility during migration
+#[deprecated(since = "0.2.0", note = "Use GameTimer and ActionPoints separately")]
+pub type GameClock = GameTimer;
+
+/// Game timer resource for tracking in-game time progression
 ///
-/// This resource holds the current day and remaining actions for turn-based games.
-/// It should be mutated by systems that advance time (e.g., when player completes a turn).
+/// This resource provides pure time management without action point coupling.
+/// It tracks days and ticks independently of game mechanics.
 ///
 /// # Example
 ///
-/// ```ignore
-/// use issun::plugin::time::GameClock;
+/// ```
+/// use issun::plugin::GameTimer;
 ///
-/// let clock = GameClock::new();
-/// assert_eq!(clock.day, 1);
-/// assert_eq!(clock.actions_remaining, 3);
+/// let mut timer = GameTimer::new();
+/// assert_eq!(timer.day, 1);
+/// assert_eq!(timer.tick, 0);
+///
+/// let new_day = timer.increment_day();
+/// assert_eq!(new_day, 2);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GameClock {
+pub struct GameTimer {
     /// Current in-game day (starts at 1)
     pub day: u32,
-    /// Remaining action points for the current day
-    pub actions_remaining: u32,
+    /// Frame/tick counter for sub-day timing
+    pub tick: u64,
 }
 
-impl GameClock {
-    /// Create a new game clock starting at day 1
+impl GameTimer {
+    /// Create a new game timer starting at day 1
     ///
-    /// # Arguments
+    /// # Example
     ///
-    /// * `actions_per_day` - Number of action points available per day
-    pub fn new(actions_per_day: u32) -> Self {
-        Self {
-            day: 1,
-            actions_remaining: actions_per_day,
-        }
+    /// ```
+    /// use issun::plugin::GameTimer;
+    ///
+    /// let timer = GameTimer::new();
+    /// assert_eq!(timer.day, 1);
+    /// assert_eq!(timer.tick, 0);
+    /// ```
+    pub fn new() -> Self {
+        Self { day: 1, tick: 0 }
     }
 
-    /// Advance to the next day and reset action points
-    ///
-    /// # Arguments
-    ///
-    /// * `actions_per_day` - Number of action points to reset to
+    /// Increment day counter
     ///
     /// # Returns
     ///
     /// The new day number
-    pub fn advance_day(&mut self, actions_per_day: u32) -> u32 {
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use issun::plugin::GameTimer;
+    ///
+    /// let mut timer = GameTimer::new();
+    /// let new_day = timer.increment_day();
+    /// assert_eq!(new_day, 2);
+    /// assert_eq!(timer.day, 2);
+    /// ```
+    pub fn increment_day(&mut self) -> u32 {
         self.day += 1;
-        self.actions_remaining = actions_per_day;
         self.day
     }
 
-    /// Consume one action point
+    /// Increment tick counter (for realtime/sub-day timing)
     ///
-    /// # Returns
+    /// # Example
     ///
-    /// `true` if an action was consumed, `false` if no actions remain
-    pub fn consume_action(&mut self) -> bool {
-        if self.actions_remaining > 0 {
-            self.actions_remaining -= 1;
-            true
-        } else {
-            false
-        }
+    /// ```
+    /// use issun::plugin::GameTimer;
+    ///
+    /// let mut timer = GameTimer::new();
+    /// timer.tick();
+    /// assert_eq!(timer.tick, 1);
+    /// ```
+    pub fn tick(&mut self) {
+        self.tick += 1;
     }
 
-    /// Check if any actions remain for the current day
-    pub fn has_actions_remaining(&self) -> bool {
-        self.actions_remaining > 0
+    /// Get current day
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use issun::plugin::GameTimer;
+    ///
+    /// let timer = GameTimer::new();
+    /// assert_eq!(timer.current_day(), 1);
+    /// ```
+    pub fn current_day(&self) -> u32 {
+        self.day
     }
 }
 
-impl Default for GameClock {
+impl Default for GameTimer {
     fn default() -> Self {
-        Self::new(3)
+        Self::new()
     }
 }
 
@@ -83,49 +109,66 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_clock() {
-        let clock = GameClock::new(5);
-        assert_eq!(clock.day, 1);
-        assert_eq!(clock.actions_remaining, 5);
+    fn test_new_timer() {
+        let timer = GameTimer::new();
+        assert_eq!(timer.day, 1);
+        assert_eq!(timer.tick, 0);
     }
 
     #[test]
-    fn test_advance_day() {
-        let mut clock = GameClock::new(3);
-        clock.actions_remaining = 0;
+    fn test_increment_day() {
+        let mut timer = GameTimer::new();
 
-        let new_day = clock.advance_day(3);
+        let new_day = timer.increment_day();
         assert_eq!(new_day, 2);
-        assert_eq!(clock.day, 2);
-        assert_eq!(clock.actions_remaining, 3);
+        assert_eq!(timer.day, 2);
+
+        timer.increment_day();
+        assert_eq!(timer.day, 3);
     }
 
     #[test]
-    fn test_consume_action() {
-        let mut clock = GameClock::new(2);
-        assert!(clock.consume_action());
-        assert_eq!(clock.actions_remaining, 1);
+    fn test_tick() {
+        let mut timer = GameTimer::new();
 
-        assert!(clock.consume_action());
-        assert_eq!(clock.actions_remaining, 0);
+        timer.tick();
+        assert_eq!(timer.tick, 1);
 
-        assert!(!clock.consume_action());
-        assert_eq!(clock.actions_remaining, 0);
+        timer.tick();
+        timer.tick();
+        assert_eq!(timer.tick, 3);
     }
 
     #[test]
-    fn test_has_actions_remaining() {
-        let mut clock = GameClock::new(1);
-        assert!(clock.has_actions_remaining());
+    fn test_current_day() {
+        let timer = GameTimer::new();
+        assert_eq!(timer.current_day(), 1);
 
-        clock.consume_action();
-        assert!(!clock.has_actions_remaining());
+        let mut timer = GameTimer::new();
+        timer.increment_day();
+        assert_eq!(timer.current_day(), 2);
     }
 
     #[test]
     fn test_default() {
-        let clock = GameClock::default();
-        assert_eq!(clock.day, 1);
-        assert_eq!(clock.actions_remaining, 3);
+        let timer = GameTimer::default();
+        assert_eq!(timer.day, 1);
+        assert_eq!(timer.tick, 0);
+    }
+
+    #[test]
+    fn test_independent_day_and_tick() {
+        let mut timer = GameTimer::new();
+
+        // Tick doesn't affect day
+        timer.tick();
+        timer.tick();
+        assert_eq!(timer.day, 1);
+        assert_eq!(timer.tick, 2);
+
+        // Day doesn't reset tick
+        timer.increment_day();
+        assert_eq!(timer.day, 2);
+        assert_eq!(timer.tick, 2);
     }
 }
