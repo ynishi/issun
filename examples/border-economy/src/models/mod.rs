@@ -6,7 +6,7 @@ pub mod ids;
 pub mod scenes;
 pub mod vault;
 
-pub use context::{GameContext, WeaponPrototypeState};
+pub use context::{GameContext, WeaponPrototypeState, DAILY_ACTION_POINTS};
 pub use game_scene::{handle_scene_input, GameScene};
 pub use ids::{BudgetChannel, Currency, DemandProfile, FactionId, TerritoryId, WeaponPrototypeId};
 pub use vault::{SlotEffect, SlotType, VaultInvestmentError, VaultOutcome, VaultStatus};

@@ -193,7 +193,6 @@ pub struct GameContext {
     pub enemy_factions: Vec<EnemyFaction>,
     pub reputation: ReputationStanding,
     pub recent_log: Vec<String>,
-    pub actions_remaining: u32,
     pub last_enemy_action: Option<String>,
     pub pending_logs: Vec<String>,
     pub enemy_operations: Vec<EnemyOperation>,
@@ -287,7 +286,6 @@ impl GameContext {
             ],
             reputation: ReputationStanding::default(),
             recent_log: vec!["起業家評議会: 初期投資を受領".into()],
-            actions_remaining: DAILY_ACTION_POINTS,
             last_enemy_action: None,
             pending_logs: Vec::new(),
             enemy_operations: Vec::new(),
@@ -410,7 +408,6 @@ impl GameContext {
     pub fn increment_day(&mut self) {
         self.flush_pending_logs();
         self.day += 1;
-        self.actions_remaining = DAILY_ACTION_POINTS;
         for faction in &mut self.factions {
             faction.deployed = false;
             faction.readiness = (faction.readiness + 4).min(100);
@@ -426,34 +423,10 @@ impl GameContext {
         self.tick_development();
     }
 
-    pub fn consume_action(&mut self, context: &str) -> bool {
-        if self.actions_remaining == 0 {
-            self.record("行動ポイントが残っていません。自動的に翌日に進みます。");
-            self.increment_day();
-            return true;
-        }
-
-        self.actions_remaining -= 1;
-        if self.actions_remaining == 0 {
-            self.record(format!(
-                "{}を実施し、日次行動をすべて消費しました。",
-                context
-            ));
-            self.increment_day();
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn force_end_of_day(&mut self, reason: impl Into<String>) {
         self.record(reason);
         self.flush_pending_logs();
         self.increment_day();
-    }
-
-    pub fn action_status(&self) -> (u32, u32) {
-        (self.actions_remaining, DAILY_ACTION_POINTS)
     }
 
     // NOTE: process_dividend_event moved to economy.rs plugin

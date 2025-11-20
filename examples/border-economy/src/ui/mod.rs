@@ -50,6 +50,7 @@ pub fn render_strategy(
     ops: Option<&FactionOpsState>,
     territory: Option<&TerritoryStateCache>,
     reputation: Option<&ReputationLedger>,
+    points: Option<&issun::plugin::ActionPoints>,
     data: &StrategySceneData,
 ) {
     let chunks = Layout::default()
@@ -93,14 +94,13 @@ pub fn render_strategy(
     let inner = command_block.inner(chunks[0]);
     frame.render_widget(List::new(list_items), inner);
 
-    render_hq_feed(frame, chunks[1], ctx, clock, ledger, ops, territory, reputation);
+    render_hq_feed(frame, chunks[1], ctx, clock, ledger, ops, territory, reputation, points);
 
     let mut status_lines = vec![Line::from(data.status_line.clone())];
-    if let Some(ctx) = ctx {
-        let (remaining, total) = ctx.action_status();
+    if let Some(points) = points {
         status_lines.push(Line::from(format!(
             "Actions remaining: {}/{}",
-            remaining, total
+            points.available, points.max_per_period
         )));
     }
     status_lines.push(Line::from("Enter: select   Esc: Title"));
@@ -125,6 +125,7 @@ fn render_hq_feed(
     ops: Option<&FactionOpsState>,
     territory: Option<&TerritoryStateCache>,
     reputation: Option<&ReputationLedger>,
+    points: Option<&issun::plugin::ActionPoints>,
 ) {
     let block = Block::default().title("HQ Feed").borders(Borders::ALL);
     frame.render_widget(block.clone(), area);
@@ -132,8 +133,10 @@ fn render_hq_feed(
     let mut lines = Vec::new();
 
     if let Some(ctx) = ctx {
-        let (remaining, total) = ctx.action_status();
         let day_text = clock.map(|c| c.day).unwrap_or(ctx.day);
+        let (remaining, total) = points
+            .map(|p| (p.available, p.max_per_period))
+            .unwrap_or((0, 0));
         lines.push(Line::from(vec![Span::styled(
             format!("Day {} | AP {}/{}", day_text, remaining, total),
             Style::default().fg(Color::Yellow),

@@ -4,6 +4,7 @@ use crate::models::{
 };
 use issun::auto_pump;
 use issun::event::EventBus;
+use issun::plugin::action::{ActionConsumedEvent, ActionPoints};
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -185,17 +186,22 @@ impl VaultSceneData {
 
         match ctx.invest_in_vault_slot(&vault_id, &slot_id, amount, channel) {
             Ok(result) => {
-                let day_advanced = ctx.consume_action("Vault投資");
                 self.status_line = format!(
                     "{} へ {} 投資 (₡{}→₡{})",
                     result.slot_id, amount.amount(), result.before.amount(), result.after.amount()
                 );
                 drop(ctx);
 
-                // Sync GameTimer if day advanced
-                if day_advanced {
-                    if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
-                        timer.increment_day();
+                // Consume action using ActionPlugin
+                if let Some(mut points) = resources.get_mut::<ActionPoints>().await {
+                    if let Ok(consumed) = points.consume_with("Vault投資") {
+                        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                            bus.publish(ActionConsumedEvent {
+                                context: consumed.context,
+                                remaining: consumed.remaining,
+                                depleted: consumed.depleted,
+                            });
+                        }
                     }
                 }
                 if let Some(mut bus) = resources.get_mut::<EventBus>().await {

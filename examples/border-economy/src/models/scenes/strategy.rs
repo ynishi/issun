@@ -7,6 +7,7 @@ use crate::models::{DemandProfile, GameContext, GameScene, WeaponPrototypeState}
 use crate::plugins::EconomyState;
 use issun::auto_pump;
 use issun::event::EventBus;
+use issun::plugin::action::{ActionConsumedEvent, ActionError, ActionPoints};
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -180,14 +181,25 @@ impl StrategySceneData {
             faction.codename,
             territory.id.as_str()
         ));
-        let day_advanced = ctx.consume_action("作戦展開");
 
         drop(ctx);
 
-        // Sync GameTimer if day advanced
-        if day_advanced {
-            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
-                timer.increment_day();
+        // Consume action using ActionPlugin
+        if let Some(mut points) = resources.get_mut::<ActionPoints>().await {
+            match points.consume_with("作戦展開") {
+                Ok(consumed) => {
+                    // Publish ActionConsumedEvent for systems to react
+                    if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                        bus.publish(ActionConsumedEvent {
+                            context: consumed.context,
+                            remaining: consumed.remaining,
+                            depleted: consumed.depleted,
+                        });
+                    }
+                }
+                Err(ActionError::Depleted) => {
+                    // No actions remaining, should not happen here
+                }
             }
         }
 
@@ -245,7 +257,6 @@ impl StrategySceneData {
         ctx.record_rnd_spend(budget);
         ctx.queue_research(&proto_id, 0.08, innovation_multiplier);
         ctx.record(format!("{} へR&D投資", proto_codename));
-        let day_advanced = ctx.consume_action("R&D投資");
         let demand = ctx
             .territories
             .iter()
@@ -255,10 +266,16 @@ impl StrategySceneData {
 
         drop(ctx);
 
-        // Sync GameTimer if day advanced
-        if day_advanced {
-            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
-                timer.increment_day();
+        // Consume action using ActionPlugin
+        if let Some(mut points) = resources.get_mut::<ActionPoints>().await {
+            if let Ok(consumed) = points.consume_with("R&D投資") {
+                if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                    bus.publish(ActionConsumedEvent {
+                        context: consumed.context,
+                        remaining: consumed.remaining,
+                        depleted: consumed.depleted,
+                    });
+                }
             }
         }
 
@@ -342,15 +359,20 @@ impl StrategySceneData {
         }
 
         ctx.record(format!("{} に防衛部隊を派遣 (Ops {})", front_name, cost));
-        let day_advanced = ctx.consume_action("防衛強化");
         self.status_line = format!("{} を要塞化", front_name);
 
         drop(ctx);
 
-        // Sync GameTimer if day advanced
-        if day_advanced {
-            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
-                timer.increment_day();
+        // Consume action using ActionPlugin
+        if let Some(mut points) = resources.get_mut::<ActionPoints>().await {
+            if let Ok(consumed) = points.consume_with("防衛強化") {
+                if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                    bus.publish(ActionConsumedEvent {
+                        context: consumed.context,
+                        remaining: consumed.remaining,
+                        depleted: consumed.depleted,
+                    });
+                }
             }
         }
     }
@@ -402,15 +424,20 @@ impl StrategySceneData {
             return;
         }
 
-        let day_advanced = ctx.consume_action("開拓投資");
         self.status_line = format!("{} に基盤投資 ({} )", territory_id.as_str(), amount);
 
         drop(ctx);
 
-        // Sync GameTimer if day advanced
-        if day_advanced {
-            if let Some(mut timer) = resources.get_mut::<issun::plugin::GameTimer>().await {
-                timer.increment_day();
+        // Consume action using ActionPlugin
+        if let Some(mut points) = resources.get_mut::<ActionPoints>().await {
+            if let Ok(consumed) = points.consume_with("開拓投資") {
+                if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                    bus.publish(ActionConsumedEvent {
+                        context: consumed.context,
+                        remaining: consumed.remaining,
+                        depleted: consumed.depleted,
+                    });
+                }
             }
         }
     }

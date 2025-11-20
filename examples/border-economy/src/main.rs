@@ -4,14 +4,17 @@
 //! tactical ops, and revenue management using ISSUN plugins.
 
 mod events;
+mod hooks;
 mod models;
 mod plugins;
 pub mod ui;
 
+use hooks::GameLogHook;
 use issun::engine::GameRunner;
 use issun::event::EventBus;
+use issun::plugin::action::{ActionConfig, ActionPlugin};
 use issun::prelude::*;
-use models::{handle_scene_input, GameContext, GameScene};
+use models::{handle_scene_input, GameContext, GameScene, DAILY_ACTION_POINTS};
 use plugins::{
     EconomyState, FactionOpsState, MarketPulse, PrototypeBacklog, ReputationLedger,
     TerritoryStateCache, VaultState,
@@ -27,6 +30,13 @@ async fn main() -> std::io::Result<()> {
     let builder = GameBuilder::new()
         // New issun built-in plugins (parallel demonstration)
         .with_plugin(issun::plugin::BuiltInTimePlugin::default())
+        .map_err(as_io)?
+        .with_plugin(
+            ActionPlugin::new(ActionConfig {
+                max_per_period: DAILY_ACTION_POINTS,
+            })
+            .with_hook(GameLogHook),
+        )
         .map_err(as_io)?
         .with_plugin(issun::plugin::BuiltInEconomyPlugin::default())
         .map_err(as_io)?
@@ -93,6 +103,7 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let ctx_guard = resources.try_get::<GameContext>();
     let clock_guard = resources.try_get::<issun::plugin::GameTimer>();
     let ledger_guard = resources.try_get::<issun::plugin::BudgetLedger>();
+    let points_guard = resources.try_get::<issun::plugin::ActionPoints>();
     let ops_guard = resources.try_get::<FactionOpsState>();
     let econ_guard = resources.try_get::<EconomyState>();
     let territory_guard = resources.try_get::<TerritoryStateCache>();
@@ -104,6 +115,7 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let ctx = ctx_guard.as_deref();
     let clock = clock_guard.as_deref();
     let ledger = ledger_guard.as_deref();
+    let points = points_guard.as_deref();
     let ops = ops_guard.as_deref();
     let econ = econ_guard.as_deref();
     let territory = territory_guard.as_deref();
@@ -115,7 +127,7 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     match scene {
         GameScene::Title(data) => ui::render_title(frame, data),
         GameScene::Strategy(data) => {
-            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, data)
+            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, points, data)
         }
         GameScene::Tactical(data) => ui::render_tactical(frame, ctx, data),
         GameScene::Economic(data) => {
