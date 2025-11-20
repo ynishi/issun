@@ -575,7 +575,9 @@ impl GameContext {
             .map(|vault| vault.tick_week())
             .collect::<Vec<_>>();
         self.last_vault_reports = reports.clone();
-        self.apply_vault_effects();
+        // NOTE: Caller must apply ledger operations via get_vault_ledger_operations()
+        // and BudgetLedger, then call apply_vault_non_ledger_effects()
+        self.apply_vault_non_ledger_effects();
         reports
     }
 

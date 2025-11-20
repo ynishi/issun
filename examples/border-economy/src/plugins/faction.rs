@@ -2,7 +2,6 @@ use crate::events::{MissionRequested, MissionResolved};
 use crate::models::TerritoryId;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::any::Any;
 
 #[derive(Default, DerivePlugin)]
 #[plugin(name = "faction_plugin")]

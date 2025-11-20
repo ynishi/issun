@@ -2,7 +2,7 @@ use crate::events::{MissionRequested, ResearchQueued};
 use crate::models::scenes::{
     EconomicSceneData, IntelReportSceneData, TacticalSceneData, VaultSceneData,
 };
-use crate::models::{BudgetChannel, Currency, TerritoryId};
+use crate::models::{Currency, TerritoryId};
 use crate::models::{DemandProfile, GameContext, GameScene, WeaponPrototypeState};
 use crate::plugins::EconomyState;
 use issun::auto_pump;
@@ -224,12 +224,19 @@ impl StrategySceneData {
             return SceneTransition::Stay;
         }
 
+        // Calculate innovation multiplier from issun BudgetLedger
+        let innovation_multiplier = if let Some(ledger) = resources.get::<issun::plugin::BudgetLedger>().await {
+            (ledger.innovation_fund.amount() as f32 / 2000.0).clamp(0.0, 0.35)
+        } else {
+            0.0
+        };
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return SceneTransition::Stay,
         };
         ctx.record_rnd_spend(budget);
-        ctx.queue_research(&proto_id, 0.08);
+        ctx.queue_research(&proto_id, 0.08, innovation_multiplier);
         ctx.record(format!("{} へR&D投資", proto_codename));
         ctx.consume_action("R&D投資");
         let demand = ctx
@@ -343,8 +350,26 @@ impl StrategySceneData {
 
         let amount = Currency::new(200);
         let territory_id = ctx.territories[target_index].id.clone();
-        if !ctx.invest_in_territory(&territory_id, amount) {
+
+        // Try spending from Innovation fund
+        let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            ledger.try_spend(issun::plugin::BudgetChannel::Innovation, amount)
+        } else {
+            false
+        };
+
+        if !spend_ok {
             self.status_line = "Innovation資金が不足しています".into();
+            return;
+        }
+
+        let mut ctx = match resources.get_mut::<GameContext>().await {
+            Some(ctx) => ctx,
+            None => return,
+        };
+
+        if !ctx.apply_territory_investment(&territory_id, amount) {
+            self.status_line = "投資対象が見つかりません".into();
             return;
         }
 

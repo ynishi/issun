@@ -149,16 +149,6 @@ fn render_hq_feed(
                 "Innovation {} | Security {}",
                 ledger.innovation_fund, ledger.security_fund
             )));
-        } else {
-            lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
-            lines.push(Line::from(format!(
-                "Ops {} | R&D {} | Reserve {}",
-                ctx.ledger.ops_pool, ctx.ledger.research_pool, ctx.ledger.reserve
-            )));
-            lines.push(Line::from(format!(
-                "Innovation {} | Security {}",
-                ctx.ledger.innovation_fund, ctx.ledger.security_fund
-            )));
         }
         lines.push(Line::from(format!("政策: {}", ctx.active_policy().name)));
         if let Some(next_op) = ctx.enemy_operations.iter().min_by_key(|op| op.eta) {
@@ -407,25 +397,15 @@ fn render_econ_sidebar(
                 "Innovation {} | Security {}",
                 ledger.innovation_fund, ledger.security_fund
             )));
-        } else {
-            lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
-            lines.push(Line::from(format!(
-                "Reserve {} | Ops {} | R&D {}",
-                ctx.ledger.reserve, ctx.ledger.ops_pool, ctx.ledger.research_pool
-            )));
-            lines.push(Line::from(format!(
-                "Innovation {} | Security {}",
-                ctx.ledger.innovation_fund, ctx.ledger.security_fund
-            )));
-        }
-        // Use ctx.ledger for border-economy specific methods
-        let rd_bonus = ctx.ledger.innovation_multiplier() * 100.0;
-        if rd_bonus > 0.0 {
-            lines.push(Line::from(format!("R&D bonus +{:.0}%", rd_bonus)));
-        }
-        let upkeep_cut = ctx.ledger.security_upkeep_offset();
-        if upkeep_cut > 0 {
-            lines.push(Line::from(format!("Upkeep reduction ₡{}", upkeep_cut)));
+            // Border-economy specific bonus calculations
+            let rd_bonus = (ledger.innovation_fund.amount() as f32 / 2000.0).clamp(0.0, 0.35) * 100.0;
+            if rd_bonus > 0.0 {
+                lines.push(Line::from(format!("R&D bonus +{:.0}%", rd_bonus)));
+            }
+            let upkeep_cut = (ledger.security_fund.amount() as f32 * 0.08) as i64;
+            if upkeep_cut > 0 {
+                lines.push(Line::from(format!("Upkeep reduction ₡{}", upkeep_cut)));
+            }
         }
         lines.push(Line::from(""));
         lines.push(Line::from("Development:"));
@@ -766,14 +746,6 @@ fn ctx_value(
             BudgetChannel::Innovation => ledger.innovation_fund.to_string(),
             BudgetChannel::Security => ledger.security_fund.to_string(),
         }
-    } else if let Some(ctx) = ctx {
-        match channel {
-            BudgetChannel::Research => ctx.ledger.research_pool.to_string(),
-            BudgetChannel::Operations => ctx.ledger.ops_pool.to_string(),
-            BudgetChannel::Reserve => ctx.ledger.reserve.to_string(),
-            BudgetChannel::Innovation => ctx.ledger.innovation_fund.to_string(),
-            BudgetChannel::Security => ctx.ledger.security_fund.to_string(),
-        }
     } else {
         "-".into()
     }
@@ -863,7 +835,7 @@ fn render_report_summary(
     let mut lines = Vec::new();
 
     if let Some(ctx) = ctx {
-        let cash_text = ledger.map(|l| l.cash.to_string()).unwrap_or_else(|| ctx.ledger.cash.to_string());
+        let cash_text = ledger.map(|l| l.cash.to_string()).unwrap_or_else(|| "-".into());
         lines.push(Line::from(format!("Cash {}", cash_text)));
         lines.push(Line::from(format!(
             "Prototypes in dev: {}",

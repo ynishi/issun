@@ -1,9 +1,9 @@
 use crate::events::{MissionRequested, MissionResolved, ResearchQueued, VaultReportGenerated};
+use crate::models::context::{DividendEventResult, SettlementResult};
 use crate::models::{Currency, VaultOutcome};
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::any::Any;
 
 #[derive(Default)]
 pub struct EconomyPlugin;
@@ -60,7 +60,7 @@ pub struct SettlementKpi {
 pub struct LedgerForecastService;
 
 impl LedgerForecastService {
-    pub fn predict(&self, ledger: &crate::models::BudgetLedger) -> i64 {
+    pub fn predict(&self, ledger: &issun::plugin::BudgetLedger) -> i64 {
         (ledger.cash.amount() + ledger.research_pool.amount() + ledger.ops_pool.amount()) / 3
     }
 }
@@ -184,22 +184,131 @@ impl EconomySystem {
             return;
         }
 
-        let (income, upkeep, settlement) =
+        // Calculate income/upkeep from GameContext
+        let (base_income, base_upkeep, dividend_multiplier, ops_spent, rnd_spent, dev_spent) =
             if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                let income = ctx.forecast_income();
-                let upkeep = ctx.forecast_upkeep();
-                let settlement = ctx.apply_settlement(income, upkeep);
-                (income, upkeep, settlement)
+                let base_income = ctx.base_income();
+                let base_upkeep = ctx.base_upkeep();
+                let dividend_mult = ctx.get_policy_dividend_multiplier();
+                let (ops, rnd, dev) = ctx.reset_weekly_spending();
+                (base_income, base_upkeep, dividend_mult, ops, rnd, dev)
             } else {
                 return;
             };
 
-        let dividend_result = {
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                ctx.process_dividend_event()
-            } else {
-                None
+        // Apply settlement to issun BudgetLedger
+        let (income, upkeep, settlement) = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            // Calculate bonuses from ledger funds
+            let investment_income_bonus = (ledger.innovation_fund.amount() as f32 * 0.05) as i64;
+            let security_upkeep_offset = (ledger.security_fund.amount() as f32 * 0.08) as i64;
+
+            let income = Currency::new(base_income + investment_income_bonus);
+            let upkeep = Currency::new((base_upkeep - security_upkeep_offset).max(0));
+
+            // Apply to cash
+            *ledger.get_channel_mut(issun::plugin::BudgetChannel::Cash) =
+                ledger.get_channel_mut(issun::plugin::BudgetChannel::Cash)
+                    .saturating_add(income)
+                    .saturating_sub(upkeep);
+
+            let net_amount = income.amount() - upkeep.amount();
+            let mut reserve_bonus = Currency::ZERO;
+            let mut innovation_allocation = Currency::ZERO;
+            let mut security_allocation = Currency::ZERO;
+
+            if net_amount > 0 {
+                reserve_bonus = Currency::new((net_amount as f32 * 0.25) as i64);
+                if reserve_bonus.amount() > 0 {
+                    *ledger.get_channel_mut(issun::plugin::BudgetChannel::Reserve) =
+                        ledger.get_channel_mut(issun::plugin::BudgetChannel::Reserve).saturating_add(reserve_bonus);
+                }
+
+                let invest_total = Currency::new((net_amount as f32 * 0.3) as i64);
+                if invest_total.amount() > 0 {
+                    innovation_allocation = Currency::new((invest_total.amount() as f32 * 0.6) as i64);
+                    security_allocation = Currency::new(invest_total.amount() - innovation_allocation.amount());
+                    if innovation_allocation.amount() > 0 {
+                        *ledger.get_channel_mut(issun::plugin::BudgetChannel::Innovation) =
+                            ledger.get_channel_mut(issun::plugin::BudgetChannel::Innovation).saturating_add(innovation_allocation);
+                    }
+                    if security_allocation.amount() > 0 {
+                        *ledger.get_channel_mut(issun::plugin::BudgetChannel::Security) =
+                            ledger.get_channel_mut(issun::plugin::BudgetChannel::Security).saturating_add(security_allocation);
+                    }
+                }
             }
+
+            // Apply investment decay
+            let innovation_loss = (ledger.innovation_fund.amount() as f32 * 0.08) as i64;
+            if innovation_loss > 0 {
+                let deduction = Currency::new(innovation_loss);
+                *ledger.get_channel_mut(issun::plugin::BudgetChannel::Innovation) =
+                    ledger.get_channel_mut(issun::plugin::BudgetChannel::Innovation).saturating_sub(deduction);
+            }
+            let security_loss = (ledger.security_fund.amount() as f32 * 0.05) as i64;
+            if security_loss > 0 {
+                let deduction = Currency::new(security_loss);
+                *ledger.get_channel_mut(issun::plugin::BudgetChannel::Security) =
+                    ledger.get_channel_mut(issun::plugin::BudgetChannel::Security).saturating_sub(deduction);
+            }
+
+            let settlement = SettlementResult {
+                net: Currency::new(net_amount),
+                reserve_bonus,
+                innovation_allocation,
+                security_allocation,
+                ops_spent,
+                rnd_spent,
+                dev_spent,
+            };
+            (income, upkeep, settlement)
+        } else {
+            return;
+        };
+
+        // Process dividend event
+        let dividend_result = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            use crate::models::context::{DIVIDEND_BASE, DIVIDEND_RATE};
+            let demand_value = ((ledger.cash.amount().max(0) as f32 * DIVIDEND_RATE) * dividend_multiplier) as i64 + DIVIDEND_BASE;
+
+            if demand_value <= 0 {
+                None
+            } else {
+                let mut remaining = demand_value;
+                let mut reserve_paid = 0;
+                if ledger.reserve.amount() > 0 {
+                    let pay = remaining.min(ledger.reserve.amount());
+                    *ledger.get_channel_mut(issun::plugin::BudgetChannel::Reserve) =
+                        Currency::new(ledger.reserve.amount() - pay);
+                    remaining -= pay;
+                    reserve_paid = pay;
+                }
+
+                let mut cash_paid = 0;
+                if remaining > 0 && ledger.cash.amount() > 0 {
+                    let pay = remaining.min(ledger.cash.amount());
+                    *ledger.get_channel_mut(issun::plugin::BudgetChannel::Cash) =
+                        Currency::new(ledger.cash.amount() - pay);
+                    remaining -= pay;
+                    cash_paid = pay;
+                }
+
+                let shortfall = remaining.max(0);
+                if shortfall > 0 {
+                    if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                        ctx.reputation.adjust(-7.5);
+                    }
+                }
+
+                Some(DividendEventResult {
+                    demanded: Currency::new(demand_value),
+                    paid_from_reserve: Currency::new(reserve_paid),
+                    paid_from_cash: Currency::new(cash_paid),
+                    shortfall: Currency::new(shortfall),
+                })
+            }
+        } else {
+            None
         };
 
         if let Some(mut econ) = resources.get_mut::<EconomyState>().await {

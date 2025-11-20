@@ -2,7 +2,6 @@ use crate::events::{FieldTestFeedback, ResearchQueued};
 use issun::plugin::PluginBuilderExt;
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::any::Any;
 
 #[derive(Default)]
 pub struct WeaponPrototypePlugin;
