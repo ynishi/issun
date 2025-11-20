@@ -105,13 +105,17 @@ pub use room_buff::{
 };
 
 pub use time::{
-    // Types
+    // Events
     ActionConsumedEvent,
+    AdvanceTimeRequested,
+    DayChanged,
+    DayPassedEvent,
     // Plugin
     BuiltInTimePlugin,
-    DayPassedEvent,
+    // Resources
     GameClock,
     GameTimer,
+    // Config
     TimeConfig,
 };
 

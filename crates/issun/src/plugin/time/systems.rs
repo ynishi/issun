@@ -1,0 +1,136 @@
+//! Time management systems
+
+use crate::context::ResourceContext;
+use crate::event::EventBus;
+use crate::system::{DeriveSystem, System};
+use async_trait::async_trait;
+
+use super::events::{AdvanceTimeRequested, DayChanged};
+use super::resources::GameTimer;
+
+/// System that handles time advancement requests
+///
+/// Listens for `AdvanceTimeRequested` events and increments the day counter,
+/// then publishes `DayChanged` events for other systems to react to.
+///
+/// This keeps business logic in systems rather than scene layers.
+#[derive(Default, DeriveSystem)]
+#[system(name = "timer")]
+pub struct TimerSystem;
+
+#[async_trait]
+impl System for TimerSystem {
+    async fn process(&mut self, resources: &mut ResourceContext) {
+        // Check for time advancement requests
+        let advance_requested = if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            let events: Vec<_> = bus.reader::<AdvanceTimeRequested>().iter().collect();
+            !events.is_empty()
+        } else {
+            false
+        };
+
+        if !advance_requested {
+            return;
+        }
+
+        // Increment day
+        let new_day = if let Some(mut timer) = resources.get_mut::<GameTimer>().await {
+            timer.increment_day()
+        } else {
+            return;
+        };
+
+        // Publish DayChanged event
+        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            bus.publish(DayChanged { day: new_day });
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::event::EventBus;
+
+    #[tokio::test]
+    async fn test_timer_system_advances_day() {
+        let mut resources = ResourceContext::new();
+        resources.insert(GameTimer::new());
+        resources.insert(EventBus::new());
+
+        let mut system = TimerSystem::default();
+
+        // Publish advancement request
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.publish(AdvanceTimeRequested);
+        }
+
+        // Process system
+        system.process(&mut resources).await;
+
+        // Check day incremented
+        let timer = resources.get::<GameTimer>().await.unwrap();
+        assert_eq!(timer.day, 2);
+
+        // Check DayChanged event published
+        let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+        let events: Vec<_> = bus.reader::<DayChanged>().iter().collect();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].day, 2);
+    }
+
+    #[tokio::test]
+    async fn test_timer_system_no_advancement_without_request() {
+        let mut resources = ResourceContext::new();
+        resources.insert(GameTimer::new());
+        resources.insert(EventBus::new());
+
+        let mut system = TimerSystem::default();
+
+        // Process without request
+        system.process(&mut resources).await;
+
+        // Day should not change
+        let timer = resources.get::<GameTimer>().await.unwrap();
+        assert_eq!(timer.day, 1);
+
+        // No DayChanged events
+        let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+        let events: Vec<_> = bus.reader::<DayChanged>().iter().collect();
+        assert_eq!(events.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_timer_system_multiple_requests() {
+        let mut resources = ResourceContext::new();
+        resources.insert(GameTimer::new());
+        resources.insert(EventBus::new());
+
+        let mut system = TimerSystem::default();
+
+        // Publish multiple requests
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.publish(AdvanceTimeRequested);
+            bus.publish(AdvanceTimeRequested);
+        }
+
+        // Process system (should only increment once per process call)
+        system.process(&mut resources).await;
+
+        let timer = resources.get::<GameTimer>().await.unwrap();
+        assert_eq!(timer.day, 2); // Only incremented once
+
+        // Publish another and process again
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.publish(AdvanceTimeRequested);
+        }
+
+        system.process(&mut resources).await;
+
+        let timer = resources.get::<GameTimer>().await.unwrap();
+        assert_eq!(timer.day, 3);
+    }
+}
