@@ -206,6 +206,8 @@ impl PolicyRegistry {
 
     /// Get aggregated effects from all active policies
     ///
+    /// Delegates to PolicyService for pure calculation logic.
+    ///
     /// Effects are aggregated according to their configured AggregationStrategy.
     ///
     /// # Examples
@@ -237,33 +239,17 @@ impl PolicyRegistry {
             self.active_policy().into_iter().collect()
         };
 
-        let mut aggregated = HashMap::new();
-        for policy in active_policies {
-            for (key, value) in &policy.effects {
-                // Determine aggregation strategy for this effect
-                let strategy = self
-                    .config
-                    .aggregation_strategies
-                    .get(key)
-                    .copied()
-                    .unwrap_or(self.config.default_aggregation);
-
-                // Get current aggregated value (with appropriate initial value)
-                let current = aggregated
-                    .get(key)
-                    .copied()
-                    .unwrap_or_else(|| strategy.initial_value());
-
-                // Apply aggregation strategy
-                let new_value = strategy.aggregate(current, *value);
-
-                aggregated.insert(key.clone(), new_value);
-            }
-        }
-        aggregated
+        // Delegate to PolicyService for pure calculation logic
+        super::service::PolicyService::aggregate_effects(
+            &active_policies,
+            &self.config.aggregation_strategies,
+            self.config.default_aggregation,
+        )
     }
 
     /// Get a specific effect value (with appropriate fallback based on aggregation strategy)
+    ///
+    /// Delegates to PolicyService for pure calculation logic.
     ///
     /// # Fallback values
     ///
@@ -282,19 +268,15 @@ impl PolicyRegistry {
     /// let attack_bonus = registry.get_effect("attack_bonus"); // Returns 15.0 or 0.0 (default)
     /// ```
     pub fn get_effect(&self, effect_name: &str) -> f32 {
-        if let Some(value) = self.aggregate_effects().get(effect_name) {
-            return *value;
-        }
+        let effects = self.aggregate_effects();
 
-        // Return appropriate fallback based on aggregation strategy
-        let strategy = self
-            .config
-            .aggregation_strategies
-            .get(effect_name)
-            .copied()
-            .unwrap_or(self.config.default_aggregation);
-
-        strategy.initial_value()
+        // Delegate to PolicyService for pure calculation logic
+        super::service::PolicyService::get_effect(
+            &effects,
+            effect_name,
+            &self.config.aggregation_strategies,
+            self.config.default_aggregation,
+        )
     }
 
     /// Get the configuration

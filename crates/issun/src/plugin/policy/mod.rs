@@ -49,6 +49,7 @@ mod events;
 mod hook;
 mod plugin;
 mod registry;
+mod service;
 mod system;
 mod types;
 
@@ -57,4 +58,5 @@ pub use events::*;
 pub use hook::{DefaultPolicyHook, PolicyHook};
 pub use plugin::PolicyPlugin;
 pub use registry::{PolicyConfig, PolicyError, PolicyRegistry};
+pub use service::PolicyService;
 pub use types::{AggregationStrategy, Policy, PolicyId};
