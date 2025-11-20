@@ -35,6 +35,10 @@ pub mod time;
 
 // Re-exports for convenience
 pub use action::{
+    // Plugin
+    ActionPlugin,
+    // Config
+    ActionConfig,
     // Types
     ActionPoints,
 };
