@@ -1,6 +1,35 @@
 //! Action points resource for turn-based game mechanics
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+/// Result of successful action consumption
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActionConsumed {
+    /// What action was performed
+    pub context: String,
+    /// Actions remaining after consumption
+    pub remaining: u32,
+    /// Whether all actions are now depleted
+    pub depleted: bool,
+}
+
+/// Error when trying to consume actions
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionError {
+    /// No actions remaining
+    Depleted,
+}
+
+impl fmt::Display for ActionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ActionError::Depleted => write!(f, "No action points remaining"),
+        }
+    }
+}
+
+impl std::error::Error for ActionError {}
 
 /// Action points resource for managing player actions per period
 ///
@@ -53,7 +82,55 @@ impl ActionPoints {
         }
     }
 
-    /// Try to consume one action point
+    /// Consume action with context information
+    ///
+    /// This is the recommended way to consume actions as it provides
+    /// context about what action was performed, which can be used for
+    /// logging, statistics, and event handling.
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - Description of the action being performed
+    ///
+    /// # Returns
+    ///
+    /// `Ok(ActionConsumed)` with details if successful, `Err(ActionError)` if depleted
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use issun::plugin::action::{ActionPoints, ActionError};
+    ///
+    /// let mut points = ActionPoints::new(2);
+    ///
+    /// let result = points.consume_with("Deploy troops");
+    /// assert!(result.is_ok());
+    /// let consumed = result.unwrap();
+    /// assert_eq!(consumed.context, "Deploy troops");
+    /// assert_eq!(consumed.remaining, 1);
+    /// assert!(!consumed.depleted);
+    ///
+    /// points.consume_with("Research tech").unwrap();
+    /// let result = points.consume_with("Build structure");
+    /// assert!(matches!(result, Err(ActionError::Depleted)));
+    /// ```
+    pub fn consume_with(&mut self, context: impl Into<String>) -> Result<ActionConsumed, ActionError> {
+        if self.available == 0 {
+            return Err(ActionError::Depleted);
+        }
+
+        self.available -= 1;
+        Ok(ActionConsumed {
+            context: context.into(),
+            remaining: self.available,
+            depleted: self.available == 0,
+        })
+    }
+
+    /// Try to consume one action point (without context)
+    ///
+    /// For simple use cases where context tracking is not needed.
+    /// Consider using `consume_with()` for better observability.
     ///
     /// # Returns
     ///
@@ -69,12 +146,7 @@ impl ActionPoints {
     /// assert!(!points.consume()); // No points left
     /// ```
     pub fn consume(&mut self) -> bool {
-        if self.available > 0 {
-            self.available -= 1;
-            true
-        } else {
-            false
-        }
+        self.consume_with("").is_ok()
     }
 
     /// Try to consume N action points
@@ -257,5 +329,56 @@ mod tests {
         let points = ActionPoints::default();
         assert_eq!(points.available, 3);
         assert_eq!(points.max_per_period, 3);
+    }
+
+    #[test]
+    fn test_consume_with() {
+        let mut points = ActionPoints::new(3);
+
+        // First consumption
+        let result = points.consume_with("Deploy troops");
+        assert!(result.is_ok());
+        let consumed = result.unwrap();
+        assert_eq!(consumed.context, "Deploy troops");
+        assert_eq!(consumed.remaining, 2);
+        assert!(!consumed.depleted);
+
+        // Second consumption
+        let result = points.consume_with("Research tech");
+        assert!(result.is_ok());
+        let consumed = result.unwrap();
+        assert_eq!(consumed.context, "Research tech");
+        assert_eq!(consumed.remaining, 1);
+        assert!(!consumed.depleted);
+
+        // Third consumption (depletes)
+        let result = points.consume_with("Build structure");
+        assert!(result.is_ok());
+        let consumed = result.unwrap();
+        assert_eq!(consumed.context, "Build structure");
+        assert_eq!(consumed.remaining, 0);
+        assert!(consumed.depleted);
+
+        // Fourth consumption (should fail)
+        let result = points.consume_with("Extra action");
+        assert!(result.is_err());
+        assert!(matches!(result, Err(ActionError::Depleted)));
+    }
+
+    #[test]
+    fn test_consume_with_empty_context() {
+        let mut points = ActionPoints::new(1);
+        let result = points.consume_with("");
+        assert!(result.is_ok());
+        let consumed = result.unwrap();
+        assert_eq!(consumed.context, "");
+        assert_eq!(consumed.remaining, 0);
+        assert!(consumed.depleted);
+    }
+
+    #[test]
+    fn test_action_error_display() {
+        let error = ActionError::Depleted;
+        assert_eq!(error.to_string(), "No action points remaining");
     }
 }
