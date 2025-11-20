@@ -9,10 +9,11 @@ mod models;
 mod plugins;
 pub mod ui;
 
-use hooks::GameLogHook;
+use hooks::{BorderEconomyTerritoryHook, GameLogHook};
 use issun::engine::GameRunner;
 use issun::event::EventBus;
 use issun::plugin::action::{ActionConfig, ActionPlugin};
+use issun::plugin::territory::{Territory, TerritoryPlugin, TerritoryRegistry};
 use issun::prelude::*;
 use models::{handle_scene_input, GameContext, GameScene, DAILY_ACTION_POINTS};
 use plugins::{
@@ -36,6 +37,11 @@ async fn main() -> std::io::Result<()> {
                 max_per_period: DAILY_ACTION_POINTS,
             })
             .with_hook(GameLogHook),
+        )
+        .map_err(as_io)?
+        .with_plugin(
+            TerritoryPlugin::new()
+                .with_hook(BorderEconomyTerritoryHook),
         )
         .map_err(as_io)?
         .with_plugin(issun::plugin::BuiltInEconomyPlugin::default())
@@ -73,6 +79,19 @@ async fn main() -> std::io::Result<()> {
 
     if !resources.contains::<EventBus>() {
         resources.insert(EventBus::new());
+    }
+
+    // Initialize TerritoryRegistry from GameContext territories
+    {
+        let ctx = resources.get::<GameContext>().await.unwrap();
+        let mut registry = resources.get_mut::<TerritoryRegistry>().await.unwrap();
+
+        for intel in &ctx.territories {
+            let territory = Territory::new(intel.id.as_str(), intel.id.as_str())
+                .with_control(intel.control)
+                .with_development(intel.development_level as u32);
+            registry.add(territory);
+        }
     }
 
     let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());

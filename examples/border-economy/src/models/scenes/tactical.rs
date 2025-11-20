@@ -3,6 +3,7 @@ use crate::models::scenes::EconomicSceneData;
 use crate::models::{Currency, GameContext, GameScene};
 use issun::auto_pump;
 use issun::event::EventBus;
+use issun::plugin::territory::TerritoryControlChangeRequested;
 use issun::prelude::{ResourceContext, SceneTransition, ServiceContext, SystemContext};
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -84,8 +85,16 @@ impl TacticalSceneData {
                 ledger.get_channel_mut(issun::plugin::BudgetChannel::Reserve).saturating_add(reserve_bonus);
         }
 
+        // Request territory control change via TerritoryPlugin
+        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            bus.publish(TerritoryControlChangeRequested {
+                id: territory.as_str().into(),
+                delta: self.progress * 0.15,
+            });
+        }
+
         if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-            ctx.adjust_control(&territory, self.progress * 0.15);
+            // Game-specific updates (unrest, conflict_intensity, etc.) handled by Hook
             ctx.push_telemetry(&prototype, self.progress * 0.4);
             ctx.record(format!("{} 作戦が {} で進展", faction, territory));
         }
