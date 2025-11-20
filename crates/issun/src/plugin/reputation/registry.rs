@@ -179,6 +179,7 @@ impl ReputationRegistry {
 
         let entry = self.get_or_create(subject_id);
         entry.adjust(delta);
+
         if auto_clamp {
             if let Some((min, max)) = score_range {
                 entry.clamp(min, max);
@@ -193,6 +194,7 @@ impl ReputationRegistry {
 
         let entry = self.get_or_create_category(subject_id, category);
         entry.adjust(delta);
+
         if auto_clamp {
             if let Some((min, max)) = score_range {
                 entry.clamp(min, max);

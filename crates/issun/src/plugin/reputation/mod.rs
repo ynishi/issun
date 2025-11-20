@@ -68,6 +68,7 @@ mod events;
 mod hook;
 mod plugin;
 mod registry;
+mod service;
 mod system;
 mod types;
 
@@ -79,5 +80,6 @@ pub use events::{
 pub use hook::{DefaultReputationHook, ReputationHook};
 pub use plugin::ReputationPlugin;
 pub use registry::{ReputationConfig, ReputationRegistry};
+pub use service::ReputationService;
 pub use system::ReputationSystem;
 pub use types::{ReputationEntry, ReputationError, ReputationThreshold, SubjectId};

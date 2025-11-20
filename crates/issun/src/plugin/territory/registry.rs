@@ -124,13 +124,18 @@ impl TerritoryRegistry {
             .ok_or(TerritoryError::NotFound)?;
 
         let old_control = territory.control;
-        territory.control = (territory.control + delta).clamp(0.0, 1.0);
+
+        // Delegate to Service for pure calculation logic
+        let (new_control, actual_delta) =
+            super::service::TerritoryService::calculate_control_change(old_control, delta);
+
+        territory.control = new_control;
 
         Ok(ControlChanged {
             id: id.clone(),
             old_control,
-            new_control: territory.control,
-            delta: territory.control - old_control,
+            new_control,
+            delta: actual_delta,
         })
     }
 
