@@ -114,8 +114,9 @@ pub use time::{
     AdvanceTimeRequested,
     DayChanged,
     DayPassedEvent,
-    // Plugin
+    // Plugins
     BuiltInTimePlugin,
+    TurnBasedTimePlugin,
     // Resources
     GameClock,
     GameTimer,

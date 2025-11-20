@@ -59,9 +59,11 @@ mod events;
 mod plugin;
 mod resources;
 mod systems;
+mod turn_based_plugin;
 
 pub use config::TimeConfig;
 pub use events::{ActionConsumedEvent, AdvanceTimeRequested, DayChanged, DayPassedEvent};
 pub use plugin::BuiltInTimePlugin;
 pub use resources::{GameClock, GameTimer};
 pub use systems::TimerSystem;
+pub use turn_based_plugin::TurnBasedTimePlugin;
