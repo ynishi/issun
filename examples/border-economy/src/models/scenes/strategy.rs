@@ -180,9 +180,16 @@ impl StrategySceneData {
             faction.codename,
             territory.id.as_str()
         ));
-        ctx.consume_action("作戦展開");
+        let day_advanced = ctx.consume_action("作戦展開");
 
         drop(ctx);
+
+        // Sync GameClock if day advanced
+        if day_advanced {
+            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
+                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            }
+        }
 
         if let Some(mut bus) = resources.get_mut::<EventBus>().await {
             bus.publish(MissionRequested {
@@ -238,7 +245,7 @@ impl StrategySceneData {
         ctx.record_rnd_spend(budget);
         ctx.queue_research(&proto_id, 0.08, innovation_multiplier);
         ctx.record(format!("{} へR&D投資", proto_codename));
-        ctx.consume_action("R&D投資");
+        let day_advanced = ctx.consume_action("R&D投資");
         let demand = ctx
             .territories
             .iter()
@@ -247,6 +254,13 @@ impl StrategySceneData {
             .unwrap_or_else(DemandProfile::frontier);
 
         drop(ctx);
+
+        // Sync GameClock if day advanced
+        if day_advanced {
+            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
+                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            }
+        }
 
         if let Some(mut bus) = resources.get_mut::<EventBus>().await {
             bus.publish(ResearchQueued {
@@ -269,8 +283,14 @@ impl StrategySceneData {
     }
 
     async fn end_day_now(&mut self, resources: &mut ResourceContext) {
+        // Update GameContext day
         if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
             ctx.force_end_of_day("司令部が日次を終了しました");
+        }
+
+        // Update issun GameClock day
+        if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
+            clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
         }
     }
 
@@ -322,12 +342,21 @@ impl StrategySceneData {
         }
 
         ctx.record(format!("{} に防衛部隊を派遣 (Ops {})", front_name, cost));
-        ctx.consume_action("防衛強化");
+        let day_advanced = ctx.consume_action("防衛強化");
         self.status_line = format!("{} を要塞化", front_name);
+
+        drop(ctx);
+
+        // Sync GameClock if day advanced
+        if day_advanced {
+            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
+                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            }
+        }
     }
 
     async fn invest_in_development(&mut self, resources: &mut ResourceContext) {
-        let mut ctx = match resources.get_mut::<GameContext>().await {
+        let ctx = match resources.get::<GameContext>().await {
             Some(ctx) => ctx,
             None => return,
         };
@@ -373,8 +402,17 @@ impl StrategySceneData {
             return;
         }
 
-        ctx.consume_action("開拓投資");
+        let day_advanced = ctx.consume_action("開拓投資");
         self.status_line = format!("{} に基盤投資 ({} )", territory_id.as_str(), amount);
+
+        drop(ctx);
+
+        // Sync GameClock if day advanced
+        if day_advanced {
+            if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
+                clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+            }
+        }
     }
 
     async fn set_policy(&mut self, resources: &mut ResourceContext) {

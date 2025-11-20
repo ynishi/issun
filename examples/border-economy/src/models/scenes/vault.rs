@@ -185,12 +185,19 @@ impl VaultSceneData {
 
         match ctx.invest_in_vault_slot(&vault_id, &slot_id, amount, channel) {
             Ok(result) => {
-                ctx.consume_action("Vault投資");
+                let day_advanced = ctx.consume_action("Vault投資");
                 self.status_line = format!(
                     "{} へ {} 投資 (₡{}→₡{})",
                     result.slot_id, amount.amount(), result.before.amount(), result.after.amount()
                 );
                 drop(ctx);
+
+                // Sync GameClock if day advanced
+                if day_advanced {
+                    if let Some(mut clock) = resources.get_mut::<issun::plugin::GameClock>().await {
+                        clock.advance_day(crate::models::context::DAILY_ACTION_POINTS);
+                    }
+                }
                 if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                     bus.publish(VaultInvested {
                         vault_id: result.vault_id,
