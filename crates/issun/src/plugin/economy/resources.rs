@@ -82,7 +82,73 @@ impl BudgetLedger {
         true
     }
 
-    fn get_channel_mut(&mut self, channel: BudgetChannel) -> &mut Currency {
+    /// Check if a channel has enough funds for spending
+    ///
+    /// Returns true if the channel balance is greater than or equal to the amount.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let ledger = BudgetLedger::new(Currency::new(1000));
+    /// assert!(ledger.can_spend(BudgetChannel::Cash, Currency::new(500)));
+    /// assert!(!ledger.can_spend(BudgetChannel::Cash, Currency::new(2000)));
+    /// ```
+    pub fn can_spend(&self, channel: BudgetChannel, amount: Currency) -> bool {
+        self.get_channel(channel).amount() >= amount.amount()
+    }
+
+    /// Try to spend from a specific channel
+    ///
+    /// Returns true if spending succeeded, false if insufficient funds.
+    /// If successful, the amount is deducted from the channel.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let mut ledger = BudgetLedger::new(Currency::new(1000));
+    /// assert!(ledger.try_spend(BudgetChannel::Cash, Currency::new(500)));
+    /// assert_eq!(ledger.cash.amount(), 500);
+    /// assert!(!ledger.try_spend(BudgetChannel::Cash, Currency::new(1000)));
+    /// ```
+    pub fn try_spend(&mut self, channel: BudgetChannel, amount: Currency) -> bool {
+        let balance = self.get_channel_mut(channel);
+        if balance.amount() < amount.amount() {
+            return false;
+        }
+        *balance = balance.saturating_sub(amount);
+        true
+    }
+
+    /// Get immutable reference to a channel's balance
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let ledger = BudgetLedger::new(Currency::new(1000));
+    /// let cash = ledger.get_channel(BudgetChannel::Cash);
+    /// assert_eq!(cash.amount(), 1000);
+    /// ```
+    pub fn get_channel(&self, channel: BudgetChannel) -> &Currency {
+        match channel {
+            BudgetChannel::Cash => &self.cash,
+            BudgetChannel::Research => &self.research_pool,
+            BudgetChannel::Ops => &self.ops_pool,
+            BudgetChannel::Reserve => &self.reserve,
+            BudgetChannel::Innovation => &self.innovation_fund,
+            BudgetChannel::Security => &self.security_fund,
+        }
+    }
+
+    /// Get mutable reference to a channel's balance
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let mut ledger = BudgetLedger::new(Currency::new(1000));
+    /// *ledger.get_channel_mut(BudgetChannel::Cash) = Currency::new(2000);
+    /// assert_eq!(ledger.cash.amount(), 2000);
+    /// ```
+    pub fn get_channel_mut(&mut self, channel: BudgetChannel) -> &mut Currency {
         match channel {
             BudgetChannel::Cash => &mut self.cash,
             BudgetChannel::Research => &mut self.research_pool,
@@ -237,5 +303,47 @@ mod tests {
     fn test_policy_deck_remove_nonexistent() {
         let mut deck = PolicyDeck::new();
         assert!(!deck.remove_policy("nonexistent"));
+    }
+
+    #[test]
+    fn test_budget_ledger_can_spend() {
+        let ledger = BudgetLedger::new(Currency::new(1000));
+        assert!(ledger.can_spend(BudgetChannel::Cash, Currency::new(500)));
+        assert!(ledger.can_spend(BudgetChannel::Cash, Currency::new(1000)));
+        assert!(!ledger.can_spend(BudgetChannel::Cash, Currency::new(1001)));
+        assert!(ledger.can_spend(BudgetChannel::Research, Currency::new(600)));
+        assert!(!ledger.can_spend(BudgetChannel::Research, Currency::new(601)));
+    }
+
+    #[test]
+    fn test_budget_ledger_try_spend_success() {
+        let mut ledger = BudgetLedger::new(Currency::new(1000));
+        assert!(ledger.try_spend(BudgetChannel::Cash, Currency::new(300)));
+        assert_eq!(ledger.cash.amount(), 700);
+        assert!(ledger.try_spend(BudgetChannel::Research, Currency::new(200)));
+        assert_eq!(ledger.research_pool.amount(), 400);
+    }
+
+    #[test]
+    fn test_budget_ledger_try_spend_insufficient() {
+        let mut ledger = BudgetLedger::new(Currency::new(100));
+        assert!(!ledger.try_spend(BudgetChannel::Cash, Currency::new(200)));
+        assert_eq!(ledger.cash.amount(), 100); // Unchanged
+    }
+
+    #[test]
+    fn test_budget_ledger_get_channel() {
+        let ledger = BudgetLedger::new(Currency::new(1000));
+        assert_eq!(ledger.get_channel(BudgetChannel::Cash).amount(), 1000);
+        assert_eq!(ledger.get_channel(BudgetChannel::Research).amount(), 600);
+        assert_eq!(ledger.get_channel(BudgetChannel::Ops).amount(), 600);
+        assert_eq!(ledger.get_channel(BudgetChannel::Reserve).amount(), 400);
+    }
+
+    #[test]
+    fn test_budget_ledger_get_channel_mut() {
+        let mut ledger = BudgetLedger::new(Currency::new(1000));
+        *ledger.get_channel_mut(BudgetChannel::Cash) = Currency::new(2000);
+        assert_eq!(ledger.cash.amount(), 2000);
     }
 }

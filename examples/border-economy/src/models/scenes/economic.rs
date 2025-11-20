@@ -127,23 +127,44 @@ impl EconomicSceneData {
     async fn shift(&mut self, resources: &mut ResourceContext, direction: i32) {
         let channel = self.channels[self.cursor];
         let amount = Currency::new(50);
-        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-            let success = if direction > 0 {
-                ctx.ledger.shift(BudgetChannel::Reserve, channel, amount)
-            } else {
-                ctx.ledger.shift(channel, BudgetChannel::Reserve, amount)
+
+        // Try using issun BudgetLedger first
+        let success = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            let issun_channel = match channel {
+                BudgetChannel::Research => issun::plugin::BudgetChannel::Research,
+                BudgetChannel::Operations => issun::plugin::BudgetChannel::Ops,
+                BudgetChannel::Reserve => issun::plugin::BudgetChannel::Reserve,
+                BudgetChannel::Innovation => issun::plugin::BudgetChannel::Innovation,
+                BudgetChannel::Security => issun::plugin::BudgetChannel::Security,
             };
-            drop(ctx);
-            if success {
+
+            if direction > 0 {
+                ledger.transfer(issun::plugin::BudgetChannel::Reserve, issun_channel, amount)
+            } else {
+                ledger.transfer(issun_channel, issun::plugin::BudgetChannel::Reserve, amount)
+            }
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
                 if direction > 0 {
-                    self.last_transfer = format!("予備→{} に {}", channel, amount);
+                    ctx.ledger.shift(BudgetChannel::Reserve, channel, amount)
                 } else {
-                    self.last_transfer = format!("{}→予備 に {}", channel, amount);
+                    ctx.ledger.shift(channel, BudgetChannel::Reserve, amount)
                 }
             } else {
-                self.last_transfer = "資金不足で配分できませんでした".into();
-                push_econ_warning(resources, "配分失敗: 資金不足").await;
+                false
             }
+        };
+
+        if success {
+            if direction > 0 {
+                self.last_transfer = format!("予備→{} に {}", channel, amount);
+            } else {
+                self.last_transfer = format!("{}→予備 に {}", channel, amount);
+            }
+        } else {
+            self.last_transfer = "資金不足で配分できませんでした".into();
+            push_econ_warning(resources, "配分失敗: 資金不足").await;
         }
     }
 
@@ -158,29 +179,73 @@ impl EconomicSceneData {
             return;
         }
 
-        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-            if !ctx.ledger.transfer_from_cash(amount) {
+        // Try using issun BudgetLedger first
+        let success = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            // Try to spend from Cash channel
+            if !ledger.try_spend(issun::plugin::BudgetChannel::Cash, amount) {
+                drop(ledger);
                 self.last_transfer = "Cash残高不足で投資できません".into();
-                drop(ctx);
                 push_econ_warning(resources, "Cash→投資 失敗: 残高不足").await;
                 return;
             }
 
-            let target_balance = ctx.ledger.channel_mut(channel);
-            *target_balance += amount;
+            // Add to target channel
+            let issun_channel = match channel {
+                BudgetChannel::Reserve => issun::plugin::BudgetChannel::Reserve,
+                BudgetChannel::Innovation => issun::plugin::BudgetChannel::Innovation,
+                BudgetChannel::Security => issun::plugin::BudgetChannel::Security,
+                _ => unreachable!(),
+            };
+            let target_balance = ledger.get_channel_mut(issun_channel);
+            *target_balance = target_balance.saturating_add(amount);
+            true
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                if !ctx.ledger.transfer_from_cash(amount) {
+                    drop(ctx);
+                    self.last_transfer = "Cash残高不足で投資できません".into();
+                    push_econ_warning(resources, "Cash→投資 失敗: 残高不足").await;
+                    return;
+                }
+
+                let target_balance = ctx.ledger.channel_mut(channel);
+                *target_balance += amount;
+                true
+            } else {
+                false
+            }
+        };
+
+        if success {
             self.last_transfer = format!("Cash→{} に {}", channel, amount);
-            ctx.record(format!("Cashから{}へ{}を投資", channel, amount));
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                ctx.record(format!("Cashから{}へ{}を投資", channel, amount));
+            }
         }
     }
 
     async fn perform_diplomatic_investment(&mut self, resources: &mut ResourceContext) {
         let amount = self.amount_options[self.amount_cursor];
-        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-            if !ctx.ledger.transfer_from_cash(amount) {
-                self.last_transfer = "Cash残高不足で外交投資できません".into();
-                return;
-            }
 
+        // Try using issun BudgetLedger first to deduct cash
+        let cash_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            ledger.try_spend(issun::plugin::BudgetChannel::Cash, amount)
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                ctx.ledger.transfer_from_cash(amount)
+            } else {
+                false
+            }
+        };
+
+        if !cash_ok {
+            self.last_transfer = "Cash残高不足で外交投資できません".into();
+            return;
+        }
+
+        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
             if let Some(front) = ctx.territories.iter().find(|t| t.battlefront) {
                 let faction_id = front.enemy_faction.clone();
                 let faction_name = ctx

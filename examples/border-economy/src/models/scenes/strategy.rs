@@ -120,22 +120,38 @@ impl StrategySceneData {
         &mut self,
         resources: &mut ResourceContext,
     ) -> SceneTransition<GameScene> {
+        let ops_multiplier = {
+            let ctx = match resources.get::<GameContext>().await {
+                Some(ctx) => ctx,
+                None => return SceneTransition::Stay,
+            };
+            ctx.active_policy().effects.ops_cost_multiplier
+        };
+
+        let deployment_cost = Currency::new(((150.0 * ops_multiplier).round() as i64).max(80));
+
+        // Try spending from issun BudgetLedger first
+        let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            ledger.try_spend(issun::plugin::BudgetChannel::Ops, deployment_cost)
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                ctx.ledger.try_spend(BudgetChannel::Operations, deployment_cost)
+            } else {
+                return SceneTransition::Stay;
+            }
+        };
+
+        if !spend_ok {
+            self.status_line = "作戦資金が不足しています".into();
+            push_econ_warning(resources, "Ops資金不足: 作戦が延期されました").await;
+            return SceneTransition::Stay;
+        }
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return SceneTransition::Stay,
         };
-
-        let ops_multiplier = ctx.active_policy().effects.ops_cost_multiplier;
-        let deployment_cost = Currency::new(((150.0 * ops_multiplier).round() as i64).max(80));
-        if !ctx
-            .ledger
-            .try_spend(BudgetChannel::Operations, deployment_cost)
-        {
-            self.status_line = "作戦資金が不足しています".into();
-            drop(ctx);
-            push_econ_warning(resources, "Ops資金不足: 作戦が延期されました").await;
-            return SceneTransition::Stay;
-        }
 
         let faction = match ctx.pick_ready_faction() {
             Some(faction) => faction,
@@ -189,21 +205,42 @@ impl StrategySceneData {
         &mut self,
         resources: &mut ResourceContext,
     ) -> SceneTransition<GameScene> {
+        let (proto_id, proto_codename) = {
+            let ctx = match resources.get::<GameContext>().await {
+                Some(ctx) => ctx,
+                None => return SceneTransition::Stay,
+            };
+            let WeaponPrototypeState { id, codename, .. } = ctx.prototypes[0].clone();
+            (id, codename)
+        };
+
+        let budget = Currency::new(120);
+
+        // Try spending from issun BudgetLedger first
+        let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            ledger.try_spend(issun::plugin::BudgetChannel::Research, budget)
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                ctx.ledger.try_spend(BudgetChannel::Research, budget)
+            } else {
+                return SceneTransition::Stay;
+            }
+        };
+
+        if !spend_ok {
+            self.status_line = "R&D資金が不足しています".into();
+            push_econ_warning(resources, "R&D資金不足: 投資要求を却下").await;
+            return SceneTransition::Stay;
+        }
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return SceneTransition::Stay,
         };
-        let WeaponPrototypeState { id, codename, .. } = ctx.prototypes[0].clone();
-        let budget = Currency::new(120);
-        if !ctx.ledger.try_spend(BudgetChannel::Research, budget) {
-            self.status_line = "R&D資金が不足しています".into();
-            drop(ctx);
-            push_econ_warning(resources, "R&D資金不足: 投資要求を却下").await;
-            return SceneTransition::Stay;
-        }
         ctx.record_rnd_spend(budget);
-        ctx.queue_research(&id, 0.08);
-        ctx.record(format!("{} へR&D投資", codename));
+        ctx.queue_research(&proto_id, 0.08);
+        ctx.record(format!("{} へR&D投資", proto_codename));
         ctx.consume_action("R&D投資");
         let demand = ctx
             .territories
@@ -216,7 +253,7 @@ impl StrategySceneData {
 
         if let Some(mut bus) = resources.get_mut::<EventBus>().await {
             bus.publish(ResearchQueued {
-                prototype: id.clone(),
+                prototype: proto_id.clone(),
                 budget: Currency::new(120),
                 targeted_segment: demand,
             });
@@ -241,24 +278,46 @@ impl StrategySceneData {
     }
 
     async fn fortify_battlefront(&mut self, resources: &mut ResourceContext) {
+        let (front_index, ops_multiplier) = {
+            let ctx = match resources.get::<GameContext>().await {
+                Some(ctx) => ctx,
+                None => return,
+            };
+
+            let Some(front_index) = ctx.territories.iter().position(|t| t.battlefront) else {
+                drop(ctx);
+                self.status_line = "現在の前線はありません".into();
+                return;
+            };
+
+            let ops_multiplier = ctx.active_policy().effects.ops_cost_multiplier;
+            (front_index, ops_multiplier)
+        };
+
+        let cost = Currency::new(((120.0 * ops_multiplier).round() as i64).max(60));
+
+        // Try spending from issun BudgetLedger first
+        let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            ledger.try_spend(issun::plugin::BudgetChannel::Ops, cost)
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                ctx.ledger.try_spend(BudgetChannel::Operations, cost)
+            } else {
+                return;
+            }
+        };
+
+        if !spend_ok {
+            self.status_line = "Ops資金が不足しています".into();
+            push_econ_warning(resources, "防衛強化失敗: Ops不足").await;
+            return;
+        }
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return,
         };
-
-        let Some(front_index) = ctx.territories.iter().position(|t| t.battlefront) else {
-            self.status_line = "現在の前線はありません".into();
-            return;
-        };
-
-        let ops_multiplier = ctx.active_policy().effects.ops_cost_multiplier;
-        let cost = Currency::new(((120.0 * ops_multiplier).round() as i64).max(60));
-        if !ctx.ledger.try_spend(BudgetChannel::Operations, cost) {
-            self.status_line = "Ops資金が不足しています".into();
-            drop(ctx);
-            push_econ_warning(resources, "防衛強化失敗: Ops不足").await;
-            return;
-        }
         ctx.record_ops_spend(cost);
 
         let front_name;
@@ -316,16 +375,35 @@ impl StrategySceneData {
     }
 
     async fn execute_diplomacy(&mut self, resources: &mut ResourceContext) {
+        let diplomacy_cost = Currency::new(100);
+
+        // Try spending from issun BudgetLedger first
+        let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            ledger.try_spend(issun::plugin::BudgetChannel::Reserve, diplomacy_cost)
+        } else {
+            // Fallback to GameContext ledger
+            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+                if ctx.ledger.reserve.amount() < 100 {
+                    drop(ctx);
+                    self.status_line = "予備資金が不足しています".into();
+                    return;
+                }
+                ctx.ledger.reserve -= diplomacy_cost;
+                true
+            } else {
+                return;
+            }
+        };
+
+        if !spend_ok {
+            self.status_line = "予備資金が不足しています".into();
+            return;
+        }
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return,
         };
-
-        if ctx.ledger.reserve.amount() < 100 {
-            self.status_line = "予備資金が不足しています".into();
-            return;
-        }
-        ctx.ledger.reserve -= Currency::new(100);
 
         if let Some(front) = ctx
             .territories
