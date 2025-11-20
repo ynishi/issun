@@ -28,6 +28,7 @@ pub mod action;
 pub mod combat;
 pub mod dungeon;
 pub mod economy;
+pub mod faction;
 pub mod inventory;
 pub mod loot;
 pub mod room_buff;
@@ -130,6 +131,32 @@ pub use territory::{
     TerritoryDevelopmentRequested,
     TerritoryDevelopedEvent,
     TerritoryEffectsUpdatedEvent,
+};
+
+pub use faction::{
+    // Plugin
+    FactionPlugin,
+    // Hook
+    FactionHook,
+    DefaultFactionHook,
+    // Types
+    Faction,
+    FactionId,
+    Operation,
+    OperationId,
+    OperationStatus,
+    Outcome,
+    FactionError,
+    // Resource
+    FactionRegistry,
+    // System
+    FactionSystem,
+    // Events
+    OperationLaunchRequested,
+    OperationLaunchedEvent,
+    OperationResolveRequested,
+    OperationCompletedEvent,
+    OperationFailedEvent,
 };
 
 pub use time::{
