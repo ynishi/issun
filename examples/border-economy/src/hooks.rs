@@ -85,9 +85,9 @@ impl TerritoryHook for BorderEconomyTerritoryHook {
         territory: &Territory,
         resources: &ResourceContext,
     ) -> Result<i64, String> {
-        // Get policy bonus
-        let bonus = if let Some(ctx) = resources.get::<GameContext>().await {
-            ctx.active_policy().effects.investment_bonus
+        // Get policy bonus from PolicyRegistry
+        let bonus = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+            registry.get_effect("investment_bonus")
         } else {
             1.0
         };

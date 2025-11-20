@@ -13,6 +13,7 @@ use hooks::{BorderEconomyTerritoryHook, GameLogHook};
 use issun::engine::GameRunner;
 use issun::event::EventBus;
 use issun::plugin::action::{ActionConfig, ActionPlugin};
+use issun::plugin::policy::{Policy, PolicyPlugin, PolicyRegistry};
 use issun::plugin::territory::{Territory, TerritoryPlugin, TerritoryRegistry};
 use issun::prelude::*;
 use models::{handle_scene_input, GameContext, GameScene, DAILY_ACTION_POINTS};
@@ -43,6 +44,8 @@ async fn main() -> std::io::Result<()> {
             TerritoryPlugin::new()
                 .with_hook(BorderEconomyTerritoryHook),
         )
+        .map_err(as_io)?
+        .with_plugin(PolicyPlugin::new())
         .map_err(as_io)?
         .with_plugin(issun::plugin::BuiltInEconomyPlugin::default())
         .map_err(as_io)?
@@ -94,6 +97,31 @@ async fn main() -> std::io::Result<()> {
         }
     }
 
+    // Initialize PolicyRegistry from GameContext policies
+    {
+        let ctx = resources.get::<GameContext>().await.unwrap();
+        let mut registry = resources.get_mut::<PolicyRegistry>().await.unwrap();
+
+        // Convert PolicyCard to Policy
+        for card in &ctx.policies {
+            let policy = Policy::new(&card.id, &card.name, &card.description)
+                .add_effect("dividend_multiplier", card.effects.dividend_multiplier)
+                .add_effect("investment_bonus", card.effects.investment_bonus)
+                .add_effect("ops_cost_multiplier", card.effects.ops_cost_multiplier)
+                .add_effect("diplomacy_bonus", card.effects.diplomacy_bonus)
+                .with_metadata(serde_json::json!({
+                    "available_actions": card.available_actions,
+                }));
+            registry.add(policy);
+        }
+
+        // Activate the initial policy (first one)
+        if !ctx.policies.is_empty() {
+            let initial_policy_id = issun::plugin::policy::PolicyId::new(&ctx.policies[0].id);
+            let _ = registry.activate(&initial_policy_id);
+        }
+    }
+
     let initial_scene = GameScene::Title(models::scenes::TitleSceneData::new());
     let runner =
         GameRunner::new(SceneDirector::new(initial_scene, services, systems, resources).await)
@@ -130,6 +158,7 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let market_guard = resources.try_get::<MarketPulse>();
     let reputation_guard = resources.try_get::<ReputationLedger>();
     let vault_guard = resources.try_get::<VaultState>();
+    let policy_guard = resources.try_get::<PolicyRegistry>();
 
     let ctx = ctx_guard.as_deref();
     let clock = clock_guard.as_deref();
@@ -142,18 +171,19 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let market = market_guard.as_deref();
     let reputation = reputation_guard.as_deref();
     let vault = vault_guard.as_deref();
+    let policy_registry = policy_guard.as_deref();
 
     match scene {
         GameScene::Title(data) => ui::render_title(frame, data),
         GameScene::Strategy(data) => {
-            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, points, data)
+            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, points, policy_registry, data)
         }
         GameScene::Tactical(data) => ui::render_tactical(frame, ctx, data),
         GameScene::Economic(data) => {
-            ui::render_economic(frame, ctx, clock, ledger, econ, proto, market, data)
+            ui::render_economic(frame, ctx, clock, ledger, econ, proto, market, policy_registry, data)
         }
         GameScene::IntelReport(data) => {
-            ui::render_report(frame, ctx, clock, ledger, territory, proto, reputation, data)
+            ui::render_report(frame, ctx, clock, ledger, territory, proto, reputation, policy_registry, data)
         }
         GameScene::Vault(data) => ui::render_vault(frame, ctx, clock, ledger, vault, data),
     }

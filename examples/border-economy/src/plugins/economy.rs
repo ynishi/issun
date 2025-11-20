@@ -184,14 +184,20 @@ impl EconomySystem {
             return;
         }
 
+        // Get dividend multiplier from PolicyRegistry
+        let dividend_multiplier = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+            registry.get_effect("dividend_multiplier")
+        } else {
+            1.0
+        };
+
         // Calculate income/upkeep from GameContext
-        let (base_income, base_upkeep, dividend_multiplier, ops_spent, rnd_spent, dev_spent) =
+        let (base_income, base_upkeep, ops_spent, rnd_spent, dev_spent) =
             if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
                 let base_income = ctx.base_income();
                 let base_upkeep = ctx.base_upkeep();
-                let dividend_mult = ctx.get_policy_dividend_multiplier();
                 let (ops, rnd, dev) = ctx.reset_weekly_spending();
-                (base_income, base_upkeep, dividend_mult, ops, rnd, dev)
+                (base_income, base_upkeep, ops, rnd, dev)
             } else {
                 return;
             };

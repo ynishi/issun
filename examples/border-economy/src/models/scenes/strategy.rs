@@ -122,11 +122,11 @@ impl StrategySceneData {
         resources: &mut ResourceContext,
     ) -> SceneTransition<GameScene> {
         let ops_multiplier = {
-            let ctx = match resources.get::<GameContext>().await {
-                Some(ctx) => ctx,
-                None => return SceneTransition::Stay,
-            };
-            ctx.active_policy().effects.ops_cost_multiplier
+            if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+                registry.get_effect("ops_cost_multiplier")
+            } else {
+                1.0
+            }
         };
 
         let deployment_cost = Currency::new(((150.0 * ops_multiplier).round() as i64).max(80));
@@ -324,7 +324,14 @@ impl StrategySceneData {
                 return;
             };
 
-            let ops_multiplier = ctx.active_policy().effects.ops_cost_multiplier;
+            drop(ctx);
+
+            let ops_multiplier = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+                registry.get_effect("ops_cost_multiplier")
+            } else {
+                1.0
+            };
+
             (front_index, ops_multiplier)
         };
 
@@ -414,12 +421,18 @@ impl StrategySceneData {
             return;
         }
 
+        let investment_bonus = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+            registry.get_effect("investment_bonus")
+        } else {
+            1.0
+        };
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return,
         };
 
-        if !ctx.apply_territory_investment(&territory_id, amount) {
+        if !ctx.apply_territory_investment(&territory_id, amount, investment_bonus) {
             self.status_line = "投資対象が見つかりません".into();
             return;
         }
@@ -443,9 +456,16 @@ impl StrategySceneData {
     }
 
     async fn set_policy(&mut self, resources: &mut ResourceContext) {
-        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-            let policy = ctx.cycle_policy();
-            self.status_line = format!("政策を「{}」に切替", policy.name);
+        // Publish PolicyCycleRequested event
+        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            bus.publish(issun::plugin::PolicyCycleRequested);
+        }
+
+        // Get the newly activated policy name for display
+        if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+            if let Some(policy) = registry.active_policy() {
+                self.status_line = format!("政策を「{}」に切替", policy.name);
+            }
         }
     }
 
@@ -464,6 +484,12 @@ impl StrategySceneData {
             return;
         }
 
+        let diplomacy_bonus = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
+            registry.get_effect("diplomacy_bonus")
+        } else {
+            1.0
+        };
+
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
             None => return,
@@ -476,10 +502,10 @@ impl StrategySceneData {
             .map(|t| (t.enemy_faction.clone(), t.id.as_str().to_string()))
         {
             let (faction_id, front_name) = front;
-            ctx.apply_campaign_response(&faction_id, 0.1);
+            ctx.apply_campaign_response(&faction_id, 0.1, diplomacy_bonus);
             self.status_line = format!("{} へ警告外交を実施", front_name);
         } else if let Some(faction_id) = ctx.territories.get(0).map(|t| t.enemy_faction.clone()) {
-            ctx.apply_campaign_response(&faction_id, 0.1);
+            ctx.apply_campaign_response(&faction_id, 0.1, diplomacy_bonus);
             self.status_line = format!("{} 勢力と限定協力を実施", faction_id.as_str());
         }
     }

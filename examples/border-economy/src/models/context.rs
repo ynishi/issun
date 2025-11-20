@@ -197,7 +197,7 @@ pub struct GameContext {
     pub pending_logs: Vec<String>,
     pub enemy_operations: Vec<EnemyOperation>,
     pub policies: Vec<PolicyCard>,
-    pub active_policy_index: usize,
+    // NOTE: active_policy_index removed - use PolicyRegistry instead
     pub weekly_ops_spent: Currency,
     pub weekly_rnd_spent: Currency,
     pub weekly_dev_spent: Currency,
@@ -327,7 +327,6 @@ impl GameContext {
                     available_actions: vec![DiplomaticAction::LimitedCooperation],
                 },
             ],
-            active_policy_index: 0,
             weekly_ops_spent: Currency::ZERO,
             weekly_rnd_spent: Currency::ZERO,
             weekly_dev_spent: Currency::ZERO,
@@ -364,19 +363,9 @@ impl GameContext {
         self.enemy_factions.iter().find(|f| &f.id == id)
     }
 
-    pub fn active_policy(&self) -> &PolicyCard {
-        self.policies
-            .get(self.active_policy_index)
-            .unwrap_or_else(|| &self.policies[0])
-    }
-
-    pub fn cycle_policy(&mut self) -> &PolicyCard {
-        self.active_policy_index = (self.active_policy_index + 1) % self.policies.len();
-        let idx = self.active_policy_index;
-        let name = self.policies[idx].name.clone();
-        self.record(format!("政策「{}」を採択", name));
-        &self.policies[idx]
-    }
+    // NOTE: active_policy() and cycle_policy() removed
+    // Now use PolicyRegistry from issun::plugin::policy::PolicyRegistry
+    // Access via resources.get::<PolicyRegistry>().await
 
     pub fn adjust_control(&mut self, id: &TerritoryId, delta: f32) {
         if let Some(territory) = self.territories.iter_mut().find(|t| &t.id == id) {
@@ -441,11 +430,10 @@ impl GameContext {
 
     // NOTE: invest_in_territory now requires caller to manage issun::plugin::BudgetLedger
     // Returns (success, bonus multiplier) for caller to apply investment
-    pub fn apply_territory_investment(&mut self, territory_id: &TerritoryId, amount: Currency) -> bool {
-        let bonus = self.active_policy().effects.investment_bonus;
+    pub fn apply_territory_investment(&mut self, territory_id: &TerritoryId, amount: Currency, investment_bonus: f32) -> bool {
         self.record_dev_spend(amount);
         if let Some(territory) = self.territories.iter_mut().find(|t| &t.id == territory_id) {
-            territory.pending_investment += (amount.amount() as f32 / 1000.0) * bonus;
+            territory.pending_investment += (amount.amount() as f32 / 1000.0) * investment_bonus;
             self.pending_logs.push(format!(
                 "{} にインフラ投資 ({} )",
                 territory.id.as_str(),
@@ -917,9 +905,8 @@ impl GameContext {
         (ops, rnd, dev)
     }
 
-    pub fn get_policy_dividend_multiplier(&self) -> f32 {
-        self.active_policy().effects.dividend_multiplier
-    }
+    // NOTE: get_policy_dividend_multiplier removed
+    // Caller should get directly from PolicyRegistry.get_effect("dividend_multiplier")
 
     pub fn queue_research(&mut self, id: &WeaponPrototypeId, delta: f32, innovation_multiplier: f32) {
         if let Some(proto) = self.prototypes.iter_mut().find(|p| &p.id == id) {
@@ -993,9 +980,8 @@ impl EnemyFaction {
 }
 
 impl GameContext {
-    pub fn apply_campaign_response(&mut self, faction_id: &EnemyFactionId, relations_delta: f32) {
+    pub fn apply_campaign_response(&mut self, faction_id: &EnemyFactionId, relations_delta: f32, diplomacy_bonus: f32) {
         if self.enemy_factions.iter().any(|f| &f.id == faction_id) {
-            let diplomacy_bonus = self.active_policy().effects.diplomacy_bonus;
             let mut impacted = Vec::new();
             if let Some(faction) = self.enemy_factions.iter_mut().find(|f| &f.id == faction_id) {
                 faction.relations =
