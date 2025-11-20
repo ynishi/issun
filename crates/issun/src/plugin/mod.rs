@@ -33,6 +33,7 @@ pub mod inventory;
 pub mod loot;
 pub mod policy;
 pub mod reputation;
+pub mod research;
 pub mod room_buff;
 pub mod territory;
 pub mod time;
@@ -204,6 +205,37 @@ pub use reputation::{
     ReputationChangedEvent,
     ReputationSetRequested,
     ReputationThresholdCrossedEvent,
+};
+
+pub use research::{
+    // Plugin
+    ResearchPlugin,
+    // Hook
+    ResearchHook,
+    DefaultResearchHook,
+    // Types
+    ResearchId,
+    ResearchProject,
+    ResearchResult,
+    ResearchStatus,
+    ResearchError,
+    // Resource
+    ResearchRegistry,
+    ResearchConfig,
+    ProgressModel,
+    // System
+    ResearchSystem,
+    // Events
+    ResearchQueueRequested,
+    ResearchStartRequested,
+    ResearchCancelRequested,
+    ResearchProgressRequested,
+    ResearchCompleteRequested,
+    ResearchQueuedEvent,
+    ResearchStartedEvent,
+    ResearchCompletedEvent,
+    ResearchProgressUpdatedEvent,
+    ResearchCancelledEvent,
 };
 
 pub use time::{
