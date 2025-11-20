@@ -35,6 +35,17 @@ impl PolicySystem {
         Self { hook }
     }
 
+    /// Process all policy events
+    pub async fn process_events(
+        &mut self,
+        services: &ServiceContext,
+        resources: &mut ResourceContext,
+    ) {
+        self.process_activations(services, resources).await;
+        self.process_deactivations(services, resources).await;
+        self.process_cycles(services, resources).await;
+    }
+
     /// Process policy activation requests
     ///
     /// Listens for `PolicyActivateRequested` events and:
@@ -327,11 +338,12 @@ mod tests {
             bus.publish(PolicyActivateRequested {
                 policy_id: PolicyId::new("test"),
             });
+            bus.dispatch();
         }
 
         // Process activations
         let services = ServiceContext::new();
-        system.process_activations(&services, &mut resources).await;
+        system.process_events(&services, &mut resources).await;
 
         // Verify policy is activated
         {
@@ -340,6 +352,12 @@ mod tests {
                 registry.active_policy().unwrap().id.as_str(),
                 "test"
             );
+        }
+
+        // Dispatch to make events visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
         }
 
         // Verify event was published
@@ -368,18 +386,23 @@ mod tests {
         {
             let mut bus = resources.get_mut::<EventBus>().await.unwrap();
             bus.publish(PolicyDeactivateRequested { policy_id: None });
+            bus.dispatch();
         }
 
         // Process deactivations
         let services = ServiceContext::new();
-        system
-            .process_deactivations(&services, &mut resources)
-            .await;
+        system.process_events(&services, &mut resources).await;
 
         // Verify policy is deactivated
         {
             let registry = resources.get::<PolicyRegistry>().await.unwrap();
             assert!(registry.active_policy().is_none());
+        }
+
+        // Dispatch to make events visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
         }
 
         // Verify event was published
