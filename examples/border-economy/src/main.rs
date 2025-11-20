@@ -115,14 +115,16 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     match scene {
         GameScene::Title(data) => ui::render_title(frame, data),
         GameScene::Strategy(data) => {
-            ui::render_strategy(frame, ctx, ops, territory, reputation, data)
+            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, data)
         }
         GameScene::Tactical(data) => ui::render_tactical(frame, ctx, data),
-        GameScene::Economic(data) => ui::render_economic(frame, ctx, econ, proto, market, data),
-        GameScene::IntelReport(data) => {
-            ui::render_report(frame, ctx, territory, proto, reputation, data)
+        GameScene::Economic(data) => {
+            ui::render_economic(frame, ctx, clock, ledger, econ, proto, market, data)
         }
-        GameScene::Vault(data) => ui::render_vault(frame, ctx, vault, data),
+        GameScene::IntelReport(data) => {
+            ui::render_report(frame, ctx, clock, ledger, territory, proto, reputation, data)
+        }
+        GameScene::Vault(data) => ui::render_vault(frame, ctx, clock, ledger, vault, data),
     }
 }
 

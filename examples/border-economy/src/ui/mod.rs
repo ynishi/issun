@@ -45,6 +45,8 @@ pub fn render_title(frame: &mut Frame, data: &TitleSceneData) {
 pub fn render_strategy(
     frame: &mut Frame,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     ops: Option<&FactionOpsState>,
     territory: Option<&TerritoryStateCache>,
     reputation: Option<&ReputationLedger>,
@@ -91,7 +93,7 @@ pub fn render_strategy(
     let inner = command_block.inner(chunks[0]);
     frame.render_widget(List::new(list_items), inner);
 
-    render_hq_feed(frame, chunks[1], ctx, ops, territory, reputation);
+    render_hq_feed(frame, chunks[1], ctx, clock, ledger, ops, territory, reputation);
 
     let mut status_lines = vec![Line::from(data.status_line.clone())];
     if let Some(ctx) = ctx {
@@ -118,6 +120,8 @@ fn render_hq_feed(
     frame: &mut Frame,
     area: Rect,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     ops: Option<&FactionOpsState>,
     territory: Option<&TerritoryStateCache>,
     reputation: Option<&ReputationLedger>,
@@ -129,19 +133,33 @@ fn render_hq_feed(
 
     if let Some(ctx) = ctx {
         let (remaining, total) = ctx.action_status();
+        let day_text = clock.map(|c| c.day).unwrap_or(ctx.day);
         lines.push(Line::from(vec![Span::styled(
-            format!("Day {} | AP {}/{}", ctx.day, remaining, total),
+            format!("Day {} | AP {}/{}", day_text, remaining, total),
             Style::default().fg(Color::Yellow),
         )]));
-        lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
-        lines.push(Line::from(format!(
-            "Ops {} | R&D {} | Reserve {}",
-            ctx.ledger.ops_pool, ctx.ledger.research_pool, ctx.ledger.reserve
-        )));
-        lines.push(Line::from(format!(
-            "Innovation {} | Security {}",
-            ctx.ledger.innovation_fund, ctx.ledger.security_fund
-        )));
+
+        if let Some(ledger) = ledger {
+            lines.push(Line::from(format!("Cash {}", ledger.cash)));
+            lines.push(Line::from(format!(
+                "Ops {} | R&D {} | Reserve {}",
+                ledger.ops_pool, ledger.research_pool, ledger.reserve
+            )));
+            lines.push(Line::from(format!(
+                "Innovation {} | Security {}",
+                ledger.innovation_fund, ledger.security_fund
+            )));
+        } else {
+            lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
+            lines.push(Line::from(format!(
+                "Ops {} | R&D {} | Reserve {}",
+                ctx.ledger.ops_pool, ctx.ledger.research_pool, ctx.ledger.reserve
+            )));
+            lines.push(Line::from(format!(
+                "Innovation {} | Security {}",
+                ctx.ledger.innovation_fund, ctx.ledger.security_fund
+            )));
+        }
         lines.push(Line::from(format!("政策: {}", ctx.active_policy().name)));
         if let Some(next_op) = ctx.enemy_operations.iter().min_by_key(|op| op.eta) {
             let faction = ctx
@@ -298,6 +316,8 @@ pub fn render_tactical(frame: &mut Frame, ctx: Option<&GameContext>, data: &Tact
 pub fn render_economic(
     frame: &mut Frame,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     economy: Option<&EconomyState>,
     prototypes: Option<&PrototypeBacklog>,
     market: Option<&MarketPulse>,
@@ -313,7 +333,7 @@ pub fn render_economic(
         .iter()
         .enumerate()
         .map(|(idx, channel)| {
-            let label = format!("{} ⟶ {}", channel, ctx_value(ctx, channel));
+            let label = format!("{} ⟶ {}", channel, ctx_value(ctx, ledger, channel));
             let style = if idx == data.cursor {
                 Style::default()
                     .fg(Color::Magenta)
@@ -355,13 +375,15 @@ pub fn render_economic(
     );
     frame.render_widget(info, left_chunks[1]);
 
-    render_econ_sidebar(frame, layout[1], ctx, economy, prototypes, market, data);
+    render_econ_sidebar(frame, layout[1], ctx, clock, ledger, economy, prototypes, market, data);
 }
 
 fn render_econ_sidebar(
     frame: &mut Frame,
     area: Rect,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     economy: Option<&EconomyState>,
     prototypes: Option<&PrototypeBacklog>,
     market: Option<&MarketPulse>,
@@ -375,15 +397,28 @@ fn render_econ_sidebar(
     let mut lines = Vec::new();
 
     if let Some(ctx) = ctx {
-        lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
-        lines.push(Line::from(format!(
-            "Reserve {} | Ops {} | R&D {}",
-            ctx.ledger.reserve, ctx.ledger.ops_pool, ctx.ledger.research_pool
-        )));
-        lines.push(Line::from(format!(
-            "Innovation {} | Security {}",
-            ctx.ledger.innovation_fund, ctx.ledger.security_fund
-        )));
+        if let Some(ledger) = ledger {
+            lines.push(Line::from(format!("Cash {}", ledger.cash)));
+            lines.push(Line::from(format!(
+                "Reserve {} | Ops {} | R&D {}",
+                ledger.reserve, ledger.ops_pool, ledger.research_pool
+            )));
+            lines.push(Line::from(format!(
+                "Innovation {} | Security {}",
+                ledger.innovation_fund, ledger.security_fund
+            )));
+        } else {
+            lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
+            lines.push(Line::from(format!(
+                "Reserve {} | Ops {} | R&D {}",
+                ctx.ledger.reserve, ctx.ledger.ops_pool, ctx.ledger.research_pool
+            )));
+            lines.push(Line::from(format!(
+                "Innovation {} | Security {}",
+                ctx.ledger.innovation_fund, ctx.ledger.security_fund
+            )));
+        }
+        // Use ctx.ledger for border-economy specific methods
         let rd_bonus = ctx.ledger.innovation_multiplier() * 100.0;
         if rd_bonus > 0.0 {
             lines.push(Line::from(format!("R&D bonus +{:.0}%", rd_bonus)));
@@ -521,6 +556,8 @@ fn render_econ_sidebar(
 pub fn render_vault(
     frame: &mut Frame,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     vault_state: Option<&VaultState>,
     data: &VaultSceneData,
 ) {
@@ -716,8 +753,20 @@ fn describe_outcome(outcome: &VaultOutcome) -> String {
     }
 }
 
-fn ctx_value(ctx: Option<&GameContext>, channel: &BudgetChannel) -> String {
-    if let Some(ctx) = ctx {
+fn ctx_value(
+    ctx: Option<&GameContext>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
+    channel: &BudgetChannel,
+) -> String {
+    if let Some(ledger) = ledger {
+        match channel {
+            BudgetChannel::Research => ledger.research_pool.to_string(),
+            BudgetChannel::Operations => ledger.ops_pool.to_string(),
+            BudgetChannel::Reserve => ledger.reserve.to_string(),
+            BudgetChannel::Innovation => ledger.innovation_fund.to_string(),
+            BudgetChannel::Security => ledger.security_fund.to_string(),
+        }
+    } else if let Some(ctx) = ctx {
         match channel {
             BudgetChannel::Research => ctx.ledger.research_pool.to_string(),
             BudgetChannel::Operations => ctx.ledger.ops_pool.to_string(),
@@ -733,6 +782,8 @@ fn ctx_value(ctx: Option<&GameContext>, channel: &BudgetChannel) -> String {
 pub fn render_report(
     frame: &mut Frame,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     territory: Option<&TerritoryStateCache>,
     prototypes: Option<&PrototypeBacklog>,
     reputation: Option<&ReputationLedger>,
@@ -793,13 +844,15 @@ pub fn render_report(
         data.focus == 2,
     );
 
-    render_report_summary(frame, layout[1], ctx, territory, prototypes, reputation);
+    render_report_summary(frame, layout[1], ctx, clock, ledger, territory, prototypes, reputation);
 }
 
 fn render_report_summary(
     frame: &mut Frame,
     area: Rect,
     ctx: Option<&GameContext>,
+    clock: Option<&issun::plugin::GameClock>,
+    ledger: Option<&issun::plugin::BudgetLedger>,
     territory: Option<&TerritoryStateCache>,
     prototypes: Option<&PrototypeBacklog>,
     reputation: Option<&ReputationLedger>,
@@ -810,7 +863,8 @@ fn render_report_summary(
     let mut lines = Vec::new();
 
     if let Some(ctx) = ctx {
-        lines.push(Line::from(format!("Cash {}", ctx.ledger.cash)));
+        let cash_text = ledger.map(|l| l.cash.to_string()).unwrap_or_else(|| ctx.ledger.cash.to_string());
+        lines.push(Line::from(format!("Cash {}", cash_text)));
         lines.push(Line::from(format!(
             "Prototypes in dev: {}",
             ctx.prototypes.len()
