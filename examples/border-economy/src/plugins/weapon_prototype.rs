@@ -46,7 +46,7 @@ impl PrototypeSystem {
     async fn on_research_queued(&mut self, event: &ResearchQueued, backlog: &mut PrototypeBacklog) {
         backlog
             .queued
-            .insert(0, format!("{} +{}c", event.prototype, event.budget.0));
+            .insert(0, format!("{} +{}c", event.prototype, event.budget.amount()));
         backlog.queued.truncate(6);
     }
 

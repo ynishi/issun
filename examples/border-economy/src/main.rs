@@ -91,6 +91,8 @@ async fn main() -> std::io::Result<()> {
 
 fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &ResourceContext) {
     let ctx_guard = resources.try_get::<GameContext>();
+    let clock_guard = resources.try_get::<issun::plugin::GameClock>();
+    let ledger_guard = resources.try_get::<issun::plugin::BudgetLedger>();
     let ops_guard = resources.try_get::<FactionOpsState>();
     let econ_guard = resources.try_get::<EconomyState>();
     let territory_guard = resources.try_get::<TerritoryStateCache>();
@@ -100,6 +102,8 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let vault_guard = resources.try_get::<VaultState>();
 
     let ctx = ctx_guard.as_deref();
+    let clock = clock_guard.as_deref();
+    let ledger = ledger_guard.as_deref();
     let ops = ops_guard.as_deref();
     let econ = econ_guard.as_deref();
     let territory = territory_guard.as_deref();

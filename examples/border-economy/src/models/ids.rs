@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
+// Re-export Currency from issun
+pub use issun::plugin::Currency;
+
 /// Identifier for player-controlled factions or contractors.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FactionId(String);
@@ -116,43 +119,7 @@ impl Display for BudgetChannel {
     }
 }
 
-/// Currency utility with helper math operations.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Currency(pub i64);
-
-impl Currency {
-    pub const ZERO: Currency = Currency(0);
-
-    pub fn new(amount: i64) -> Self {
-        Self(amount)
-    }
-
-    pub fn saturating_add(self, other: Currency) -> Currency {
-        Currency(self.0.saturating_add(other.0))
-    }
-
-    pub fn saturating_sub(self, other: Currency) -> Currency {
-        Currency(self.0.saturating_sub(other.0))
-    }
-}
-
-impl Display for Currency {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "₡{}", self.0)
-    }
-}
-
-impl std::ops::AddAssign for Currency {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = self.saturating_add(rhs);
-    }
-}
-
-impl std::ops::SubAssign for Currency {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = self.saturating_sub(rhs);
-    }
-}
+// Currency type removed - now using issun::plugin::Currency
 
 /// Reputation metrics feed bonuses into demand & payouts.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

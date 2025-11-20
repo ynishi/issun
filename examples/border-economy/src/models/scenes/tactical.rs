@@ -69,7 +69,7 @@ impl TacticalSceneData {
         let payout = if self.resolved {
             self.brief.expected_payout
         } else {
-            Currency::new((self.brief.expected_payout.0 as f32 * self.progress) as i64)
+            Currency::new((self.brief.expected_payout.amount() as f32 * self.progress) as i64)
         };
         let territory = self.brief.target.clone();
         let faction = self.brief.faction.clone();

@@ -321,7 +321,7 @@ impl StrategySceneData {
             None => return,
         };
 
-        if ctx.ledger.reserve.0 < 100 {
+        if ctx.ledger.reserve.amount() < 100 {
             self.status_line = "予備資金が不足しています".into();
             return;
         }

@@ -187,11 +187,11 @@ impl EconomicSceneData {
                     .enemy_faction_by_id(&faction_id)
                     .map(|f| f.codename.clone())
                     .unwrap_or_else(|| "敵勢力".into());
-                ctx.apply_campaign_response(&faction_id, amount.0 as f32 / 500.0);
+                ctx.apply_campaign_response(&faction_id, amount.amount() as f32 / 500.0);
                 self.last_transfer = format!("{} に友好投資: {}", faction_name, amount);
             } else if let Some(territory) = ctx.territories.get(0) {
                 let faction_id = territory.enemy_faction.clone();
-                ctx.apply_campaign_response(&faction_id, amount.0 as f32 / 600.0);
+                ctx.apply_campaign_response(&faction_id, amount.amount() as f32 / 600.0);
                 self.last_transfer = format!("{} 勢力に限定協力: {}", faction_id.as_str(), amount);
             }
         }

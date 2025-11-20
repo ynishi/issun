@@ -61,7 +61,7 @@ pub struct LedgerForecastService;
 
 impl LedgerForecastService {
     pub fn predict(&self, ledger: &crate::models::BudgetLedger) -> i64 {
-        (ledger.cash.0 + ledger.research_pool.0 + ledger.ops_pool.0) / 3
+        (ledger.cash.amount() + ledger.research_pool.amount() + ledger.ops_pool.amount()) / 3
     }
 }
 
@@ -96,15 +96,15 @@ impl EconomySystem {
                     .saturating_sub(resolved.len() as u32);
 
                 for result in resolved {
-                    state.last_cashflow = result.revenue_delta.0;
-                    state.rolling_income.push(result.revenue_delta.0);
+                    state.last_cashflow = result.revenue_delta.amount();
+                    state.rolling_income.push(result.revenue_delta.amount());
                 }
                 state.rolling_income.truncate(10);
 
                 for job in research {
                     state
                         .research_backlog
-                        .insert(0, format!("{} → {}c", job.prototype, job.budget.0));
+                        .insert(0, format!("{} → {}c", job.prototype, job.budget.amount()));
                 }
                 state.research_backlog.truncate(6);
             }
@@ -226,8 +226,8 @@ impl EconomySystem {
                 ops_spent: settlement.ops_spent,
                 rnd_spent: settlement.rnd_spent,
                 dev_spent: settlement.dev_spent,
-                net_margin: if income.0 != 0 {
-                    settlement.net.0 as f32 / income.0 as f32
+                net_margin: if income.amount() != 0 {
+                    settlement.net.amount() as f32 / income.amount() as f32
                 } else {
                     0.0
                 },
@@ -242,7 +242,7 @@ impl EconomySystem {
                 );
                 econ.settlement_log.insert(0, entry);
                 econ.settlement_log.truncate(5);
-                if dividend.shortfall.0 > 0 {
+                if dividend.shortfall.amount() > 0 {
                     econ.warnings
                         .insert(0, format!("配当未払い {} → 評判低下", dividend.shortfall));
                     econ.warnings.truncate(5);

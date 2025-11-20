@@ -206,7 +206,7 @@ impl BudgetLedger {
             return false;
         }
         let from_balance = *self.channel_mut(from);
-        if from_balance.0 < delta.0 {
+        if from_balance.amount() < delta.amount() {
             return false;
         }
         *self.channel_mut(from) -= delta;
@@ -215,12 +215,12 @@ impl BudgetLedger {
     }
 
     pub fn can_spend(&self, channel: BudgetChannel, amount: Currency) -> bool {
-        self.channel_ref(channel).0 >= amount.0
+        self.channel_ref(channel).amount() >= amount.amount()
     }
 
     pub fn try_spend(&mut self, channel: BudgetChannel, amount: Currency) -> bool {
         let balance = self.channel_mut(channel);
-        if balance.0 < amount.0 {
+        if balance.amount() < amount.amount() {
             return false;
         }
         *balance -= amount;
@@ -228,7 +228,7 @@ impl BudgetLedger {
     }
 
     pub fn transfer_from_cash(&mut self, amount: Currency) -> bool {
-        if self.cash.0 < amount.0 {
+        if self.cash.amount() < amount.amount() {
             return false;
         }
         self.cash -= amount;
@@ -241,32 +241,32 @@ impl BudgetLedger {
     }
 
     pub fn innovation_multiplier(&self) -> f32 {
-        ((self.innovation_fund.0 as f32) / 2000.0).clamp(0.0, 0.35)
+        ((self.innovation_fund.amount() as f32) / 2000.0).clamp(0.0, 0.35)
     }
 
     pub fn investment_income_bonus(&self) -> i64 {
-        ((self.innovation_fund.0 as f32) * 0.05) as i64
+        ((self.innovation_fund.amount() as f32) * 0.05) as i64
     }
 
     pub fn security_upkeep_offset(&self) -> i64 {
-        ((self.security_fund.0 as f32) * 0.08) as i64
+        ((self.security_fund.amount() as f32) * 0.08) as i64
     }
 
     pub fn apply_investment_decay(&mut self) -> Option<String> {
         let mut notes = Vec::new();
-        let innovation_loss = ((self.innovation_fund.0 as f32) * 0.08) as i64;
+        let innovation_loss = ((self.innovation_fund.amount() as f32) * 0.08) as i64;
         if innovation_loss > 0 {
             let deduction = Currency::new(innovation_loss);
-            if deduction.0 > 0 {
+            if deduction.amount() > 0 {
                 self.innovation_fund -= deduction;
                 notes.push(format!("Innovation維持費 {}", deduction));
             }
         }
 
-        let security_loss = ((self.security_fund.0 as f32) * 0.05) as i64;
+        let security_loss = ((self.security_fund.amount() as f32) * 0.05) as i64;
         if security_loss > 0 {
             let deduction = Currency::new(security_loss);
-            if deduction.0 > 0 {
+            if deduction.amount() > 0 {
                 self.security_fund -= deduction;
                 notes.push(format!("Security維持費 {}", deduction));
             }
@@ -522,7 +522,7 @@ impl GameContext {
 
     pub fn apply_revenue(&mut self, amount: Currency) {
         self.ledger.cash += amount;
-        self.ledger.reserve += Currency::new((amount.0 as f32 * 0.25) as i64);
+        self.ledger.reserve += Currency::new((amount.amount() as f32 * 0.25) as i64);
     }
 
     pub fn record_ops_spend(&mut self, amount: Currency) {
@@ -587,7 +587,7 @@ impl GameContext {
     }
 
     pub fn process_dividend_event(&mut self) -> Option<DividendEventResult> {
-        let demand_value = (((self.ledger.cash.0.max(0) as f32) * DIVIDEND_RATE)
+        let demand_value = (((self.ledger.cash.amount().max(0) as f32) * DIVIDEND_RATE)
             * self.active_policy().effects.dividend_multiplier) as i64
             + DIVIDEND_BASE;
         if demand_value <= 0 {
@@ -596,17 +596,17 @@ impl GameContext {
 
         let mut remaining = demand_value;
         let mut reserve_paid = 0;
-        if self.ledger.reserve.0 > 0 {
-            let pay = remaining.min(self.ledger.reserve.0);
-            self.ledger.reserve.0 -= pay;
+        if self.ledger.reserve.amount() > 0 {
+            let pay = remaining.min(self.ledger.reserve.amount());
+            self.ledger.reserve = Currency::new(self.ledger.reserve.amount() - pay);
             remaining -= pay;
             reserve_paid = pay;
         }
 
         let mut cash_paid = 0;
-        if remaining > 0 && self.ledger.cash.0 > 0 {
-            let pay = remaining.min(self.ledger.cash.0);
-            self.ledger.cash.0 -= pay;
+        if remaining > 0 && self.ledger.cash.amount() > 0 {
+            let pay = remaining.min(self.ledger.cash.amount());
+            self.ledger.cash = Currency::new(self.ledger.cash.amount() - pay);
             remaining -= pay;
             cash_paid = pay;
         }
@@ -642,14 +642,14 @@ impl GameContext {
     }
 
     pub fn invest_in_territory(&mut self, territory_id: &TerritoryId, amount: Currency) -> bool {
-        if self.ledger.innovation_fund.0 < amount.0 {
+        if self.ledger.innovation_fund.amount() < amount.amount() {
             return false;
         }
         self.ledger.innovation_fund -= amount;
         let bonus = self.active_policy().effects.investment_bonus;
         self.record_dev_spend(amount);
         if let Some(territory) = self.territories.iter_mut().find(|t| &t.id == territory_id) {
-            territory.pending_investment += (amount.0 as f32 / 1000.0) * bonus;
+            territory.pending_investment += (amount.amount() as f32 / 1000.0) * bonus;
             self.pending_logs.push(format!(
                 "{} にインフラ投資 ({} )",
                 territory.id.as_str(),
@@ -692,7 +692,7 @@ impl GameContext {
         amount: Currency,
         channel: BudgetChannel,
     ) -> Result<VaultInvestmentResult, VaultInvestmentError> {
-        if amount.0 <= 0 {
+        if amount.amount() <= 0 {
             return Err(VaultInvestmentError::InvalidAmount);
         }
 
@@ -832,8 +832,8 @@ impl GameContext {
                                     (faction.hostility - hostility_drop).clamp(0.1, 2.5);
                             }
                             // Treat multiplier as rebate percentage applied to recent Ops spend.
-                            if self.weekly_ops_spent.0 > 0 {
-                                let rebate = (self.weekly_ops_spent.0 as f32
+                            if self.weekly_ops_spent.amount() > 0 {
+                                let rebate = (self.weekly_ops_spent.amount() as f32
                                     * (1.0 - ops_cost_multiplier))
                                     .max(0.0) as i64;
                                 if rebate > 0 {
@@ -1012,7 +1012,7 @@ impl GameContext {
 
         let territory = self.territories.iter_mut().find(|t| t.id == op.territory)?;
 
-        let mitigation = (self.ledger.security_fund.0 as f32 / 2500.0).clamp(0.0, 0.5);
+        let mitigation = (self.ledger.security_fund.amount() as f32 / 2500.0).clamp(0.0, 0.5);
         let effective = (op.intensity * (1.0 - mitigation)).clamp(0.01, 0.3);
 
         territory.control = (territory.control - effective).clamp(0.0, 1.0);
@@ -1084,25 +1084,25 @@ impl GameContext {
     pub fn apply_settlement(&mut self, income: Currency, upkeep: Currency) -> SettlementResult {
         self.ledger.cash += income;
         self.ledger.cash -= upkeep;
-        let net_amount = income.0 - upkeep.0;
+        let net_amount = income.amount() - upkeep.amount();
         let mut reserve_bonus = Currency::new(0);
         let mut innovation_allocation = Currency::new(0);
         let mut security_allocation = Currency::new(0);
 
         if net_amount > 0 {
             reserve_bonus = Currency::new((net_amount as f32 * 0.25) as i64);
-            if reserve_bonus.0 > 0 {
+            if reserve_bonus.amount() > 0 {
                 self.ledger.reserve += reserve_bonus;
             }
 
             let invest_total = Currency::new((net_amount as f32 * 0.3) as i64);
-            if invest_total.0 > 0 {
-                innovation_allocation = Currency::new((invest_total.0 as f32 * 0.6) as i64);
-                security_allocation = Currency::new(invest_total.0 - innovation_allocation.0);
-                if innovation_allocation.0 > 0 {
+            if invest_total.amount() > 0 {
+                innovation_allocation = Currency::new((invest_total.amount() as f32 * 0.6) as i64);
+                security_allocation = Currency::new(invest_total.amount() - innovation_allocation.amount());
+                if innovation_allocation.amount() > 0 {
                     self.ledger.innovation_fund += innovation_allocation;
                 }
-                if security_allocation.0 > 0 {
+                if security_allocation.amount() > 0 {
                     self.ledger.security_fund += security_allocation;
                 }
             }
@@ -1113,7 +1113,7 @@ impl GameContext {
             "決算処理 収益{} - コスト{} → 純益{}",
             income, upkeep, net
         ));
-        if innovation_allocation.0 > 0 || security_allocation.0 > 0 {
+        if innovation_allocation.amount() > 0 || security_allocation.amount() > 0 {
             self.record(format!(
                 "自動投資: Innovation {} / Security {}",
                 innovation_allocation, security_allocation

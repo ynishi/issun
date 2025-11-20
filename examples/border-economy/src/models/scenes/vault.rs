@@ -188,7 +188,7 @@ impl VaultSceneData {
                 ctx.consume_action("Vault投資");
                 self.status_line = format!(
                     "{} へ {} 投資 (₡{}→₡{})",
-                    result.slot_id, amount.0, result.before.0, result.after.0
+                    result.slot_id, amount.amount(), result.before.amount(), result.after.amount()
                 );
                 drop(ctx);
                 if let Some(mut bus) = resources.get_mut::<EventBus>().await {

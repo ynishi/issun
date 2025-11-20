@@ -47,21 +47,21 @@ pub struct VaultSlot {
 impl VaultSlot {
     pub fn apply_investment(&mut self, amount: Currency) -> (Currency, Currency) {
         let before = self.current_investment;
-        let mut after_value = before.0.saturating_add(amount.0);
-        if after_value > self.max_threshold.0 {
-            after_value = self.max_threshold.0;
+        let mut after_value = before.amount().saturating_add(amount.amount());
+        if after_value > self.max_threshold.amount() {
+            after_value = self.max_threshold.amount();
         }
         self.current_investment = Currency::new(after_value);
-        self.active = self.current_investment.0 >= self.base_threshold.0;
+        self.active = self.current_investment.amount() >= self.base_threshold.amount();
         (before, self.current_investment)
     }
 
     pub fn tick_week(&mut self) -> Currency {
-        if self.current_investment.0 <= 0 {
+        if self.current_investment.amount() <= 0 {
             self.active = false;
             return Currency::ZERO;
         }
-        let decay_amount = ((self.current_investment.0 as f32) * self.decay_rate)
+        let decay_amount = ((self.current_investment.amount() as f32) * self.decay_rate)
             .round()
             .max(0.0) as i64;
         if decay_amount <= 0 {
@@ -69,7 +69,7 @@ impl VaultSlot {
         }
         let deduction = Currency::new(decay_amount);
         self.current_investment -= deduction;
-        if self.current_investment.0 < self.base_threshold.0 {
+        if self.current_investment.amount() < self.base_threshold.amount() {
             self.active = false;
         }
         deduction
@@ -398,15 +398,15 @@ impl Vault {
             .slots
             .iter()
             .filter(|slot| matches!(slot.slot_type, SlotType::Security))
-            .map(|slot| slot.current_investment.0)
+            .map(|slot| slot.current_investment.amount())
             .sum();
         if (matches!(self.status, VaultStatus::Active)
             || matches!(self.status, VaultStatus::Peril { .. }))
-            && security_investment < self.security_requirement.0
+            && security_investment < self.security_requirement.amount()
         {
             let rand = ((self.discovery_week + self.peril_counter as u32 * 7) % 100) as f32 / 100.0;
             self.peril_counter = self.peril_counter.saturating_add(1);
-            let risk = (1.0 - (security_investment as f32 / self.security_requirement.0 as f32))
+            let risk: f32 = (1.0 - (security_investment as f32 / self.security_requirement.amount() as f32))
                 .clamp(0.0, 1.0);
             let assault_roll = self.volatility * risk * rand;
             if assault_roll > 0.4 {
@@ -457,9 +457,9 @@ impl Vault {
             .slots
             .iter()
             .filter(|slot| matches!(slot.slot_type, SlotType::Security))
-            .map(|slot| slot.current_investment.0)
+            .map(|slot| slot.current_investment.amount())
             .sum::<i64>();
-        if coverage < self.security_requirement.0 / 2 {
+        if coverage < self.security_requirement.amount() / 2 {
             warnings.push("Security coverage不足".into());
         }
         warnings
