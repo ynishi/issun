@@ -1,18 +1,19 @@
 //! Time plugin implementation
 
-use super::{GameClock, TimeConfig};
+use super::{GameTimer, TimeConfig};
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
 
 /// Built-in time management plugin
 ///
-/// This plugin provides game clock functionality for turn-based or day-based games.
-/// It registers a `GameClock` resource that tracks the current day and action points.
+/// This plugin provides game timer functionality for turn-based or day-based games.
+/// It registers a `GameTimer` resource that tracks the current day and tick count.
 ///
-/// Systems can advance time by:
-/// 1. Getting mutable access to `GameClock` from `ResourceContext`
-/// 2. Calling `advance_day()` or `consume_action()`
-/// 3. Publishing `DayPassedEvent` or `ActionConsumedEvent` to notify other systems
+/// # Migration Note
+///
+/// This plugin now only provides time tracking (GameTimer).
+/// For action points functionality, use the separate ActionPlugin.
+/// Or use TurnBasedTimePlugin for a combined experience.
 ///
 /// # Example
 ///
@@ -23,7 +24,7 @@ use async_trait::async_trait;
 /// let game = GameBuilder::new()
 ///     .with_plugin(BuiltInTimePlugin::new(TimeConfig {
 ///         initial_day: 1,
-///         actions_per_day: 5,
+///         actions_per_day: 5, // Now used only for backwards compatibility
 ///     }))?
 ///     .build()
 ///     .await?;
@@ -37,7 +38,7 @@ impl BuiltInTimePlugin {
     ///
     /// # Arguments
     ///
-    /// * `config` - Time configuration (initial day, actions per day)
+    /// * `config` - Time configuration (initial day, actions_per_day ignored)
     pub fn new(config: TimeConfig) -> Self {
         Self { config }
     }
@@ -46,7 +47,7 @@ impl BuiltInTimePlugin {
     ///
     /// Default settings:
     /// - Initial day: 1
-    /// - Actions per day: 3
+    /// - Actions per day: 3 (ignored, for backwards compatibility only)
     pub fn with_defaults() -> Self {
         Self {
             config: TimeConfig::default(),
@@ -67,10 +68,10 @@ impl Plugin for BuiltInTimePlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register GameClock as runtime resource (mutable shared state)
-        let mut clock = GameClock::new(self.config.actions_per_day);
-        clock.day = self.config.initial_day;
-        builder.register_runtime_state(clock);
+        // Register GameTimer as runtime resource (mutable shared state)
+        let mut timer = GameTimer::new();
+        timer.day = self.config.initial_day;
+        builder.register_runtime_state(timer);
 
         // Store config as read-only resource for other systems to reference
         builder.register_resource(self.config.clone());
@@ -81,7 +82,7 @@ impl Plugin for BuiltInTimePlugin {
     }
 
     async fn initialize(&mut self) {
-        // No initialization needed - GameClock is self-contained
+        // No initialization needed - GameTimer is self-contained
     }
 }
 

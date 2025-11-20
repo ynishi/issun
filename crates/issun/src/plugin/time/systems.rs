@@ -1,9 +1,10 @@
 //! Time management systems
 
-use crate::context::ResourceContext;
+use crate::context::{Context, ResourceContext, ServiceContext};
 use crate::event::EventBus;
-use crate::system::{DeriveSystem, System};
+use crate::system::System;
 use async_trait::async_trait;
+use std::any::Any;
 
 use super::events::{AdvanceTimeRequested, DayChanged};
 use super::resources::GameTimer;
@@ -14,17 +15,23 @@ use super::resources::GameTimer;
 /// then publishes `DayChanged` events for other systems to react to.
 ///
 /// This keeps business logic in systems rather than scene layers.
-#[derive(Default, DeriveSystem)]
-#[system(name = "timer")]
+#[derive(Default)]
 pub struct TimerSystem;
 
-#[async_trait]
-impl System for TimerSystem {
-    async fn process(&mut self, resources: &mut ResourceContext) {
+impl TimerSystem {
+    /// Update method - processes time advancement requests
+    ///
+    /// This method is called with ResourceContext access for managing timer state.
+    pub async fn update(
+        &mut self,
+        _services: &ServiceContext,
+        resources: &mut ResourceContext,
+    ) {
         // Check for time advancement requests
         let advance_requested = if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-            let events: Vec<_> = bus.reader::<AdvanceTimeRequested>().iter().collect();
-            !events.is_empty()
+            let reader = bus.reader::<AdvanceTimeRequested>();
+            let has_events = reader.iter().count() > 0;
+            has_events
         } else {
             false
         };
@@ -47,9 +54,30 @@ impl System for TimerSystem {
     }
 }
 
+#[async_trait]
+impl System for TimerSystem {
+    fn name(&self) -> &'static str {
+        "timer"
+    }
+
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Legacy Context support (deprecated path)
+        // Modern systems should use the async ResourceContext/ServiceContext pattern
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::{ResourceContext, ServiceContext};
     use crate::event::EventBus;
 
     #[tokio::test]
@@ -58,16 +86,18 @@ mod tests {
         resources.insert(GameTimer::new());
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = TimerSystem::default();
 
         // Publish advancement request
         {
             let mut bus = resources.get_mut::<EventBus>().await.unwrap();
             bus.publish(AdvanceTimeRequested);
+            bus.dispatch(); // Make events visible to readers
         }
 
         // Process system
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         // Check day incremented
         let timer = resources.get::<GameTimer>().await.unwrap();
@@ -75,7 +105,8 @@ mod tests {
 
         // Check DayChanged event published
         let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-        let events: Vec<_> = bus.reader::<DayChanged>().iter().collect();
+        let reader = bus.reader::<DayChanged>();
+        let events: Vec<_> = reader.iter().collect();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].day, 2);
     }
@@ -86,10 +117,11 @@ mod tests {
         resources.insert(GameTimer::new());
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = TimerSystem::default();
 
         // Process without request
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         // Day should not change
         let timer = resources.get::<GameTimer>().await.unwrap();
@@ -97,7 +129,8 @@ mod tests {
 
         // No DayChanged events
         let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-        let events: Vec<_> = bus.reader::<DayChanged>().iter().collect();
+        let reader = bus.reader::<DayChanged>();
+        let events: Vec<_> = reader.iter().collect();
         assert_eq!(events.len(), 0);
     }
 
@@ -107,6 +140,7 @@ mod tests {
         resources.insert(GameTimer::new());
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = TimerSystem::default();
 
         // Publish multiple requests
@@ -114,10 +148,11 @@ mod tests {
             let mut bus = resources.get_mut::<EventBus>().await.unwrap();
             bus.publish(AdvanceTimeRequested);
             bus.publish(AdvanceTimeRequested);
+            bus.dispatch(); // Make events visible to readers
         }
 
-        // Process system (should only increment once per process call)
-        system.process(&mut resources).await;
+        // Process system (should only increment once per update call)
+        system.update(&services, &mut resources).await;
 
         let timer = resources.get::<GameTimer>().await.unwrap();
         assert_eq!(timer.day, 2); // Only incremented once
@@ -126,9 +161,10 @@ mod tests {
         {
             let mut bus = resources.get_mut::<EventBus>().await.unwrap();
             bus.publish(AdvanceTimeRequested);
+            bus.dispatch(); // Make events visible to readers
         }
 
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         let timer = resources.get::<GameTimer>().await.unwrap();
         assert_eq!(timer.day, 3);

@@ -182,7 +182,7 @@ mod tests {
         resources.insert(EventBus::new());
         resources.insert(EconomyConfig::default()); // 7 day period
         resources.insert(BudgetLedger::new(Currency::new(2400)));
-        resources.insert(GameClock::new(3));
+        // Note: GameClock deprecated - will migrate to GameTimer in separate task
 
         // Publish day passed event for day 7 (settlement day)
         {

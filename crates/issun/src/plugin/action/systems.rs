@@ -1,27 +1,34 @@
 //! Action points management systems
 
-use crate::context::ResourceContext;
+use crate::context::{Context, ResourceContext, ServiceContext};
 use crate::event::EventBus;
 use crate::plugin::time::{AdvanceTimeRequested, DayChanged};
-use crate::system::{DeriveSystem, System};
+use crate::system::System;
 use async_trait::async_trait;
+use std::any::Any;
 
 use super::resources::ActionPoints;
 
 /// System that resets action points when day changes
 ///
 /// Listens for `DayChanged` events and resets ActionPoints to maximum.
-#[derive(Default, DeriveSystem)]
-#[system(name = "action_reset")]
+#[derive(Default)]
 pub struct ActionResetSystem;
 
-#[async_trait]
-impl System for ActionResetSystem {
-    async fn process(&mut self, resources: &mut ResourceContext) {
+impl ActionResetSystem {
+    /// Update method - processes day changed events and resets action points
+    ///
+    /// This method is called with ResourceContext access for managing action points.
+    pub async fn update(
+        &mut self,
+        _services: &ServiceContext,
+        resources: &mut ResourceContext,
+    ) {
         // Check for day changed events
         let day_changed = if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-            let events: Vec<_> = bus.reader::<DayChanged>().iter().collect();
-            !events.is_empty()
+            let reader = bus.reader::<DayChanged>();
+            let has_events = reader.iter().count() > 0;
+            has_events
         } else {
             false
         };
@@ -37,17 +44,42 @@ impl System for ActionResetSystem {
     }
 }
 
+#[async_trait]
+impl System for ActionResetSystem {
+    fn name(&self) -> &'static str {
+        "action_reset"
+    }
+
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Legacy Context support (deprecated path)
+        // Modern systems should use the async ResourceContext/ServiceContext pattern
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 /// System that auto-advances time when actions are depleted
 ///
 /// Checks if ActionPoints are depleted and publishes `AdvanceTimeRequested` event.
 /// This provides automatic turn progression for turn-based games.
-#[derive(Default, DeriveSystem)]
-#[system(name = "action_auto_advance")]
+#[derive(Default)]
 pub struct ActionAutoAdvanceSystem;
 
-#[async_trait]
-impl System for ActionAutoAdvanceSystem {
-    async fn process(&mut self, resources: &mut ResourceContext) {
+impl ActionAutoAdvanceSystem {
+    /// Update method - checks if actions depleted and requests time advancement
+    ///
+    /// This method is called with ResourceContext access for managing time advancement.
+    pub async fn update(
+        &mut self,
+        _services: &ServiceContext,
+        resources: &mut ResourceContext,
+    ) {
         // Check if actions are depleted
         let depleted = if let Some(points) = resources.get::<ActionPoints>().await {
             points.is_depleted()
@@ -66,6 +98,26 @@ impl System for ActionAutoAdvanceSystem {
     }
 }
 
+#[async_trait]
+impl System for ActionAutoAdvanceSystem {
+    fn name(&self) -> &'static str {
+        "action_auto_advance"
+    }
+
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Legacy Context support (deprecated path)
+        // Modern systems should use the async ResourceContext/ServiceContext pattern
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,6 +129,7 @@ mod tests {
         resources.insert(ActionPoints::new(3));
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = ActionResetSystem::default();
 
         // Consume some actions
@@ -91,10 +144,11 @@ mod tests {
         {
             let mut bus = resources.get_mut::<EventBus>().await.unwrap();
             bus.publish(DayChanged { day: 2 });
+            bus.dispatch(); // Make events visible to readers
         }
 
         // Process system
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         // Check points reset
         let points = resources.get::<ActionPoints>().await.unwrap();
@@ -107,6 +161,7 @@ mod tests {
         resources.insert(ActionPoints::new(3));
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = ActionResetSystem::default();
 
         // Consume actions
@@ -117,7 +172,7 @@ mod tests {
         }
 
         // Process without event
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         // Points should not reset
         let points = resources.get::<ActionPoints>().await.unwrap();
@@ -130,6 +185,7 @@ mod tests {
         resources.insert(ActionPoints::new(2));
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = ActionAutoAdvanceSystem::default();
 
         // Deplete all actions
@@ -141,11 +197,12 @@ mod tests {
         }
 
         // Process system
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         // Check AdvanceTimeRequested published
         let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-        let events: Vec<_> = bus.reader::<AdvanceTimeRequested>().iter().collect();
+        let reader = bus.reader::<AdvanceTimeRequested>();
+        let events: Vec<_> = reader.iter().collect();
         assert_eq!(events.len(), 1);
     }
 
@@ -155,6 +212,7 @@ mod tests {
         resources.insert(ActionPoints::new(3));
         resources.insert(EventBus::new());
 
+        let services = ServiceContext::new();
         let mut system = ActionAutoAdvanceSystem::default();
 
         // Consume some but not all
@@ -165,11 +223,12 @@ mod tests {
         }
 
         // Process system
-        system.process(&mut resources).await;
+        system.update(&services, &mut resources).await;
 
         // No event should be published
         let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-        let events: Vec<_> = bus.reader::<AdvanceTimeRequested>().iter().collect();
+        let reader = bus.reader::<AdvanceTimeRequested>();
+        let events: Vec<_> = reader.iter().collect();
         assert_eq!(events.len(), 0);
     }
 }
