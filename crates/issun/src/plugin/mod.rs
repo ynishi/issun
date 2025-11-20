@@ -32,6 +32,7 @@ pub mod faction;
 pub mod inventory;
 pub mod loot;
 pub mod policy;
+pub mod reputation;
 pub mod room_buff;
 pub mod territory;
 pub mod time;
@@ -180,6 +181,29 @@ pub use policy::{
     PolicyDeactivateRequested,
     PolicyDeactivatedEvent,
     PolicyCycleRequested,
+};
+
+pub use reputation::{
+    // Plugin
+    ReputationPlugin,
+    // Hook
+    ReputationHook,
+    DefaultReputationHook,
+    // Types
+    SubjectId,
+    ReputationEntry,
+    ReputationThreshold,
+    ReputationError,
+    // Resource
+    ReputationRegistry,
+    ReputationConfig,
+    // System
+    ReputationSystem,
+    // Events
+    ReputationChangeRequested,
+    ReputationChangedEvent,
+    ReputationSetRequested,
+    ReputationThresholdCrossedEvent,
 };
 
 pub use time::{
