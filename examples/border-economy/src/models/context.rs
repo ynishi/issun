@@ -314,7 +314,7 @@ pub struct DividendEventResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameContext {
     pub day: u32,
-    pub ledger: BudgetLedger,
+    // ledger moved to issun::plugin::BudgetLedger resource
     pub factions: Vec<FactionProfile>,
     pub territories: Vec<TerritoryIntel>,
     pub prototypes: Vec<WeaponPrototypeState>,
@@ -338,7 +338,7 @@ impl GameContext {
     pub fn new() -> Self {
         Self {
             day: 1,
-            ledger: BudgetLedger::new(Currency::new(2400)),
+            // ledger initialization moved to issun::plugin::BuiltInEconomyPlugin
             factions: vec![
                 FactionProfile::new(
                     "rust_runners",
@@ -520,10 +520,8 @@ impl GameContext {
         }
     }
 
-    pub fn apply_revenue(&mut self, amount: Currency) {
-        self.ledger.cash += amount;
-        self.ledger.reserve += Currency::new((amount.amount() as f32 * 0.25) as i64);
-    }
+    // apply_revenue removed - now done directly via issun::plugin::BudgetLedger
+    // (see tactical.rs for example)
 
     pub fn record_ops_spend(&mut self, amount: Currency) {
         self.weekly_ops_spent += amount;
@@ -586,53 +584,8 @@ impl GameContext {
         (self.actions_remaining, DAILY_ACTION_POINTS)
     }
 
-    pub fn process_dividend_event(&mut self) -> Option<DividendEventResult> {
-        let demand_value = (((self.ledger.cash.amount().max(0) as f32) * DIVIDEND_RATE)
-            * self.active_policy().effects.dividend_multiplier) as i64
-            + DIVIDEND_BASE;
-        if demand_value <= 0 {
-            return None;
-        }
-
-        let mut remaining = demand_value;
-        let mut reserve_paid = 0;
-        if self.ledger.reserve.amount() > 0 {
-            let pay = remaining.min(self.ledger.reserve.amount());
-            self.ledger.reserve = Currency::new(self.ledger.reserve.amount() - pay);
-            remaining -= pay;
-            reserve_paid = pay;
-        }
-
-        let mut cash_paid = 0;
-        if remaining > 0 && self.ledger.cash.amount() > 0 {
-            let pay = remaining.min(self.ledger.cash.amount());
-            self.ledger.cash = Currency::new(self.ledger.cash.amount() - pay);
-            remaining -= pay;
-            cash_paid = pay;
-        }
-
-        let shortfall = remaining.max(0);
-        if shortfall > 0 {
-            self.reputation.adjust(-7.5);
-        }
-
-        let demanded = Currency::new(demand_value);
-        let reserve_currency = Currency::new(reserve_paid);
-        let cash_currency = Currency::new(cash_paid);
-        let shortfall_currency = Currency::new(shortfall);
-
-        self.record(format!(
-            "株主配当: 要求{} (Reserve {} / Cash {} / 未払い {})",
-            demanded, reserve_currency, cash_currency, shortfall_currency
-        ));
-
-        Some(DividendEventResult {
-            demanded,
-            paid_from_reserve: reserve_currency,
-            paid_from_cash: cash_currency,
-            shortfall: shortfall_currency,
-        })
-    }
+    // NOTE: process_dividend_event moved to economy.rs plugin
+    // It now operates directly on issun::plugin::BudgetLedger from ResourceContext
 
     fn flush_pending_logs(&mut self) {
         let logs = self.pending_logs.drain(..).collect::<Vec<_>>();

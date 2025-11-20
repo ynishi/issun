@@ -130,16 +130,11 @@ impl StrategySceneData {
 
         let deployment_cost = Currency::new(((150.0 * ops_multiplier).round() as i64).max(80));
 
-        // Try spending from issun BudgetLedger first
+        // Spend from issun BudgetLedger
         let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             ledger.try_spend(issun::plugin::BudgetChannel::Ops, deployment_cost)
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                ctx.ledger.try_spend(BudgetChannel::Operations, deployment_cost)
-            } else {
-                return SceneTransition::Stay;
-            }
+            return SceneTransition::Stay;
         };
 
         if !spend_ok {
@@ -216,16 +211,11 @@ impl StrategySceneData {
 
         let budget = Currency::new(120);
 
-        // Try spending from issun BudgetLedger first
+        // Spend from issun BudgetLedger
         let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             ledger.try_spend(issun::plugin::BudgetChannel::Research, budget)
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                ctx.ledger.try_spend(BudgetChannel::Research, budget)
-            } else {
-                return SceneTransition::Stay;
-            }
+            return SceneTransition::Stay;
         };
 
         if !spend_ok {
@@ -296,16 +286,11 @@ impl StrategySceneData {
 
         let cost = Currency::new(((120.0 * ops_multiplier).round() as i64).max(60));
 
-        // Try spending from issun BudgetLedger first
+        // Spend from issun BudgetLedger
         let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             ledger.try_spend(issun::plugin::BudgetChannel::Ops, cost)
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                ctx.ledger.try_spend(BudgetChannel::Operations, cost)
-            } else {
-                return;
-            }
+            return;
         };
 
         if !spend_ok {
@@ -377,22 +362,11 @@ impl StrategySceneData {
     async fn execute_diplomacy(&mut self, resources: &mut ResourceContext) {
         let diplomacy_cost = Currency::new(100);
 
-        // Try spending from issun BudgetLedger first
+        // Spend from issun BudgetLedger
         let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             ledger.try_spend(issun::plugin::BudgetChannel::Reserve, diplomacy_cost)
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                if ctx.ledger.reserve.amount() < 100 {
-                    drop(ctx);
-                    self.status_line = "予備資金が不足しています".into();
-                    return;
-                }
-                ctx.ledger.reserve -= diplomacy_cost;
-                true
-            } else {
-                return;
-            }
+            return;
         };
 
         if !spend_ok {

@@ -75,9 +75,17 @@ impl TacticalSceneData {
         let faction = self.brief.faction.clone();
         let prototype = self.brief.prototype.clone();
 
+        // Apply revenue to issun BudgetLedger
+        if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
+            let reserve_bonus = Currency::new((payout.amount() as f32 * 0.25) as i64);
+            *ledger.get_channel_mut(issun::plugin::BudgetChannel::Cash) =
+                ledger.get_channel_mut(issun::plugin::BudgetChannel::Cash).saturating_add(payout);
+            *ledger.get_channel_mut(issun::plugin::BudgetChannel::Reserve) =
+                ledger.get_channel_mut(issun::plugin::BudgetChannel::Reserve).saturating_add(reserve_bonus);
+        }
+
         if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
             ctx.adjust_control(&territory, self.progress * 0.15);
-            ctx.apply_revenue(payout);
             ctx.push_telemetry(&prototype, self.progress * 0.4);
             ctx.record(format!("{} 作戦が {} で進展", faction, territory));
         }

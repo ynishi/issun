@@ -128,7 +128,7 @@ impl EconomicSceneData {
         let channel = self.channels[self.cursor];
         let amount = Currency::new(50);
 
-        // Try using issun BudgetLedger first
+        // Use issun BudgetLedger
         let success = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             let issun_channel = match channel {
                 BudgetChannel::Research => issun::plugin::BudgetChannel::Research,
@@ -144,16 +144,7 @@ impl EconomicSceneData {
                 ledger.transfer(issun_channel, issun::plugin::BudgetChannel::Reserve, amount)
             }
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                if direction > 0 {
-                    ctx.ledger.shift(BudgetChannel::Reserve, channel, amount)
-                } else {
-                    ctx.ledger.shift(channel, BudgetChannel::Reserve, amount)
-                }
-            } else {
-                false
-            }
+            false
         };
 
         if success {
@@ -179,7 +170,7 @@ impl EconomicSceneData {
             return;
         }
 
-        // Try using issun BudgetLedger first
+        // Use issun BudgetLedger
         let success = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             // Try to spend from Cash channel
             if !ledger.try_spend(issun::plugin::BudgetChannel::Cash, amount) {
@@ -200,21 +191,7 @@ impl EconomicSceneData {
             *target_balance = target_balance.saturating_add(amount);
             true
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                if !ctx.ledger.transfer_from_cash(amount) {
-                    drop(ctx);
-                    self.last_transfer = "Cash残高不足で投資できません".into();
-                    push_econ_warning(resources, "Cash→投資 失敗: 残高不足").await;
-                    return;
-                }
-
-                let target_balance = ctx.ledger.channel_mut(channel);
-                *target_balance += amount;
-                true
-            } else {
-                false
-            }
+            false
         };
 
         if success {
@@ -228,16 +205,11 @@ impl EconomicSceneData {
     async fn perform_diplomatic_investment(&mut self, resources: &mut ResourceContext) {
         let amount = self.amount_options[self.amount_cursor];
 
-        // Try using issun BudgetLedger first to deduct cash
+        // Use issun BudgetLedger to deduct cash
         let cash_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
             ledger.try_spend(issun::plugin::BudgetChannel::Cash, amount)
         } else {
-            // Fallback to GameContext ledger
-            if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
-                ctx.ledger.transfer_from_cash(amount)
-            } else {
-                false
-            }
+            false
         };
 
         if !cash_ok {
