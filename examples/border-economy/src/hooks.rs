@@ -2,10 +2,16 @@
 
 use async_trait::async_trait;
 use issun::context::ResourceContext;
+use issun::event::EventBus;
 use issun::plugin::action::{ActionConsumed, ActionHook};
+use issun::plugin::research::{
+    ResearchHook, ResearchProject, ResearchQueueRequested, ResearchResult,
+};
 use issun::plugin::territory::{ControlChanged, Developed, Territory, TerritoryHook};
 
+use crate::events::{FieldTestFeedback, ResearchQueued};
 use crate::models::GameContext;
+use crate::plugins::PrototypeBacklog;
 
 /// Hook that logs actions to GameContext
 pub struct GameLogHook;
@@ -115,6 +121,52 @@ impl TerritoryHook for BorderEconomyTerritoryHook {
                 territory.name,
                 developed.old_level,
                 developed.new_level
+            ));
+        }
+    }
+}
+
+/// Hook that bridges ResearchPlugin with border-economy's prototype system
+pub struct PrototypeResearchHook;
+
+#[async_trait]
+impl ResearchHook for PrototypeResearchHook {
+    async fn on_research_queued(
+        &self,
+        project: &ResearchProject,
+        resources: &mut ResourceContext,
+    ) {
+        // Update PrototypeBacklog for UI display
+        if let Some(mut backlog) = resources.get_mut::<PrototypeBacklog>().await {
+            backlog.queued.insert(
+                0,
+                format!("{} +{}c", project.name, project.cost),
+            );
+            backlog.queued.truncate(6);
+        }
+
+        // Log to GameContext
+        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+            ctx.record(format!("研究開始: {}", project.name));
+        }
+    }
+
+    async fn on_research_completed(
+        &self,
+        project: &ResearchProject,
+        result: &ResearchResult,
+        resources: &mut ResourceContext,
+    ) {
+        // Log completion with metrics
+        if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
+            let effectiveness = result.final_metrics.get("effectiveness").unwrap_or(&1.0);
+            let reliability = result.final_metrics.get("reliability").unwrap_or(&1.0);
+
+            ctx.record(format!(
+                "研究完了: {} (効果: {:.0}% / 信頼性: {:.0}%)",
+                project.name,
+                effectiveness * 100.0,
+                reliability * 100.0
             ));
         }
     }

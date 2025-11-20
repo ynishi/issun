@@ -109,14 +109,28 @@ impl TacticalSceneData {
             revenue_delta: payout,
         };
         let feedback = FieldTestFeedback {
-            prototype,
+            prototype: prototype.clone(),
             effectiveness: self.progress,
             reliability: odds,
         };
 
         if let Some(mut bus) = resources.get_mut::<EventBus>().await {
             bus.publish(resolved_event);
-            bus.publish(feedback);
+            bus.publish(feedback.clone());
+        }
+
+        // Update PrototypeBacklog for UI display
+        if let Some(mut backlog) = resources.get_mut::<crate::plugins::PrototypeBacklog>().await {
+            backlog.field_reports.insert(
+                0,
+                format!(
+                    "{} eff {:>3.0}% / rel {:>3.0}%",
+                    prototype,
+                    feedback.effectiveness * 100.0,
+                    feedback.reliability * 100.0
+                ),
+            );
+            backlog.field_reports.truncate(6);
         }
 
         SceneTransition::Stay

@@ -9,17 +9,18 @@ mod models;
 mod plugins;
 pub mod ui;
 
-use hooks::{BorderEconomyTerritoryHook, GameLogHook};
+use hooks::{BorderEconomyTerritoryHook, GameLogHook, PrototypeResearchHook};
 use issun::engine::GameRunner;
 use issun::event::EventBus;
 use issun::plugin::action::{ActionConfig, ActionPlugin};
 use issun::plugin::policy::{Policy, PolicyPlugin, PolicyRegistry};
+use issun::plugin::research::ResearchPlugin;
 use issun::plugin::territory::{Territory, TerritoryPlugin, TerritoryRegistry};
 use issun::prelude::*;
 use models::{handle_scene_input, GameContext, GameScene, DAILY_ACTION_POINTS};
 use plugins::{
-    EconomyState, FactionOpsState, MarketPulse, PrototypeBacklog, ReputationLedger,
-    TerritoryStateCache, VaultState,
+    EconomyState, FactionOpsState, FieldTelemetryService, MarketPulse, PrototypeBacklog,
+    ReputationLedger, TerritoryStateCache, VaultState,
 };
 use std::time::Duration;
 
@@ -49,6 +50,11 @@ async fn main() -> std::io::Result<()> {
         .map_err(as_io)?
         .with_plugin(issun::plugin::BuiltInEconomyPlugin::default())
         .map_err(as_io)?
+        .with_plugin(
+            ResearchPlugin::new()
+                .with_hook(PrototypeResearchHook),
+        )
+        .map_err(as_io)?
         // Existing border-economy plugins
         .with_plugin(plugins::FactionPlugin::default())
         .map_err(as_io)?
@@ -56,8 +62,7 @@ async fn main() -> std::io::Result<()> {
         .map_err(as_io)?
         .with_plugin(plugins::TerritoryPlugin::default())
         .map_err(as_io)?
-        .with_plugin(plugins::WeaponPrototypePlugin::default())
-        .map_err(as_io)?
+        // WeaponPrototypePlugin migrated to ResearchPlugin (see above)
         .with_plugin(plugins::MarketSharePlugin::default())
         .map_err(as_io)?
         .with_plugin(plugins::ReputationPlugin::default())
@@ -82,6 +87,11 @@ async fn main() -> std::io::Result<()> {
 
     if !resources.contains::<EventBus>() {
         resources.insert(EventBus::new());
+    }
+
+    // Initialize PrototypeBacklog for UI display
+    if !resources.contains::<PrototypeBacklog>() {
+        resources.insert(PrototypeBacklog::default());
     }
 
     // Initialize TerritoryRegistry from GameContext territories

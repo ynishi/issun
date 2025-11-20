@@ -14,7 +14,7 @@ pub use market_share::MarketSharePlugin;
 pub use reputation::ReputationPlugin;
 pub use territory::TerritoryPlugin;
 pub use vault::VaultPlugin;
-pub use weapon_prototype::WeaponPrototypePlugin;
+// WeaponPrototypePlugin migrated to issun::plugin::ResearchPlugin (see hooks::PrototypeResearchHook)
 
 use self::economy::EconomySystem;
 use self::faction::FactionBridgeSystem;
@@ -22,14 +22,14 @@ use self::market_share::MarketShareSystem;
 use self::reputation::ReputationSystem;
 use self::territory::TerritorySystem;
 use self::vault::VaultSystem;
-use self::weapon_prototype::PrototypeSystem;
 pub use economy::EconomyState;
 pub use faction::FactionOpsState;
 pub use market_share::MarketPulse;
 pub use reputation::ReputationLedger;
 pub use territory::TerritoryStateCache;
 pub use vault::VaultState;
-pub use weapon_prototype::PrototypeBacklog;
+// Re-export from weapon_prototype module (UI state + telemetry service)
+pub use weapon_prototype::{FieldTelemetryService, PrototypeBacklog};
 
 /// Pump every plugin system so they can react to newly dispatched events.
 pub async fn pump_event_systems(
@@ -46,9 +46,7 @@ pub async fn pump_event_systems(
     if let Some(system) = systems.get_mut::<TerritorySystem>() {
         system.process_events(services, resources).await;
     }
-    if let Some(system) = systems.get_mut::<PrototypeSystem>() {
-        system.process_events(services, resources).await;
-    }
+    // PrototypeSystem removed: migrated to issun::plugin::ResearchPlugin
     if let Some(system) = systems.get_mut::<MarketShareSystem>() {
         system.process_events(services, resources).await;
     }

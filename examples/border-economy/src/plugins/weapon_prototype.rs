@@ -1,69 +1,45 @@
-use crate::events::{FieldTestFeedback, ResearchQueued};
-use issun::plugin::PluginBuilderExt;
+//! Weapon prototype telemetry and backlog tracking
+//!
+//! NOTE: This module has been migrated to use issun::plugin::ResearchPlugin.
+//! The core research mechanics (queuing, progress, completion) are now handled by
+//! ResearchPlugin with a custom PrototypeResearchHook (see hooks.rs).
+//!
+//! This file now only contains:
+//! - PrototypeBacklog: UI display state for queued research and field reports
+//! - FieldTelemetryService: Quality modifier calculations for field test data
+
 use issun::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Default)]
-pub struct WeaponPrototypePlugin;
-
-#[async_trait::async_trait]
-impl Plugin for WeaponPrototypePlugin {
-    fn name(&self) -> &'static str {
-        "weapon_prototype_plugin"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        builder.register_service(Box::new(FieldTelemetryService::default()));
-        builder.register_system(Box::new(PrototypeSystem::default()));
-        builder.register_runtime_state(PrototypeBacklog::default());
-    }
-}
-
+/// Service for calculating quality modifiers from field test telemetry
 #[derive(Clone, Default, DeriveService)]
 #[service(name = "field_telemetry")]
 pub struct FieldTelemetryService;
 
 impl FieldTelemetryService {
+    /// Calculate quality modifier based on reliability metrics
+    ///
+    /// Clamps reliability to a reasonable range (0.2 to 1.2) to prevent
+    /// extreme values from breaking game balance.
     pub fn quality_modifier(&self, reliability: f32) -> f32 {
         reliability.clamp(0.2, 1.2)
     }
 }
 
+/// UI display state for prototype research and field testing
+///
+/// This resource tracks:
+/// - Recently queued research projects (for UI display)
+/// - Recent field test feedback reports (effectiveness/reliability metrics)
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PrototypeBacklog {
+    /// Recently queued research projects (max 6, newest first)
+    ///
+    /// Format: "{prototype_name} +{budget}c"
     pub queued: Vec<String>,
+
+    /// Recent field test reports (max 6, newest first)
+    ///
+    /// Format: "{prototype_name} eff {effectiveness}% / rel {reliability}%"
     pub field_reports: Vec<String>,
-}
-
-#[derive(Default, DeriveSystem)]
-#[system(name = "prototype_system")]
-pub struct PrototypeSystem;
-
-#[issun::event_handler(default_state = PrototypeBacklog)]
-impl PrototypeSystem {
-    #[subscribe(ResearchQueued)]
-    async fn on_research_queued(&mut self, event: &ResearchQueued, backlog: &mut PrototypeBacklog) {
-        backlog
-            .queued
-            .insert(0, format!("{} +{}c", event.prototype, event.budget.amount()));
-        backlog.queued.truncate(6);
-    }
-
-    #[subscribe(FieldTestFeedback)]
-    async fn on_field_test_feedback(
-        &mut self,
-        event: &FieldTestFeedback,
-        backlog: &mut PrototypeBacklog,
-    ) {
-        backlog.field_reports.insert(
-            0,
-            format!(
-                "{} eff {:>3.0}% / rel {:>3.0}%",
-                event.prototype,
-                event.effectiveness * 100.0,
-                event.reliability * 100.0
-            ),
-        );
-        backlog.field_reports.truncate(6);
-    }
 }
