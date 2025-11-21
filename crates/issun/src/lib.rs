@@ -45,6 +45,7 @@ pub mod plugin;
 pub mod resources;
 pub mod scene;
 pub mod service;
+pub mod state;
 pub mod storage;
 pub mod store;
 pub mod system;
@@ -111,6 +112,7 @@ pub mod prelude {
     pub use crate::resources::{Resource, Resources};
     pub use crate::scene::{Scene, SceneDirector, SceneTransition};
     pub use crate::service::Service;
+    pub use crate::state::{State, States};
     pub use crate::store::{EntityStore, Store};
     pub use crate::system::System;
     // Re-export proc macros (note: traits come from their respective modules above)

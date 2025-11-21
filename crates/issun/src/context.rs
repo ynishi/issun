@@ -11,6 +11,7 @@
 
 use crate::resources::Resources;
 use crate::service::Service;
+use crate::state::States;
 use crate::system::System;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
@@ -31,11 +32,12 @@ pub trait GameContext: Send + Sync {
 
 /// Default context implementation
 ///
-/// Provides a simple key-value store for game data, service registry, and resources
+/// Provides a simple key-value store for game data, service registry, resources, and states
 pub struct Context {
     data: HashMap<String, Box<dyn Any + Send + Sync>>,
     services: HashMap<&'static str, Box<dyn Service>>,
     resources: Resources,
+    states: States,
 }
 
 impl Default for Context {
@@ -51,6 +53,7 @@ impl Context {
             data: HashMap::new(),
             services: HashMap::new(),
             resources: Resources::new(),
+            states: States::new(),
         }
     }
 
@@ -173,6 +176,38 @@ impl Context {
     /// ```
     pub fn resources_mut(&mut self) -> &mut Resources {
         &mut self.resources
+    }
+
+    /// Get immutable reference to States
+    ///
+    /// States contain mutable runtime game state (save/load targets).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Access state (read-only)
+    /// if let Some(territory_state) = ctx.states().get::<TerritoryState>() {
+    ///     println!("Control: {:?}", territory_state.control);
+    /// }
+    /// ```
+    pub fn states(&self) -> &States {
+        &self.states
+    }
+
+    /// Get mutable reference to States
+    ///
+    /// Use this to access and modify game state during runtime.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Modify state
+    /// if let Some(state) = ctx.states_mut().get_mut::<TerritoryState>() {
+    ///     state.control.insert(territory_id, 0.5);
+    /// }
+    /// ```
+    pub fn states_mut(&mut self) -> &mut States {
+        &mut self.states
     }
 }
 
