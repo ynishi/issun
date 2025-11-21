@@ -3,8 +3,7 @@
 use super::hook::{MetricsHook, NoOpMetricsHook};
 use super::registry::{MetricsConfig, MetricsRegistry};
 use super::system::MetricsSystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Built-in metrics collection, aggregation, and reporting plugin
@@ -54,9 +53,17 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:metrics")]
 pub struct MetricsPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn MetricsHook>,
+    #[plugin(resource)]
     config: MetricsConfig,
+    #[plugin(runtime_state)]
+    registry: MetricsRegistry,
+    #[plugin(system)]
+    system: MetricsSystem,
 }
 
 impl MetricsPlugin {
@@ -65,9 +72,13 @@ impl MetricsPlugin {
     /// Uses the default hook (no-op) and default config by default.
     /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(NoOpMetricsHook);
+        let config = MetricsConfig::default();
         Self {
-            hook: Arc::new(NoOpMetricsHook),
-            config: MetricsConfig::default(),
+            hook: hook.clone(),
+            config: config.clone(),
+            registry: MetricsRegistry::with_config(config),
+            system: MetricsSystem::new(hook),
         }
     }
 
@@ -106,7 +117,9 @@ impl MetricsPlugin {
     /// let plugin = MetricsPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: MetricsHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = MetricsSystem::new(hook);
         self
     }
 
@@ -132,7 +145,8 @@ impl MetricsPlugin {
     /// let plugin = MetricsPlugin::new().with_config(config);
     /// ```
     pub fn with_config(mut self, config: MetricsConfig) -> Self {
-        self.config = config;
+        self.config = config.clone();
+        self.registry = MetricsRegistry::with_config(config);
         self
     }
 }
@@ -143,33 +157,14 @@ impl Default for MetricsPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for MetricsPlugin {
-    fn name(&self) -> &'static str {
-        "metrics_plugin"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register metrics registry resource
-        builder.register_runtime_state(MetricsRegistry::with_config(self.config.clone()));
-
-        // Register metrics system with hook
-        builder.register_system(Box::new(MetricsSystem::new(self.hook.clone())));
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_plugin_creation() {
-        let plugin = MetricsPlugin::new();
-        assert_eq!(plugin.name(), "metrics_plugin");
+        let _plugin = MetricsPlugin::new();
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -179,8 +174,8 @@ mod tests {
         #[async_trait::async_trait]
         impl MetricsHook for CustomHook {}
 
-        let plugin = MetricsPlugin::new().with_hook(CustomHook);
-        assert_eq!(plugin.name(), "metrics_plugin");
+        let _plugin = MetricsPlugin::new().with_hook(CustomHook);
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -191,7 +186,7 @@ mod tests {
             ..Default::default()
         };
 
-        let plugin = MetricsPlugin::new().with_config(config);
-        assert_eq!(plugin.name(), "metrics_plugin");
+        let _plugin = MetricsPlugin::new().with_config(config);
+        // Plugin derive macro automatically implements name()
     }
 }
