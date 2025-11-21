@@ -7,9 +7,11 @@ use async_trait::async_trait;
 use std::any::Any;
 use std::sync::Arc;
 
+use super::config::PolicyConfig;
 use super::events::*;
 use super::hook::PolicyHook;
-use super::registry::PolicyRegistry;
+use super::policies::Policies;
+use super::state::PolicyState;
 
 /// System that processes policy events with hooks
 ///
@@ -23,7 +25,7 @@ use super::registry::PolicyRegistry;
 /// # Feedback Loop
 ///
 /// ```text
-/// Command Event → Validation (Hook) → Registry Update → Hook Call → State Event
+/// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
 pub struct PolicySystem {
     hook: Arc<dyn PolicyHook>,
@@ -50,7 +52,7 @@ impl PolicySystem {
     ///
     /// Listens for `PolicyActivateRequested` events and:
     /// 1. Validates activation (via hook)
-    /// 2. Activates policy and updates registry
+    /// 2. Activates policy and updates state
     /// 3. Calls hook
     /// 4. Publishes `PolicyActivatedEvent`
     pub async fn process_activations(
@@ -71,8 +73,8 @@ impl PolicySystem {
         for request in requests {
             // Get policy for validation
             let policy = {
-                if let Some(registry) = resources.get::<PolicyRegistry>().await {
-                    match registry.get(&request.policy_id) {
+                if let Some(policies) = resources.get::<Policies>().await {
+                    match policies.get(&request.policy_id) {
                         Some(p) => p.clone(),
                         None => continue, // Policy not found, skip
                     }
@@ -89,36 +91,49 @@ impl PolicySystem {
                     .validate_activation(&policy, resources_ref)
                     .await
                 {
-                    Ok(()) => {},
+                    Ok(()) => {}
                     Err(_) => continue, // Hook rejected activation
                 }
             }
 
             // Get previous policy (before activation)
+            let previous_policy_id = {
+                let state = match resources.get::<PolicyState>().await {
+                    Some(s) => s,
+                    None => continue,
+                };
+                state.active_policy_id().cloned()
+            };
+
             let previous_policy = {
-                if let Some(registry) = resources.get::<PolicyRegistry>().await {
-                    registry.active_policy().cloned()
+                if let Some(id) = &previous_policy_id {
+                    if let Some(policies) = resources.get::<Policies>().await {
+                        policies.get(id).cloned()
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             };
 
-            let previous_policy_id = previous_policy.as_ref().map(|p| p.id.clone());
-
-            // Activate policy (update registry)
+            // Activate policy (update state)
             {
-                if let Some(mut registry) = resources.get_mut::<PolicyRegistry>().await {
-                    if registry.config().allow_multiple_active {
-                        if let Err(_) = registry.activate_multi(&request.policy_id) {
-                            continue; // Failed to activate
-                        }
-                    } else {
-                        if let Err(_) = registry.activate(&request.policy_id) {
-                            continue; // Failed to activate
-                        }
+                let config = match resources.get::<PolicyConfig>().await {
+                    Some(c) => c,
+                    None => continue,
+                };
+                let mut state = match resources.get_mut::<PolicyState>().await {
+                    Some(s) => s,
+                    None => continue,
+                };
+
+                if config.allow_multiple_active {
+                    if !state.activate_multi(request.policy_id.clone()) {
+                        continue; // Already active
                     }
                 } else {
-                    continue;
+                    state.activate(request.policy_id.clone());
                 }
             }
 
@@ -142,7 +157,7 @@ impl PolicySystem {
     /// Process policy deactivation requests
     ///
     /// Listens for `PolicyDeactivateRequested` events and:
-    /// 1. Deactivates policy and updates registry
+    /// 1. Deactivates policy and updates state
     /// 2. Calls hook
     /// 3. Publishes `PolicyDeactivatedEvent`
     pub async fn process_deactivations(
@@ -161,39 +176,50 @@ impl PolicySystem {
         };
 
         for request in requests {
-            // Get current policy (before deactivation)
-            let (policy, policy_id) = {
-                if let Some(registry) = resources.get::<PolicyRegistry>().await {
-                    if let Some(specific_id) = &request.policy_id {
-                        // Multi-active mode: deactivate specific policy
-                        match registry.get(specific_id) {
-                            Some(p) => (Some(p.clone()), specific_id.clone()),
-                            None => continue, // Policy not found
-                        }
-                    } else {
-                        // Single-active mode: deactivate current policy
-                        match registry.active_policy() {
-                            Some(p) => (Some(p.clone()), p.id.clone()),
-                            None => continue, // No active policy
-                        }
-                    }
+            // Determine which policy to deactivate
+            let policy_id = {
+                if let Some(specific_id) = &request.policy_id {
+                    // Multi-active mode: deactivate specific policy
+                    specific_id.clone()
                 } else {
-                    continue;
+                    // Single-active mode: deactivate current policy
+                    let state = match resources.get::<PolicyState>().await {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    match state.active_policy_id() {
+                        Some(id) => id.clone(),
+                        None => continue, // No active policy
+                    }
                 }
             };
 
-            // Deactivate policy (update registry)
+            // Get policy for hook call
+            let policy = {
+                if let Some(policies) = resources.get::<Policies>().await {
+                    policies.get(&policy_id).cloned()
+                } else {
+                    None
+                }
+            };
+
+            // Deactivate policy (update state)
             {
-                if let Some(mut registry) = resources.get_mut::<PolicyRegistry>().await {
-                    if registry.config().allow_multiple_active {
-                        if let Err(_) = registry.deactivate_multi(&policy_id) {
-                            continue; // Failed to deactivate
-                        }
-                    } else {
-                        registry.deactivate();
+                let config = match resources.get::<PolicyConfig>().await {
+                    Some(c) => c,
+                    None => continue,
+                };
+                let mut state = match resources.get_mut::<PolicyState>().await {
+                    Some(s) => s,
+                    None => continue,
+                };
+
+                if config.allow_multiple_active {
+                    if !state.deactivate_multi(&policy_id) {
+                        continue; // Was not active
                     }
                 } else {
-                    continue;
+                    state.deactivate();
                 }
             }
 
@@ -237,34 +263,82 @@ impl PolicySystem {
             return;
         }
 
+        // Check if cycling is enabled
+        let cycling_enabled = {
+            if let Some(config) = resources.get::<PolicyConfig>().await {
+                config.enable_cycling
+            } else {
+                return;
+            }
+        };
+
+        if !cycling_enabled {
+            return;
+        }
+
         // Get previous policy (before cycle)
+        let previous_policy_id = {
+            let state = match resources.get::<PolicyState>().await {
+                Some(s) => s,
+                None => return,
+            };
+            state.active_policy_id().cloned()
+        };
+
         let previous_policy = {
-            if let Some(registry) = resources.get::<PolicyRegistry>().await {
-                registry.active_policy().cloned()
+            if let Some(id) = &previous_policy_id {
+                if let Some(policies) = resources.get::<Policies>().await {
+                    policies.get(id).cloned()
+                } else {
+                    None
+                }
             } else {
                 None
             }
         };
 
-        let previous_policy_id = previous_policy.as_ref().map(|p| p.id.clone());
+        // Cycle to next policy
+        let next_policy_id = {
+            let policies = match resources.get::<Policies>().await {
+                Some(p) => p,
+                None => return,
+            };
 
-        // Cycle policy (update registry)
-        {
-            if let Some(mut registry) = resources.get_mut::<PolicyRegistry>().await {
-                if let Err(_) = registry.cycle() {
-                    return; // Failed to cycle
+            let policy_ids = policies.policy_ids();
+            if policy_ids.is_empty() {
+                return; // No policies to cycle through
+            }
+
+            if let Some(current_id) = &previous_policy_id {
+                // Find current index and move to next
+                if let Some(index) = policy_ids.iter().position(|id| id == current_id) {
+                    let next_index = (index + 1) % policy_ids.len();
+                    policy_ids[next_index].clone()
+                } else {
+                    // Current policy not found, activate first
+                    policy_ids[0].clone()
                 }
             } else {
-                return;
+                // No active policy, activate first
+                policy_ids[0].clone()
             }
+        };
+
+        // Activate next policy
+        {
+            let mut state = match resources.get_mut::<PolicyState>().await {
+                Some(s) => s,
+                None => return,
+            };
+            state.activate(next_policy_id.clone());
         }
 
         // Get newly activated policy
         let policy = {
-            if let Some(registry) = resources.get::<PolicyRegistry>().await {
-                match registry.active_policy() {
+            if let Some(policies) = resources.get::<Policies>().await {
+                match policies.get(&next_policy_id) {
                     Some(p) => p.clone(),
-                    None => return, // No active policy after cycle
+                    None => return, // Policy not found
                 }
             } else {
                 return;
@@ -325,11 +399,13 @@ mod tests {
         let mut system = PolicySystem::new(hook);
         let mut resources = ResourceContext::new();
 
-        // Setup registry and event bus
-        let mut registry = PolicyRegistry::new();
+        // Setup policies, config, state, and event bus
+        let mut policies = Policies::new();
         let policy = Policy::new("test", "Test Policy", "Test");
-        registry.add(policy);
-        resources.insert(registry);
+        policies.add(policy);
+        resources.insert(policies);
+        resources.insert(PolicyConfig::default());
+        resources.insert(PolicyState::new());
         resources.insert(EventBus::new());
 
         // Publish activation request
@@ -347,11 +423,8 @@ mod tests {
 
         // Verify policy is activated
         {
-            let registry = resources.get::<PolicyRegistry>().await.unwrap();
-            assert_eq!(
-                registry.active_policy().unwrap().id.as_str(),
-                "test"
-            );
+            let state = resources.get::<PolicyState>().await.unwrap();
+            assert_eq!(state.active_policy_id().unwrap().as_str(), "test");
         }
 
         // Dispatch to make events visible
@@ -374,12 +447,16 @@ mod tests {
         let mut system = PolicySystem::new(hook);
         let mut resources = ResourceContext::new();
 
-        // Setup registry with active policy
-        let mut registry = PolicyRegistry::new();
+        // Setup with active policy
+        let mut policies = Policies::new();
         let policy = Policy::new("test", "Test Policy", "Test");
-        registry.add(policy);
-        registry.activate(&PolicyId::new("test")).unwrap();
-        resources.insert(registry);
+        policies.add(policy);
+        resources.insert(policies);
+        resources.insert(PolicyConfig::default());
+
+        let mut state = PolicyState::new();
+        state.activate(PolicyId::new("test"));
+        resources.insert(state);
         resources.insert(EventBus::new());
 
         // Publish deactivation request
@@ -395,8 +472,8 @@ mod tests {
 
         // Verify policy is deactivated
         {
-            let registry = resources.get::<PolicyRegistry>().await.unwrap();
-            assert!(registry.active_policy().is_none());
+            let state = resources.get::<PolicyState>().await.unwrap();
+            assert!(state.active_policy_id().is_none());
         }
 
         // Dispatch to make events visible
@@ -410,5 +487,58 @@ mod tests {
         let reader = bus.reader::<PolicyDeactivatedEvent>();
         let events: Vec<_> = reader.iter().collect();
         assert_eq!(events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_process_cycle() {
+        let hook = Arc::new(DefaultPolicyHook);
+        let mut system = PolicySystem::new(hook);
+        let mut resources = ResourceContext::new();
+
+        // Setup with multiple policies
+        let mut policies = Policies::new();
+        policies.add(Policy::new("policy1", "Policy 1", "Test"));
+        policies.add(Policy::new("policy2", "Policy 2", "Test"));
+        policies.add(Policy::new("policy3", "Policy 3", "Test"));
+        resources.insert(policies);
+
+        let mut config = PolicyConfig::default();
+        config.enable_cycling = true;
+        resources.insert(config);
+
+        let mut state = PolicyState::new();
+        state.activate(PolicyId::new("policy1"));
+        resources.insert(state);
+        resources.insert(EventBus::new());
+
+        // Publish cycle request
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.publish(PolicyCycleRequested);
+            bus.dispatch();
+        }
+
+        // Process cycles
+        let services = ServiceContext::new();
+        system.process_events(&services, &mut resources).await;
+
+        // Verify policy cycled to next (policy2)
+        {
+            let state = resources.get::<PolicyState>().await.unwrap();
+            assert_eq!(state.active_policy_id().unwrap().as_str(), "policy2");
+        }
+
+        // Dispatch to make events visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
+        }
+
+        // Verify event was published
+        let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+        let reader = bus.reader::<PolicyActivatedEvent>();
+        let events: Vec<_> = reader.iter().collect();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].policy_id.as_str(), "policy2");
     }
 }

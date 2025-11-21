@@ -1,7 +1,9 @@
 //! Policy plugin implementation
 
+use super::config::PolicyConfig;
 use super::hook::{DefaultPolicyHook, PolicyHook};
-use super::registry::{PolicyConfig, PolicyRegistry};
+use super::policies::Policies;
+use super::state::PolicyState;
 use super::system::PolicySystem;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
@@ -10,7 +12,7 @@ use std::sync::Arc;
 /// Built-in policy management plugin
 ///
 /// This plugin provides policy/card/buff management for games.
-/// It registers PolicyRegistry resource and PolicySystem that handles:
+/// It registers Policies, PolicyConfig, PolicyState resources and PolicySystem that handles:
 /// - Processing policy activation requests
 /// - Processing policy deactivation requests
 /// - Processing policy cycling requests
@@ -58,6 +60,7 @@ use std::sync::Arc;
 pub struct PolicyPlugin {
     hook: Arc<dyn PolicyHook>,
     config: PolicyConfig,
+    policies: Policies,
 }
 
 impl PolicyPlugin {
@@ -69,6 +72,7 @@ impl PolicyPlugin {
         Self {
             hook: Arc::new(DefaultPolicyHook),
             config: PolicyConfig::default(),
+            policies: Policies::new(),
         }
     }
 
@@ -136,6 +140,27 @@ impl PolicyPlugin {
         self.config = config;
         self
     }
+
+    /// Add policy definitions
+    ///
+    /// # Arguments
+    ///
+    /// * `policies` - Collection of policy definitions
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use issun::plugin::policy::{PolicyPlugin, Policies, Policy};
+    ///
+    /// let mut policies = Policies::new();
+    /// policies.add(Policy::new("policy1", "Policy 1", "Description"));
+    ///
+    /// let plugin = PolicyPlugin::new().with_policies(policies);
+    /// ```
+    pub fn with_policies(mut self, policies: Policies) -> Self {
+        self.policies = policies;
+        self
+    }
 }
 
 impl Default for PolicyPlugin {
@@ -151,8 +176,14 @@ impl Plugin for PolicyPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register policy registry resource
-        builder.register_runtime_state(PolicyRegistry::with_config(self.config.clone()));
+        // Register policy definitions (ReadOnly)
+        builder.register_resource(self.policies.clone());
+
+        // Register policy config (ReadOnly)
+        builder.register_resource(self.config.clone());
+
+        // Register policy state (Mutable)
+        builder.register_runtime_state(PolicyState::new());
 
         // Register policy system with hook
         builder.register_system(Box::new(PolicySystem::new(self.hook.clone())));
@@ -190,6 +221,17 @@ mod tests {
         config.allow_multiple_active = true;
 
         let plugin = PolicyPlugin::new().with_config(config);
+        assert_eq!(plugin.name(), "policy_plugin");
+    }
+
+    #[test]
+    fn test_plugin_with_policies() {
+        use super::super::types::Policy;
+
+        let mut policies = Policies::new();
+        policies.add(Policy::new("test", "Test", "Test policy"));
+
+        let plugin = PolicyPlugin::new().with_policies(policies);
         assert_eq!(plugin.name(), "policy_plugin");
     }
 }

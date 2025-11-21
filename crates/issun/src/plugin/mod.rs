@@ -179,10 +179,10 @@ pub use policy::{
     Policy,
     PolicyId,
     AggregationStrategy,
-    PolicyError,
-    // Resource
-    PolicyRegistry,
+    // Resources
+    Policies,
     PolicyConfig,
+    PolicyState,
     // Events
     PolicyActivateRequested,
     PolicyActivatedEvent,

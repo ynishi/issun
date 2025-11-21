@@ -45,18 +45,22 @@
 //! # }
 //! ```
 
+mod config;
 mod events;
 mod hook;
 mod plugin;
-mod registry;
+mod policies;
 mod service;
+mod state;
 mod system;
 mod types;
 
 // Public exports
+pub use config::PolicyConfig;
 pub use events::*;
 pub use hook::{DefaultPolicyHook, PolicyHook};
 pub use plugin::PolicyPlugin;
-pub use registry::{PolicyConfig, PolicyError, PolicyRegistry};
+pub use policies::Policies;
 pub use service::PolicyService;
+pub use state::PolicyState;
 pub use types::{AggregationStrategy, Policy, PolicyId};
