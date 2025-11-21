@@ -162,31 +162,54 @@ impl PolicyService {
     }
 }
 
-// 5. Plugin setup
-impl Plugin for PolicyPlugin {
-    fn setup(&self, ctx: &mut Context) {
-        // Register Builtin Definitions
-        ctx.resources.register(PolicyDefinitions {
-            policies: load_builtin_policies(),
-        });
+// 5. Plugin setup (with derive macro - recommended)
+#[derive(Plugin)]
+#[plugin(name = "issun:policy")]
+pub struct PolicyPlugin {
+    #[plugin(skip)]
+    hook: Arc<dyn PolicyHook>,
+    #[plugin(resource)]
+    config: PolicyConfig,
+    #[plugin(resource)]
+    policies: Policies,
+    #[plugin(runtime_state)]
+    state: PolicyState,
+    #[plugin(system)]
+    system: PolicySystem,
+}
 
-        // Initialize State
-        let mut state = PolicyState::new();
-        state.insert("global".to_string(), PolicyStateEntry {
-            active_policy_ids: vec![],
-        });
-        ctx.resources.register(state);
+impl PolicyPlugin {
+    pub fn new() -> Self {
+        let hook = Arc::new(DefaultPolicyHook);
+        Self {
+            hook: hook.clone(),
+            config: PolicyConfig::default(),
+            policies: Policies::new(),
+            state: PolicyState::new(),
+            system: PolicySystem::new(hook),
+        }
+    }
 
-        // Register Config
-        ctx.resources.register(self.config.clone());
+    pub fn with_hook<H: PolicyHook + 'static>(mut self, hook: H) -> Self {
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = PolicySystem::new(hook);
+        self
+    }
 
-        // Register Service
-        ctx.register_service(Box::new(PolicyService));
+    pub fn with_policies(mut self, policies: Policies) -> Self {
+        self.policies = policies;
+        self
+    }
 
-        // Register System
-        ctx.register_system(PolicySystem::new());
+    pub fn with_config(mut self, config: PolicyConfig) -> Self {
+        self.config = config;
+        self
     }
 }
+
+// Note: The derive macro automatically generates the Plugin trait implementation
+// that registers all annotated fields appropriately
 
 // 6. Usage in System
 fn policy_activation_system(ctx: &Context) {

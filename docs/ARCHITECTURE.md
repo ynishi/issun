@@ -215,7 +215,7 @@ This keeps scene logic declarative—scenes only return transitions and the dire
 **Purpose**: Bundle Systems + Services for reusable functionality
 
 - **Trait**: `Plugin`
-- **Macro**: None (manual implementation)
+- **Macro**: `#[derive(Plugin)]` (recommended) or manual implementation
 - **Characteristics**:
   - Packages related components
   - Declares dependencies
@@ -227,21 +227,69 @@ This keeps scene logic declarative—scenes only return transitions and the dire
 - `InventoryPlugin` - Bundles InventoryService (generic item management)
 - `LootPlugin` - Bundles LootService (drop rates, rarity selection)
 
-**Usage**:
+**Usage (with derive macro - recommended)**:
 ```rust
 use issun::prelude::*;
 
-pub struct CombatPlugin;
+#[derive(Plugin)]
+#[plugin(name = "issun:combat")]
+pub struct CombatPlugin {
+    #[plugin(skip)]
+    hook: Arc<dyn CombatHook>,
+    #[plugin(resource)]
+    config: CombatConfig,
+    #[plugin(runtime_state)]
+    state: CombatState,
+    #[plugin(system)]
+    system: CombatSystem,
+}
+
+impl CombatPlugin {
+    pub fn new() -> Self {
+        let hook = Arc::new(DefaultCombatHook);
+        Self {
+            hook: hook.clone(),
+            config: CombatConfig::default(),
+            state: CombatState::new(),
+            system: CombatSystem::new(hook),
+        }
+    }
+
+    pub fn with_hook(mut self, hook: impl CombatHook + 'static) -> Self {
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = CombatSystem::new(hook);
+        self
+    }
+}
+```
+
+**Field Annotations**:
+- `#[plugin(skip)]` - Field not registered (e.g., hooks, internal state)
+- `#[plugin(resource)]` - Register as Resource (read-only definitions/config)
+- `#[plugin(runtime_state)]` - Register as runtime state (mutable)
+- `#[plugin(service)]` - Register as Service
+- `#[plugin(system)]` - Register as System
+
+**Usage (manual implementation - for special cases)**:
+```rust
+use issun::prelude::*;
+
+pub struct CustomPlugin;
 
 #[async_trait]
-impl Plugin for CombatPlugin {
+impl Plugin for CustomPlugin {
     fn name(&self) -> &'static str {
-        "combat"
+        "custom"
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        builder.register_system(Box::new(CombatSystem::new()));
-        builder.register_service(Box::new(CombatService::new()));
+        builder.register_system(Box::new(CustomSystem::new()));
+        builder.register_service(Box::new(CustomService::new()));
+    }
+
+    fn dependencies(&self) -> Vec<&'static str> {
+        vec!["issun:time"]  // Declare dependencies
     }
 }
 ```
@@ -433,13 +481,21 @@ pub struct MySystem {
 Bundle them in `src/plugins/`:
 
 ```rust
-pub struct MyPlugin;
+#[derive(Plugin)]
+#[plugin(name = "my_plugin")]
+pub struct MyPlugin {
+    #[plugin(service)]
+    service: MyService,
+    #[plugin(system)]
+    system: MySystem,
+}
 
-#[async_trait]
-impl Plugin for MyPlugin {
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        builder.register_service(Box::new(MyService));
-        builder.register_system(Box::new(MySystem::new()));
+impl MyPlugin {
+    pub fn new() -> Self {
+        Self {
+            service: MyService,
+            system: MySystem::new(),
+        }
     }
 }
 ```

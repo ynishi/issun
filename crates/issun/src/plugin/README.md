@@ -268,11 +268,15 @@ let mut active = game.resources.get_mut::<ActiveBuffs>().await?;
 
 ## Creating a Custom Plugin
 
-A typical plugin bundles System + Service:
+A typical plugin bundles System + Service. There are two ways to implement plugins:
+
+### Method 1: Using `#[derive(Plugin)]` (Recommended)
+
+The derive macro automatically generates the Plugin trait implementation:
 
 ```rust
 use issun::prelude::*;
-use async_trait::async_trait;
+use std::sync::Arc;
 
 // 1. Define Service (pure logic)
 #[derive(Service)]
@@ -302,7 +306,44 @@ impl MySystem {
     }
 }
 
-// 3. Create Plugin (bundles System + Service)
+// 3. Create Plugin using derive macro
+#[derive(Plugin)]
+#[plugin(name = "my_custom_plugin")]
+pub struct MyCustomPlugin {
+    #[plugin(service)]
+    service: MyService,
+    #[plugin(system)]
+    system: MySystem,
+}
+
+impl MyCustomPlugin {
+    pub fn new() -> Self {
+        Self {
+            service: MyService { multiplier: 1.5 },
+            system: MySystem { counter: 0, my_service: MyService { multiplier: 1.5 } },
+        }
+    }
+}
+```
+
+**Field Annotations**:
+- `#[plugin(skip)]` - Field not registered (hooks, internal state)
+- `#[plugin(resource)]` - Register as Resource (read-only config/definitions)
+- `#[plugin(runtime_state)]` - Register as runtime state (mutable)
+- `#[plugin(service)]` - Register as Service
+- `#[plugin(system)]` - Register as System
+
+### Method 2: Manual Implementation (For Special Cases)
+
+Use manual implementation when you need:
+- Custom `dependencies()` logic
+- Dynamic initialization in `initialize()`
+- Complex registration logic
+
+```rust
+use issun::prelude::*;
+use async_trait::async_trait;
+
 pub struct MyCustomPlugin;
 
 #[async_trait]
@@ -318,7 +359,7 @@ impl Plugin for MyCustomPlugin {
     }
 
     fn dependencies(&self) -> Vec<&'static str> {
-        vec![]  // Or depend on other plugins: vec!["turn_based_combat"]
+        vec!["issun:time"]  // Declare dependencies on other plugins
     }
 
     async fn initialize(&mut self) {
