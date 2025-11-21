@@ -82,10 +82,30 @@ pub use combat::{
 pub use inventory::{
     // Plugin
     InventoryPlugin,
-    // Service
-    InventoryService,
+    // Hook
+    InventoryHook,
+    DefaultInventoryHook,
     // Types
     Item,
+    ItemId,
+    EntityId,
+    InventoryError,
+    // Resources
+    InventoryConfig,
+    InventoryState,
+    // Service
+    InventoryService,
+    // System
+    InventorySystem,
+    // Events
+    ItemAddRequested,
+    ItemRemoveRequested,
+    ItemUseRequested,
+    ItemTransferRequested,
+    ItemAddedEvent,
+    ItemRemovedEvent,
+    ItemUsedEvent,
+    ItemTransferredEvent,
 };
 
 pub use loot::{
