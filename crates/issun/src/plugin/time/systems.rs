@@ -22,11 +22,7 @@ impl TimerSystem {
     /// Update method - processes time advancement requests
     ///
     /// This method is called with ResourceContext access for managing timer state.
-    pub async fn update(
-        &mut self,
-        _services: &ServiceContext,
-        resources: &mut ResourceContext,
-    ) {
+    pub async fn update(&mut self, _services: &ServiceContext, resources: &mut ResourceContext) {
         // Check for time advancement requests
         let advance_requested = if let Some(mut bus) = resources.get_mut::<EventBus>().await {
             let reader = bus.reader::<AdvanceTimeRequested>();
@@ -87,7 +83,7 @@ mod tests {
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
-        let mut system = TimerSystem::default();
+        let mut system = TimerSystem;
 
         // Publish advancement request
         {
@@ -98,6 +94,12 @@ mod tests {
 
         // Process system
         system.update(&services, &mut resources).await;
+
+        // Dispatch DayChanged events to make them visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
+        }
 
         // Check day incremented
         let timer = resources.get::<GameTimer>().await.unwrap();
@@ -118,7 +120,7 @@ mod tests {
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
-        let mut system = TimerSystem::default();
+        let mut system = TimerSystem;
 
         // Process without request
         system.update(&services, &mut resources).await;
@@ -141,7 +143,7 @@ mod tests {
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
-        let mut system = TimerSystem::default();
+        let mut system = TimerSystem;
 
         // Publish multiple requests
         {
@@ -154,8 +156,15 @@ mod tests {
         // Process system (should only increment once per update call)
         system.update(&services, &mut resources).await;
 
+        // Dispatch to make DayChanged events visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
+        }
+
         let timer = resources.get::<GameTimer>().await.unwrap();
         assert_eq!(timer.day, 2); // Only incremented once
+        drop(timer);
 
         // Publish another and process again
         {
@@ -165,6 +174,12 @@ mod tests {
         }
 
         system.update(&services, &mut resources).await;
+
+        // Dispatch again
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
+        }
 
         let timer = resources.get::<GameTimer>().await.unwrap();
         assert_eq!(timer.day, 3);
