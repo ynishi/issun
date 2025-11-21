@@ -1,133 +1,224 @@
-//! Dungeon progression system (orchestration)
+//! Dungeon system implementation
 
-use super::service::DungeonService;
-use super::types::{Connection, DungeonState, RoomId};
-use crate::context::ResourceContext;
+use crate::context::{ResourceContext, ServiceContext};
+use crate::event::EventBus;
+use crate::system::System;
+use async_trait::async_trait;
+use std::any::Any;
+use std::sync::Arc;
 
-/// Dungeon progression system
+use super::events::*;
+use super::hook::DungeonHook;
+use super::types::DungeonState;
+
+/// System that processes dungeon events with hooks
 ///
-/// Manages dungeon state and orchestrates navigation.
-/// This is stateful - keeps track of dungeon progression.
-#[derive(crate::System, Debug)]
-#[system(name = "dungeon_system")]
+/// This system:
+/// 1. Processes room move requests
+/// 2. Processes floor advance requests
+/// 3. Processes connection unlock requests
+/// 4. Calls hooks for custom behavior
+/// 5. Publishes state change events for network replication
+///
+/// # Feedback Loop
+///
+/// ```text
+/// Command Event → Validation (Hook) → State Update → Hook Call → State Event
+/// ```
 pub struct DungeonSystem {
-    service: DungeonService,
+    hook: Arc<dyn DungeonHook>,
 }
 
 impl DungeonSystem {
-    pub fn new() -> Self {
-        Self {
-            service: DungeonService::new(),
-        }
+    /// Create a new DungeonSystem with a custom hook
+    pub fn new(hook: Arc<dyn DungeonHook>) -> Self {
+        Self { hook }
     }
 
-    /// Move to a specific room on current floor
-    pub async fn advance_room(&self, resources: &mut ResourceContext, room: u32) {
-        let mut state = resources
-            .get_mut::<DungeonState>()
-            .await
-            .expect("DungeonState not registered in ResourceContext");
-        let room_id = RoomId::new(state.current_floor, room);
-
-        if !state.visited_rooms.contains(&room_id) {
-            state.visited_rooms.push(room_id.clone());
-        }
-
-        state.current_room = room;
-    }
-
-    /// Advance to next floor
-    pub async fn advance_floor(&self, resources: &mut ResourceContext) {
-        let mut state = resources
-            .get_mut::<DungeonState>()
-            .await
-            .expect("DungeonState not registered in ResourceContext");
-        state.current_floor += 1;
-        state.current_room = 1;
-
-        let room_id = RoomId::new(state.current_floor, 1);
-        if !state.visited_rooms.contains(&room_id) {
-            state.visited_rooms.push(room_id);
-        }
-    }
-
-    /// Unlock a connection between rooms
-    pub async fn unlock_connection(
-        &self,
+    /// Process all dungeon events
+    pub async fn process_events(
+        &mut self,
+        _services: &ServiceContext,
         resources: &mut ResourceContext,
-        from: RoomId,
-        to: RoomId,
     ) {
-        let mut state = resources
-            .get_mut::<DungeonState>()
-            .await
-            .expect("DungeonState not registered in ResourceContext");
-        let connection = Connection::new(from, to);
-        if !state.unlocked_connections.contains(&connection) {
-            state.unlocked_connections.push(connection);
+        self.process_room_move_requests(resources).await;
+        self.process_floor_advance_requests(resources).await;
+        self.process_connection_unlock_requests(resources).await;
+    }
+
+    /// Process room move requests
+    async fn process_room_move_requests(&mut self, resources: &mut ResourceContext) {
+        // Collect room move requests
+        let requests = {
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                let reader = bus.reader::<RoomMoveRequested>();
+                reader.iter().cloned().collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
+
+        for request in requests {
+            // Get current room for validation
+            let current_room = {
+                if let Some(state) = resources.get::<DungeonState>().await {
+                    super::types::RoomId::new(state.current_floor, state.current_room)
+                } else {
+                    continue;
+                }
+            };
+
+            // Validate via hook
+            {
+                let resources_ref = resources as &ResourceContext;
+                if let Err(_) = self
+                    .hook
+                    .validate_room_move(&current_room, &request.target_room, resources_ref)
+                    .await
+                {
+                    continue;
+                }
+            }
+
+            // Check if first visit
+            let is_first_visit = {
+                if let Some(state) = resources.get::<DungeonState>().await {
+                    !state.visited_rooms.contains(&request.target_room)
+                } else {
+                    false
+                }
+            };
+
+            // Move to room (update state)
+            {
+                if let Some(mut state) = resources.get_mut::<DungeonState>().await {
+                    state.current_floor = request.target_room.floor;
+                    state.current_room = request.target_room.room;
+
+                    if is_first_visit {
+                        state.visited_rooms.push(request.target_room.clone());
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            // Call hook
+            self.hook
+                .on_room_entered(&request.target_room, is_first_visit, resources)
+                .await;
+
+            // Publish event
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                bus.publish(RoomEnteredEvent {
+                    room_id: request.target_room.clone(),
+                    is_first_visit,
+                });
+            }
         }
     }
 
-    /// Get the service (for external use)
-    pub fn service(&self) -> &DungeonService {
-        &self.service
+    /// Process floor advance requests
+    async fn process_floor_advance_requests(&mut self, resources: &mut ResourceContext) {
+        // Collect floor advance requests
+        let requests = {
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                let reader = bus.reader::<FloorAdvanceRequested>();
+                reader.iter().cloned().collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
+
+        for _request in requests {
+            // Advance floor (update state)
+            let new_floor = {
+                if let Some(mut state) = resources.get_mut::<DungeonState>().await {
+                    state.current_floor += 1;
+                    state.current_room = 1;
+
+                    let room_id = super::types::RoomId::new(state.current_floor, 1);
+                    if !state.visited_rooms.contains(&room_id) {
+                        state.visited_rooms.push(room_id);
+                    }
+
+                    state.current_floor
+                } else {
+                    continue;
+                }
+            };
+
+            // Call hook
+            self.hook.on_floor_advanced(new_floor, resources).await;
+
+            // Publish event
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                bus.publish(FloorAdvancedEvent { new_floor });
+            }
+        }
+    }
+
+    /// Process connection unlock requests
+    async fn process_connection_unlock_requests(&mut self, resources: &mut ResourceContext) {
+        // Collect connection unlock requests
+        let requests = {
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                let reader = bus.reader::<ConnectionUnlockRequested>();
+                reader.iter().cloned().collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
+
+        for request in requests {
+            // Check if already unlocked
+            let already_unlocked = {
+                if let Some(state) = resources.get::<DungeonState>().await {
+                    state.unlocked_connections.contains(&request.connection)
+                } else {
+                    true
+                }
+            };
+
+            if already_unlocked {
+                continue;
+            }
+
+            // Unlock connection (update state)
+            {
+                if let Some(mut state) = resources.get_mut::<DungeonState>().await {
+                    state.unlocked_connections.push(request.connection.clone());
+                } else {
+                    continue;
+                }
+            }
+
+            // Call hook
+            self.hook
+                .on_connection_unlocked(&request.connection, resources)
+                .await;
+
+            // Publish event
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                bus.publish(ConnectionUnlockedEvent {
+                    connection: request.connection.clone(),
+                });
+            }
+        }
     }
 }
 
-impl Default for DungeonSystem {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::context::ResourceContext;
-
-    fn context_with_state() -> ResourceContext {
-        let mut resources = ResourceContext::new();
-        resources.insert(DungeonState::default());
-        resources
+#[async_trait]
+impl System for DungeonSystem {
+    fn name(&self) -> &'static str {
+        "dungeon_system"
     }
 
-    #[tokio::test]
-    async fn test_advance_room() {
-        let system = DungeonSystem::new();
-        let mut resources = context_with_state();
-
-        system.advance_room(&mut resources, 2).await;
-        let state = resources.get::<DungeonState>().await.unwrap();
-        assert_eq!(state.current_room, 2);
-        assert_eq!(state.visited_rooms.len(), 2); // Initial room + new room
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
-    #[tokio::test]
-    async fn test_advance_floor() {
-        let system = DungeonSystem::new();
-        let mut resources = context_with_state();
-
-        system.advance_floor(&mut resources).await;
-        let state = resources.get::<DungeonState>().await.unwrap();
-        assert_eq!(state.current_floor, 2);
-        assert_eq!(state.current_room, 1);
-    }
-
-    #[tokio::test]
-    async fn test_unlock_connection() {
-        let system = DungeonSystem::new();
-        let mut resources = context_with_state();
-
-        let from = RoomId::new(1, 1);
-        let to = RoomId::new(1, 3);
-
-        system
-            .unlock_connection(&mut resources, from.clone(), to.clone())
-            .await;
-
-        let state = resources.get::<DungeonState>().await.unwrap();
-        assert_eq!(state.unlocked_connections.len(), 1);
-        assert_eq!(state.unlocked_connections[0].from, from);
-        assert_eq!(state.unlocked_connections[0].to, to);
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

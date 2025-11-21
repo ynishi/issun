@@ -119,18 +119,29 @@ pub use loot::{
 };
 
 pub use dungeon::{
+    // Plugin
+    DungeonPlugin,
+    // Hook
+    DungeonHook,
+    DefaultDungeonHook,
     // Types
     Connection,
     ConnectionPattern,
+    RoomId,
+    // Resources
     DungeonConfig,
-    // Plugin
-    DungeonPlugin,
+    DungeonState,
     // Service
     DungeonService,
-    DungeonState,
     // System
     DungeonSystem,
-    RoomId,
+    // Events
+    RoomMoveRequested,
+    FloorAdvanceRequested,
+    ConnectionUnlockRequested,
+    RoomEnteredEvent,
+    FloorAdvancedEvent,
+    ConnectionUnlockedEvent,
 };
 
 pub use room_buff::{

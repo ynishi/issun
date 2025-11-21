@@ -1,5 +1,6 @@
 //! Dungeon plugin types
 
+use crate::state::State;
 use serde::{Deserialize, Serialize};
 
 /// Dungeon structure configuration
@@ -42,6 +43,8 @@ pub struct DungeonState {
     pub visited_rooms: Vec<RoomId>,
     pub unlocked_connections: Vec<Connection>,
 }
+
+impl State for DungeonState {}
 
 impl Default for DungeonState {
     fn default() -> Self {
