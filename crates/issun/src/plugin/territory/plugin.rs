@@ -64,8 +64,10 @@ pub struct TerritoryPlugin {
     #[plugin(skip)]
     hook: Arc<dyn TerritoryHook>,
     #[plugin(resource)]
+    #[allow(dead_code)]
     territories: Territories,
     #[plugin(runtime_state)]
+    #[allow(dead_code)]
     state: TerritoryState,
     #[plugin(system)]
     system: TerritorySystem,

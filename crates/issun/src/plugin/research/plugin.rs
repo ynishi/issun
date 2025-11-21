@@ -67,6 +67,7 @@ pub struct ResearchPlugin {
     #[plugin(resource)]
     config: ResearchConfig,
     #[plugin(runtime_state)]
+    #[allow(dead_code)]
     state: ResearchState,
     #[plugin(system)]
     system: ResearchSystem,

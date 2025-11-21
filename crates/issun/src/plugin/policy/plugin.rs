@@ -66,6 +66,7 @@ pub struct PolicyPlugin {
     #[plugin(resource)]
     policies: Policies,
     #[plugin(runtime_state)]
+    #[allow(dead_code)]
     state: PolicyState,
     #[plugin(system)]
     system: PolicySystem,

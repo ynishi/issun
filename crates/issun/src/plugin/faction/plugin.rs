@@ -67,6 +67,7 @@ pub struct FactionPlugin {
     #[plugin(resource)]
     factions: Factions,
     #[plugin(runtime_state)]
+    #[allow(dead_code)]
     state: FactionState,
     #[plugin(system)]
     system: FactionSystem,
