@@ -157,8 +157,9 @@ pub use faction::{
     OperationStatus,
     Outcome,
     FactionError,
-    // Resource
-    FactionRegistry,
+    // Resources
+    Factions,
+    FactionState,
     // System
     FactionSystem,
     // Events

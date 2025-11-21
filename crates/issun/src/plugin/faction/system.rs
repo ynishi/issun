@@ -8,8 +8,9 @@ use std::any::Any;
 use std::sync::Arc;
 
 use super::events::*;
+use super::factions::Factions;
 use super::hook::FactionHook;
-use super::registry::FactionRegistry;
+use super::state::FactionState;
 use super::types::*;
 
 /// System that processes faction events with hooks
@@ -23,7 +24,7 @@ use super::types::*;
 /// # Feedback Loop
 ///
 /// ```text
-/// Command Event → Registry Update → Hook Call → State Event
+/// Command Event → State Update → Hook Call → State Event
 /// ```
 pub struct FactionSystem {
     hook: Arc<dyn FactionHook>,
@@ -51,7 +52,7 @@ impl FactionSystem {
     ///
     /// Listens for `OperationLaunchRequested` events and:
     /// 1. Validates operation cost (via hook)
-    /// 2. Creates operation and updates registry
+    /// 2. Creates operation and updates state
     /// 3. Calls hook
     /// 4. Publishes `OperationLaunchedEvent`
     pub async fn process_operation_launches(
@@ -72,8 +73,8 @@ impl FactionSystem {
         for request in requests {
             // Get faction for hook
             let faction = {
-                if let Some(registry) = resources.get::<FactionRegistry>().await {
-                    match registry.get_faction(&request.faction_id) {
+                if let Some(factions) = resources.get::<Factions>().await {
+                    match factions.get(&request.faction_id) {
                         Some(f) => f.clone(),
                         None => continue, // Faction not found, skip
                     }
@@ -110,10 +111,10 @@ impl FactionSystem {
             // by the hook or a separate system that listens to OperationLaunchedEvent
             let _ = cost; // Suppress unused warning
 
-            // Launch operation (add to registry)
+            // Launch operation (add to state)
             {
-                if let Some(mut registry) = resources.get_mut::<FactionRegistry>().await {
-                    if let Err(_) = registry.launch_operation(operation.clone()) {
+                if let Some(mut state) = resources.get_mut::<FactionState>().await {
+                    if let Err(_) = state.launch_operation(operation.clone()) {
                         continue; // Failed to launch
                     }
                 } else {
@@ -161,8 +162,8 @@ impl FactionSystem {
         for request in requests {
             // Get operation
             let operation = {
-                if let Some(registry) = resources.get::<FactionRegistry>().await {
-                    match registry.get_operation(&request.operation_id) {
+                if let Some(state) = resources.get::<FactionState>().await {
+                    match state.get_operation(&request.operation_id) {
                         Some(op) => op.clone(),
                         None => continue, // Operation not found
                     }
@@ -173,8 +174,8 @@ impl FactionSystem {
 
             // Get faction
             let faction = {
-                if let Some(registry) = resources.get::<FactionRegistry>().await {
-                    match registry.get_faction(&operation.faction_id) {
+                if let Some(factions) = resources.get::<Factions>().await {
+                    match factions.get(&operation.faction_id) {
                         Some(f) => f.clone(),
                         None => continue, // Faction not found
                     }
@@ -191,9 +192,8 @@ impl FactionSystem {
             };
 
             {
-                if let Some(mut registry) = resources.get_mut::<FactionRegistry>().await {
-                    if let Err(_) = registry.update_operation_status(&request.operation_id, status)
-                    {
+                if let Some(mut state) = resources.get_mut::<FactionState>().await {
+                    if let Err(_) = state.update_operation_status(&request.operation_id, status) {
                         continue; // Failed to update status
                     }
                 } else {
@@ -280,9 +280,10 @@ mod tests {
     #[tokio::test]
     async fn test_faction_system_launch_operation() {
         let mut resources = ResourceContext::new();
-        let mut registry = FactionRegistry::new();
-        registry.add_faction(Faction::new("crimson", "Crimson Syndicate"));
-        resources.insert(registry);
+        let mut factions = Factions::new();
+        factions.add(Faction::new("crimson", "Crimson Syndicate"));
+        resources.insert(factions);
+        resources.insert(FactionState::new());
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
@@ -303,9 +304,9 @@ mod tests {
         // Process system
         system.process_events(&services, &mut resources).await;
 
-        // Check registry updated
-        let registry = resources.get::<FactionRegistry>().await.unwrap();
-        assert_eq!(registry.operation_count(), 1);
+        // Check state updated
+        let state = resources.get::<FactionState>().await.unwrap();
+        assert_eq!(state.operation_count(), 1);
 
         // Dispatch to make events visible
         {
@@ -324,13 +325,14 @@ mod tests {
     #[tokio::test]
     async fn test_faction_system_complete_operation() {
         let mut resources = ResourceContext::new();
-        let mut registry = FactionRegistry::new();
-        registry.add_faction(Faction::new("crimson", "Crimson Syndicate"));
+        let mut factions = Factions::new();
+        factions.add(Faction::new("crimson", "Crimson Syndicate"));
+        resources.insert(factions);
 
+        let mut state = FactionState::new();
         let op = Operation::new("op-001", FactionId::new("crimson"), "Test");
-        registry.launch_operation(op).unwrap();
-
-        resources.insert(registry);
+        state.launch_operation(op).unwrap();
+        resources.insert(state);
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
@@ -351,8 +353,8 @@ mod tests {
         system.process_events(&services, &mut resources).await;
 
         // Check operation completed
-        let registry = resources.get::<FactionRegistry>().await.unwrap();
-        let op = registry.get_operation(&OperationId::new("op-001")).unwrap();
+        let state = resources.get::<FactionState>().await.unwrap();
+        let op = state.get_operation(&OperationId::new("op-001")).unwrap();
         assert!(op.is_completed());
 
         // Dispatch to make events visible
@@ -372,13 +374,14 @@ mod tests {
     #[tokio::test]
     async fn test_faction_system_fail_operation() {
         let mut resources = ResourceContext::new();
-        let mut registry = FactionRegistry::new();
-        registry.add_faction(Faction::new("crimson", "Crimson Syndicate"));
+        let mut factions = Factions::new();
+        factions.add(Faction::new("crimson", "Crimson Syndicate"));
+        resources.insert(factions);
 
+        let mut state = FactionState::new();
         let op = Operation::new("op-001", FactionId::new("crimson"), "Test");
-        registry.launch_operation(op).unwrap();
-
-        resources.insert(registry);
+        state.launch_operation(op).unwrap();
+        resources.insert(state);
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
@@ -400,8 +403,8 @@ mod tests {
         system.process_events(&services, &mut resources).await;
 
         // Check operation failed
-        let registry = resources.get::<FactionRegistry>().await.unwrap();
-        let op = registry.get_operation(&OperationId::new("op-001")).unwrap();
+        let state = resources.get::<FactionState>().await.unwrap();
+        let op = state.get_operation(&OperationId::new("op-001")).unwrap();
         assert!(op.is_failed());
 
         // Dispatch to make events visible
@@ -421,7 +424,8 @@ mod tests {
     #[tokio::test]
     async fn test_faction_system_operation_not_found() {
         let mut resources = ResourceContext::new();
-        resources.insert(FactionRegistry::new());
+        resources.insert(Factions::new());
+        resources.insert(FactionState::new());
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();

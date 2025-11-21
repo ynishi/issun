@@ -1,7 +1,8 @@
 //! Faction plugin implementation
 
+use super::factions::Factions;
 use super::hook::{DefaultFactionHook, FactionHook};
-use super::registry::FactionRegistry;
+use super::state::FactionState;
 use super::system::FactionSystem;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
@@ -10,7 +11,7 @@ use std::sync::Arc;
 /// Built-in faction management plugin
 ///
 /// This plugin provides faction/organization/group management for games.
-/// It registers FactionRegistry resource and FactionSystem that handles:
+/// It registers Factions, FactionState resources and FactionSystem that handles:
 /// - Processing operation launch requests
 /// - Processing operation resolution requests
 /// - Custom hooks for game-specific behavior
@@ -61,6 +62,7 @@ use std::sync::Arc;
 /// ```
 pub struct FactionPlugin {
     hook: Arc<dyn FactionHook>,
+    factions: Factions,
 }
 
 impl FactionPlugin {
@@ -71,6 +73,7 @@ impl FactionPlugin {
     pub fn new() -> Self {
         Self {
             hook: Arc::new(DefaultFactionHook),
+            factions: Factions::new(),
         }
     }
 
@@ -113,6 +116,27 @@ impl FactionPlugin {
         self.hook = Arc::new(hook);
         self
     }
+
+    /// Add faction definitions
+    ///
+    /// # Arguments
+    ///
+    /// * `factions` - Collection of faction definitions
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use issun::plugin::faction::{FactionPlugin, Factions, Faction};
+    ///
+    /// let mut factions = Factions::new();
+    /// factions.add(Faction::new("crimson", "Crimson Syndicate"));
+    ///
+    /// let plugin = FactionPlugin::new().with_factions(factions);
+    /// ```
+    pub fn with_factions(mut self, factions: Factions) -> Self {
+        self.factions = factions;
+        self
+    }
 }
 
 impl Default for FactionPlugin {
@@ -128,8 +152,11 @@ impl Plugin for FactionPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register resource
-        builder.register_runtime_state(FactionRegistry::new());
+        // Register faction definitions (ReadOnly)
+        builder.register_resource(self.factions.clone());
+
+        // Register faction state (Mutable)
+        builder.register_runtime_state(FactionState::new());
 
         // Register system with hook
         builder.register_system(Box::new(FactionSystem::new(Arc::clone(&self.hook))));
@@ -160,6 +187,17 @@ mod tests {
     #[test]
     fn test_plugin_with_hook() {
         let plugin = FactionPlugin::new().with_hook(DefaultFactionHook);
+        assert_eq!(plugin.name(), "issun:faction");
+    }
+
+    #[test]
+    fn test_plugin_with_factions() {
+        use super::super::types::Faction;
+
+        let mut factions = Factions::new();
+        factions.add(Faction::new("crimson", "Crimson Syndicate"));
+
+        let plugin = FactionPlugin::new().with_factions(factions);
         assert_eq!(plugin.name(), "issun:faction");
     }
 }
