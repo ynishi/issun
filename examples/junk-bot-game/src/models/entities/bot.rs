@@ -44,6 +44,7 @@ impl Bot {
     }
 
     /// Create a bot with custom stats
+    #[allow(dead_code)]
     pub fn with_stats(name: impl Into<String>, hp: i32, attack: i32) -> Self {
         Self {
             name: name.into(),
@@ -61,16 +62,19 @@ impl Bot {
     }
 
     /// Take damage (no defense for bots)
+    #[allow(dead_code)]
     pub fn take_damage(&mut self, damage: i32) {
         self.hp = (self.hp - damage).max(0);
     }
 
     /// Heal the bot
+    #[allow(dead_code)]
     pub fn heal(&mut self, amount: i32) {
         self.hp = (self.hp + amount).min(self.max_hp);
     }
 
     /// Set bot state
+    #[allow(dead_code)]
     pub fn set_state(&mut self, state: BotState) {
         self.state = state;
     }

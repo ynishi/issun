@@ -21,6 +21,7 @@ pub struct Weapon {
 
 impl Weapon {
     /// Create a new weapon
+    #[allow(dead_code)]
     pub fn new(name: impl Into<String>, attack: i32, max_ammo: i32) -> Self {
         Self {
             name: name.into(),
@@ -43,11 +44,13 @@ impl Weapon {
     }
 
     /// Check if weapon has ammo (infinite weapons always return true)
+    #[allow(dead_code)]
     pub fn has_ammo(&self) -> bool {
         self.max_ammo < 0 || self.current_ammo > 0
     }
 
     /// Use ammo (does nothing for infinite weapons)
+    #[allow(dead_code)]
     pub fn use_ammo(&mut self) {
         if self.max_ammo >= 0 {
             self.current_ammo = self.current_ammo.saturating_sub(1);

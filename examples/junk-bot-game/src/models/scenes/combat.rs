@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 /// Simple combat engine for junk-bot-game
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct SimpleCombatEngine {
+pub(crate) struct SimpleCombatEngine {
     turn_count: u32,
     log: Vec<String>,
     score: u32,
@@ -34,6 +34,7 @@ impl SimpleCombatEngine {
         &self.log
     }
 
+    #[allow(dead_code)]
     fn turn_count(&self) -> u32 {
         self.turn_count
     }
@@ -70,6 +71,7 @@ pub enum EquipTarget {
 }
 
 impl CombatSceneData {
+    #[allow(dead_code)]
     pub fn new(enemies: Vec<Enemy>) -> Self {
         Self {
             enemies,
@@ -96,7 +98,7 @@ impl CombatSceneData {
     /// Get combat engine (lazily initialized)
     fn engine(&mut self) -> &mut SimpleCombatEngine {
         self.combat_engine
-            .get_or_insert_with(|| SimpleCombatEngine::new())
+            .get_or_insert_with(SimpleCombatEngine::new)
     }
 
     /// Get combat log
@@ -105,6 +107,7 @@ impl CombatSceneData {
     }
 
     /// Get turn count
+    #[allow(dead_code)]
     pub fn turn_count(&self) -> u32 {
         self.combat_engine
             .as_ref()
@@ -266,15 +269,14 @@ impl CombatSceneData {
                         target.defense(),
                     )
                 } else {
-                    ((base_damage as f32 * damage_multiplier) as i32).saturating_sub(target.defense().unwrap_or(0))
+                    ((base_damage as f32 * damage_multiplier) as i32)
+                        .saturating_sub(target.defense().unwrap_or(0))
                 };
 
                 target.hp = target.hp.saturating_sub(damage);
                 log_messages.push(format!(
                     "{} attacks {} for {} damage!",
-                    ctx.player.name,
-                    target.name,
-                    damage
+                    ctx.player.name, target.name, damage
                 ));
 
                 if target.hp == 0 {
@@ -295,15 +297,14 @@ impl CombatSceneData {
                             target.defense(),
                         )
                     } else {
-                        ((base_damage as f32 * damage_multiplier) as i32).saturating_sub(target.defense().unwrap_or(0))
+                        ((base_damage as f32 * damage_multiplier) as i32)
+                            .saturating_sub(target.defense().unwrap_or(0))
                     };
 
                     target.hp = target.hp.saturating_sub(damage);
                     log_messages.push(format!(
                         "{} attacks {} for {} damage!",
-                        bot.name,
-                        target.name,
-                        damage
+                        bot.name, target.name, damage
                     ));
 
                     if target.hp == 0 {
@@ -322,15 +323,15 @@ impl CombatSceneData {
                     let damage = if let Some(service) = combat_service {
                         service.calculate_damage(enemy.attack, ctx.player.defense())
                     } else {
-                        enemy.attack.saturating_sub(ctx.player.defense().unwrap_or(0))
+                        enemy
+                            .attack
+                            .saturating_sub(ctx.player.defense().unwrap_or(0))
                     };
 
                     ctx.player.hp = ctx.player.hp.saturating_sub(damage);
                     log_messages.push(format!(
                         "{} attacks {} for {} damage!",
-                        enemy.name,
-                        ctx.player.name,
-                        damage
+                        enemy.name, ctx.player.name, damage
                     ));
 
                     if ctx.player.hp == 0 {
@@ -346,9 +347,7 @@ impl CombatSceneData {
                     bot.hp = bot.hp.saturating_sub(damage);
                     log_messages.push(format!(
                         "{} attacks {} for {} damage!",
-                        enemy.name,
-                        bot.name,
-                        damage
+                        enemy.name, bot.name, damage
                     ));
 
                     if bot.hp == 0 {
@@ -364,8 +363,7 @@ impl CombatSceneData {
                 ctx.player.hp = ctx.player.hp.saturating_sub(per_turn_damage);
                 log_messages.push(format!(
                     "Room effect deals {} damage to {}!",
-                    per_turn_damage,
-                    ctx.player.name
+                    per_turn_damage, ctx.player.name
                 ));
             }
             for bot in ctx.bots.iter_mut() {
@@ -373,8 +371,7 @@ impl CombatSceneData {
                     bot.hp = bot.hp.saturating_sub(per_turn_damage);
                     log_messages.push(format!(
                         "Room effect deals {} damage to {}!",
-                        per_turn_damage,
-                        bot.name
+                        per_turn_damage, bot.name
                     ));
                 }
             }

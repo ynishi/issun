@@ -15,6 +15,7 @@ pub struct RoomSelectionSceneData {
 
 impl RoomSelectionSceneData {
     /// Create new room selection scene with the given rooms
+    #[allow(dead_code)]
     pub fn new(rooms: Vec<Room>) -> Self {
         Self {
             available_rooms: rooms,
@@ -23,6 +24,7 @@ impl RoomSelectionSceneData {
     }
 
     /// Move cursor up
+    #[allow(dead_code)]
     pub fn cursor_up(&mut self) {
         if self.cursor > 0 {
             self.cursor -= 1;
@@ -30,6 +32,7 @@ impl RoomSelectionSceneData {
     }
 
     /// Move cursor down
+    #[allow(dead_code)]
     pub fn cursor_down(&mut self) {
         if self.cursor < self.available_rooms.len().saturating_sub(1) {
             self.cursor += 1;
@@ -37,6 +40,7 @@ impl RoomSelectionSceneData {
     }
 
     /// Get the selected room
+    #[allow(dead_code)]
     pub fn get_selected_room(&self) -> Option<Room> {
         self.available_rooms.get(self.cursor).cloned()
     }

@@ -32,6 +32,7 @@ impl Player {
         self.hp > 0
     }
 
+    #[allow(dead_code)]
     pub fn take_damage(&mut self, damage: i32) {
         let actual_damage = (damage - self.defense).max(1);
         self.hp = (self.hp - actual_damage).max(0);

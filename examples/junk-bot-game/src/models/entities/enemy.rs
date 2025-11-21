@@ -27,6 +27,7 @@ impl Enemy {
         self.hp > 0
     }
 
+    #[allow(dead_code)]
     pub fn take_damage(&mut self, damage: i32) {
         self.hp = (self.hp - damage).max(0);
     }

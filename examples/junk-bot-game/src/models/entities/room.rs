@@ -24,6 +24,7 @@ pub struct Room {
 
 impl Room {
     /// Create a new room with default settings
+    #[allow(dead_code)]
     pub fn new(room_type: RoomType) -> Self {
         Self {
             room_type,
@@ -92,7 +93,7 @@ fn generate_combat_room(buff: RoomBuff, floor: u32) -> Room {
 
     // Generate enemies
     let mut enemies = Vec::new();
-    for i in 0..enemy_count {
+    for _i in 0..enemy_count {
         let base_hp = 30 + rng.gen_range(0..20);
         let base_attack = 5 + rng.gen_range(0..5);
 

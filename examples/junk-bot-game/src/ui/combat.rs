@@ -188,6 +188,7 @@ fn render_party_status(frame: &mut Frame, area: Rect, ctx: &GameContext) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_character_status(
     frame: &mut Frame,
     area: Rect,

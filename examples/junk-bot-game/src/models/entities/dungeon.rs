@@ -14,26 +14,18 @@ pub struct Dungeon {
 impl Dungeon {
     /// Create a new 5-floor dungeon
     pub fn new() -> Self {
-        let mut rooms = Vec::new();
-
         // FLOOR 1: Tutorial - Easy start
-        rooms.push(generate_floor1_room());
-
         // FLOOR 2: Standard Combat
-        rooms.push(generate_floor2_room());
-
         // FLOOR 3: Mini-Boss
-        rooms.push(generate_floor3_miniboss());
-
         // FLOOR 4: Room Selection (player choice) - placeholder
-        rooms.push(Room::new_with_buff(
-            RoomType::Combat,
-            RoomBuff::Normal,
-            "FLOOR 4: Choice",
-        ));
-
         // FLOOR 5: Final Boss
-        rooms.push(generate_floor5_boss());
+        let rooms = vec![
+            generate_floor1_room(),
+            generate_floor2_room(),
+            generate_floor3_miniboss(),
+            Room::new_with_buff(RoomType::Combat, RoomBuff::Normal, "FLOOR 4: Choice"),
+            generate_floor5_boss(),
+        ];
 
         Self {
             rooms,
@@ -47,6 +39,7 @@ impl Dungeon {
     }
 
     /// Get mutable current room
+    #[allow(dead_code)]
     pub fn get_current_room_mut(&mut self) -> Option<&mut Room> {
         self.rooms.get_mut(self.current_room)
     }
@@ -62,6 +55,7 @@ impl Dungeon {
     }
 
     /// Check if dungeon is complete
+    #[allow(dead_code)]
     pub fn is_complete(&self) -> bool {
         self.current_room >= self.rooms.len() - 1
     }

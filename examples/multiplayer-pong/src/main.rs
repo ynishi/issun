@@ -140,10 +140,14 @@ impl GameState {
             }
 
             // Paddle collision (simplified)
-            if self.ball_x <= 2 && (self.ball_y >= self.my_paddle_y && self.ball_y <= self.my_paddle_y + 4) {
+            if self.ball_x <= 2
+                && (self.ball_y >= self.my_paddle_y && self.ball_y <= self.my_paddle_y + 4)
+            {
                 self.ball_vx = -self.ball_vx;
             }
-            if self.ball_x >= 78 && (self.ball_y >= self.other_paddle_y && self.ball_y <= self.other_paddle_y + 4) {
+            if self.ball_x >= 78
+                && (self.ball_y >= self.other_paddle_y && self.ball_y <= self.other_paddle_y + 4)
+            {
                 self.ball_vx = -self.ball_vx;
             }
 
@@ -185,11 +189,17 @@ impl GameState {
         // Clear screen
         print!("\x1B[2J\x1B[1;1H");
 
-        println!("╔════════════════════════════════════════════════════════════════════════════════╗");
-        println!("║  Multiplayer Pong - Player {}  {}                                          ║",
+        println!(
+            "╔════════════════════════════════════════════════════════════════════════════════╗"
+        );
+        println!(
+            "║  Multiplayer Pong - Player {}  {}                                          ║",
             self.my_id % 1000,
-            if self.is_host { "[HOST]" } else { "[CLIENT]" });
-        println!("╠════════════════════════════════════════════════════════════════════════════════╣");
+            if self.is_host { "[HOST]" } else { "[CLIENT]" }
+        );
+        println!(
+            "╠════════════════════════════════════════════════════════════════════════════════╣"
+        );
 
         for y in 0..20 {
             print!("║");
@@ -197,9 +207,12 @@ impl GameState {
             for x in 0..80 {
                 if x == self.ball_x && y == self.ball_y {
                     print!("●");
-                } else if x == 1 && y >= self.my_paddle_y && y < self.my_paddle_y + 4 {
-                    print!("█");
-                } else if x == 78 && self.other_id.is_some() && y >= self.other_paddle_y && y < self.other_paddle_y + 4 {
+                } else if (x == 1 && y >= self.my_paddle_y && y < self.my_paddle_y + 4)
+                    || (x == 78
+                        && self.other_id.is_some()
+                        && y >= self.other_paddle_y
+                        && y < self.other_paddle_y + 4)
+                {
                     print!("█");
                 } else {
                     print!(" ");
@@ -209,12 +222,17 @@ impl GameState {
             println!("║");
         }
 
-        println!("╚════════════════════════════════════════════════════════════════════════════════╝");
+        println!(
+            "╚════════════════════════════════════════════════════════════════════════════════╝"
+        );
         println!("  Controls: W/S = Move Up/Down, Q = Quit");
         if self.other_id.is_none() {
             println!("  ⏳ Waiting for another player to join...");
         }
-        println!("  Frame: {} | Ball: ({}, {})", self.frame, self.ball_x, self.ball_y);
+        println!(
+            "  Frame: {} | Ball: ({}, {})",
+            self.frame, self.ball_x, self.ball_y
+        );
     }
 }
 
@@ -229,7 +247,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let my_id = backend.node_id().as_u64();
 
     println!("✅ Connected! Your Player ID: {}", my_id);
-    println!("🎲 You are the {} player", if my_id % 2 == 0 { "HOST" } else { "CLIENT" });
+    println!(
+        "🎲 You are the {} player",
+        if my_id % 2 == 0 { "HOST" } else { "CLIENT" }
+    );
 
     // Create EventBus with network
     let mut bus = EventBus::new().with_network(backend);
@@ -250,9 +271,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         loop {
             if stdin.read(&mut buf).is_ok() {
                 match buf[0] {
-                    b'w' | b'W' => { let _ = input_tx.blocking_send(Input::Up); }
-                    b's' | b'S' => { let _ = input_tx.blocking_send(Input::Down); }
-                    b'q' | b'Q' => { let _ = input_tx.blocking_send(Input::Quit); break; }
+                    b'w' | b'W' => {
+                        let _ = input_tx.blocking_send(Input::Up);
+                    }
+                    b's' | b'S' => {
+                        let _ = input_tx.blocking_send(Input::Down);
+                    }
+                    b'q' | b'Q' => {
+                        let _ = input_tx.blocking_send(Input::Quit);
+                        break;
+                    }
                     _ => {}
                 }
             }

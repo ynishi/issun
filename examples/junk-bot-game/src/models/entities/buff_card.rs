@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// Types of buffs that can be applied
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::enum_variant_names)]
 pub enum BuffType {
     /// Increases attack by a fixed amount
     AttackUp(i32),

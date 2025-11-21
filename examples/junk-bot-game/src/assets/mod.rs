@@ -9,6 +9,7 @@ use crate::models::entities::{BuffType, Rarity};
 
 /// Enemy asset definition
 #[derive(Debug, Clone, Asset)]
+#[allow(dead_code)]
 pub struct EnemyAsset {
     pub name: &'static str,
     pub hp: i32,
@@ -16,6 +17,7 @@ pub struct EnemyAsset {
 }
 
 /// Example enemy preset data
+#[allow(dead_code)]
 pub const ENEMIES: &[EnemyAsset] = &[
     EnemyAsset {
         name: "Goblin",
@@ -45,6 +47,7 @@ pub struct BuffCardAsset {
 
 /// Buff card database (for Resources)
 #[derive(Debug, Clone, Resource)]
+#[allow(dead_code)]
 pub struct BuffCardDatabase {
     pub cards: Vec<BuffCardAsset>,
 }

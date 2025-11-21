@@ -5,7 +5,6 @@
 use super::entities::{
     Bot, BuffCard, BuffType, Dungeon, ItemEffect, LootItem, Player, Weapon, WeaponEffect,
 };
-use issun::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Persistent game data (survives scene transitions)
@@ -83,11 +82,13 @@ impl GameContext {
     }
 
     /// Get all alive bots
+    #[allow(dead_code)]
     pub fn alive_bots(&self) -> Vec<&Bot> {
         self.bots.iter().filter(|bot| bot.is_alive()).collect()
     }
 
     /// Get mutable reference to alive bots
+    #[allow(dead_code)]
     pub fn alive_bots_mut(&mut self) -> Vec<&mut Bot> {
         self.bots.iter_mut().filter(|bot| bot.is_alive()).collect()
     }
@@ -98,6 +99,7 @@ impl GameContext {
     }
 
     /// Remove weapon from inventory by index
+    #[allow(dead_code)]
     pub fn remove_from_inventory(&mut self, index: usize) -> Option<Weapon> {
         if index < self.inventory.len() {
             Some(self.inventory.remove(index))
