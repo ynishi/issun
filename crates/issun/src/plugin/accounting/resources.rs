@@ -1,17 +1,18 @@
-//! Economy-related resources
+//! Accounting-related resources
 
 use super::Currency;
+use crate::state::State;
 use serde::{Deserialize, Serialize};
 
 /// Budget ledger tracking multiple financial pools
 ///
 /// This resource holds the current state of various budget categories.
-/// Systems can modify these pools through economic operations.
+/// Systems can modify these pools through accounting operations.
 ///
 /// # Example
 ///
 /// ```ignore
-/// use issun::plugin::economy::{BudgetLedger, Currency};
+/// use issun::plugin::accounting::{BudgetLedger, Currency};
 ///
 /// let mut ledger = BudgetLedger::new(Currency::new(2400));
 /// assert_eq!(ledger.cash.amount(), 2400);
@@ -32,6 +33,8 @@ pub struct BudgetLedger {
     /// Security investment fund
     pub security_fund: Currency,
 }
+
+impl State for BudgetLedger {}
 
 impl BudgetLedger {
     /// Create a new ledger with starting cash
@@ -177,47 +180,6 @@ pub enum BudgetChannel {
     Security,
 }
 
-/// Policy deck holding active policies
-///
-/// This is a placeholder for game-specific policy systems.
-/// Customize this based on your game's needs.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PolicyDeck {
-    /// Active policy IDs
-    pub active_policies: Vec<String>,
-}
-
-impl PolicyDeck {
-    /// Create an empty policy deck
-    pub fn new() -> Self {
-        Self {
-            active_policies: Vec::new(),
-        }
-    }
-
-    /// Add a policy to the deck
-    pub fn add_policy(&mut self, policy_id: String) {
-        if !self.active_policies.contains(&policy_id) {
-            self.active_policies.push(policy_id);
-        }
-    }
-
-    /// Remove a policy from the deck
-    pub fn remove_policy(&mut self, policy_id: &str) -> bool {
-        if let Some(pos) = self.active_policies.iter().position(|p| p == policy_id) {
-            self.active_policies.remove(pos);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Check if a policy is active
-    pub fn has_policy(&self, policy_id: &str) -> bool {
-        self.active_policies.iter().any(|p| p == policy_id)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -273,36 +235,6 @@ mod tests {
         // Values should remain unchanged
         assert_eq!(ledger.cash.amount(), 100);
         assert_eq!(ledger.reserve.amount(), 400);
-    }
-
-    #[test]
-    fn test_policy_deck_add() {
-        let mut deck = PolicyDeck::new();
-        deck.add_policy("policy1".to_string());
-        assert!(deck.has_policy("policy1"));
-        assert_eq!(deck.active_policies.len(), 1);
-    }
-
-    #[test]
-    fn test_policy_deck_add_duplicate() {
-        let mut deck = PolicyDeck::new();
-        deck.add_policy("policy1".to_string());
-        deck.add_policy("policy1".to_string());
-        assert_eq!(deck.active_policies.len(), 1);
-    }
-
-    #[test]
-    fn test_policy_deck_remove() {
-        let mut deck = PolicyDeck::new();
-        deck.add_policy("policy1".to_string());
-        assert!(deck.remove_policy("policy1"));
-        assert!(!deck.has_policy("policy1"));
-    }
-
-    #[test]
-    fn test_policy_deck_remove_nonexistent() {
-        let mut deck = PolicyDeck::new();
-        assert!(!deck.remove_policy("nonexistent"));
     }
 
     #[test]

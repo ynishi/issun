@@ -24,10 +24,10 @@
 use async_trait::async_trait;
 
 // Built-in plugins
+pub mod accounting;
 pub mod action;
 pub mod combat;
 pub mod dungeon;
-pub mod economy;
 pub mod faction;
 pub mod inventory;
 pub mod loot;
@@ -363,22 +363,28 @@ pub use time::{
     TimeConfig,
 };
 
-pub use economy::{
-    // Types
-    BudgetChannel,
-    BudgetLedger,
+pub use accounting::{
     // Plugin
-    BuiltInEconomyPlugin,
+    AccountingPlugin,
+    // Hook
+    AccountingHook,
+    DefaultAccountingHook,
+    // Types
     Currency,
-    // Trait
-    DefaultSettlementSystem,
-    EconomyConfig,
+    BudgetChannel,
+    // Resources
+    AccountingConfig,
+    AccountingState,
+    BudgetLedger,
     // Service
-    EconomyService,
+    AccountingService,
     // System
-    EconomySystem,
-    PolicyDeck,
-    SettlementSystem,
+    AccountingSystem,
+    // Events
+    SettlementRequested,
+    BudgetTransferRequested,
+    SettlementCompletedEvent,
+    BudgetTransferredEvent,
 };
 
 use crate::builder::RuntimeResourceEntry;
