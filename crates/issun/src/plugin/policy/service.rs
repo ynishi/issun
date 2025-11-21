@@ -3,7 +3,10 @@
 //! Provides pure functions for policy effect calculations and aggregations.
 //! All functions are stateless and can be used independently.
 
+use super::policies::Policies;
+use super::state::PolicyState;
 use super::types::{AggregationStrategy, Policy};
+use crate::context::ResourceContext;
 use std::collections::HashMap;
 
 /// Policy service providing pure policy calculation logic
@@ -272,6 +275,108 @@ impl PolicyService {
             .fold(strategy.initial_value(), |acc, value| {
                 strategy.aggregate(acc, *value)
             })
+    }
+
+    // ========================================
+    // ResourceContext Helpers (for Hooks)
+    // ========================================
+
+    /// Get active policy effect value from ResourceContext
+    ///
+    /// This is a convenience helper for Hooks to easily access active policy effects
+    /// without manually combining PolicyState and Policies.
+    ///
+    /// # Arguments
+    ///
+    /// * `effect_name` - Name of the effect to retrieve
+    /// * `resources` - Resource context containing PolicyState and Policies
+    ///
+    /// # Returns
+    ///
+    /// Effect value or 1.0 (neutral multiplier) if not found
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // In a Hook
+    /// async fn calculate_income(&self, resources: &ResourceContext) -> Currency {
+    ///     let multiplier = PolicyService::get_active_effect("income_multiplier", resources).await;
+    ///     Currency::new((base_income as f32 * multiplier) as i64)
+    /// }
+    /// ```
+    pub async fn get_active_effect(effect_name: &str, resources: &ResourceContext) -> f32 {
+        let state = match resources.get::<PolicyState>().await {
+            Some(s) => s,
+            None => return 1.0, // Default multiplier
+        };
+
+        let policies = match resources.get::<Policies>().await {
+            Some(p) => p,
+            None => return 1.0,
+        };
+
+        // Get active policy ID (single-active mode)
+        if let Some(active_id) = state.active_policy_id() {
+            if let Some(policy) = policies.get(active_id) {
+                return policy.effects.get(effect_name).copied().unwrap_or(1.0);
+            }
+        }
+
+        1.0 // Default multiplier
+    }
+
+    /// Get all active policy effects from ResourceContext
+    ///
+    /// This is a convenience helper for Hooks to easily access all active policy effects.
+    ///
+    /// # Arguments
+    ///
+    /// * `resources` - Resource context containing PolicyState and Policies
+    ///
+    /// # Returns
+    ///
+    /// HashMap of all aggregated effects from active policies
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // In a Hook
+    /// let effects = PolicyService::get_active_effects(resources).await;
+    /// let income_mult = effects.get("income_multiplier").copied().unwrap_or(1.0);
+    /// let attack_bonus = effects.get("attack_bonus").copied().unwrap_or(0.0);
+    /// ```
+    pub async fn get_active_effects(resources: &ResourceContext) -> HashMap<String, f32> {
+        let state = match resources.get::<PolicyState>().await {
+            Some(s) => s,
+            None => return HashMap::new(),
+        };
+
+        let policies_resource = match resources.get::<Policies>().await {
+            Some(p) => p,
+            None => return HashMap::new(),
+        };
+
+        // Collect active policies
+        let active_policies: Vec<&Policy> = if let Some(active_id) = state.active_policy_id() {
+            if let Some(policy) = policies_resource.get(active_id) {
+                vec![policy]
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
+        if active_policies.is_empty() {
+            return HashMap::new();
+        }
+
+        // Aggregate effects (default to Multiply strategy)
+        Self::aggregate_effects(
+            &active_policies,
+            &HashMap::new(),
+            AggregationStrategy::Multiply,
+        )
     }
 }
 

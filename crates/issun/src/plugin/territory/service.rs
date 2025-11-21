@@ -3,6 +3,11 @@
 //! Provides pure functions for territory control and development calculations.
 //! All functions are stateless and can be used independently.
 
+use super::state::TerritoryState;
+use super::territories::Territories;
+use super::types::TerritoryId;
+use crate::context::ResourceContext;
+
 /// Territory service providing pure territory calculation logic
 ///
 /// This service handles stateless calculations for territory operations.
@@ -184,6 +189,60 @@ impl TerritoryService {
 
         let ratio = controlled_neighbors as f32 / total_neighbors as f32;
         ratio * max_bonus
+    }
+
+    // ========================================
+    // ResourceContext Helpers (for Hooks)
+    // ========================================
+
+    /// Get territory control value from ResourceContext
+    ///
+    /// This is a convenience helper for Hooks to easily access territory control
+    /// without manually combining Territories and TerritoryState.
+    ///
+    /// # Arguments
+    ///
+    /// * `territory_id` - ID of the territory
+    /// * `resources` - Resource context containing TerritoryState
+    ///
+    /// # Returns
+    ///
+    /// Control value (0.0-1.0) or 0.0 if not found
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // In a Hook
+    /// let control = TerritoryService::get_control(&territory_id, resources).await;
+    /// let income = (base_income as f32 * control) as i64;
+    /// ```
+    pub async fn get_control(territory_id: &TerritoryId, resources: &ResourceContext) -> f32 {
+        if let Some(state) = resources.get::<TerritoryState>().await {
+            state.get_control(territory_id)
+        } else {
+            0.0
+        }
+    }
+
+    /// Get territory development level from ResourceContext
+    ///
+    /// # Arguments
+    ///
+    /// * `territory_id` - ID of the territory
+    /// * `resources` - Resource context containing TerritoryState
+    ///
+    /// # Returns
+    ///
+    /// Development level or 0 if not found
+    pub async fn get_development_level(
+        territory_id: &TerritoryId,
+        resources: &ResourceContext,
+    ) -> u32 {
+        if let Some(state) = resources.get::<TerritoryState>().await {
+            state.get_development_level(territory_id)
+        } else {
+            0
+        }
     }
 }
 
