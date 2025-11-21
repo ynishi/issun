@@ -8,18 +8,51 @@ use crate::models::{
     GameContext, GameScene,
 };
 use issun::prelude::{
-    CombatService, CombatSystem, Combatant, ResourceContext, SceneTransition, ServiceContext,
-    SystemContext, TurnBasedCombatConfig,
+    CombatService, Combatant, ResourceContext, SceneTransition, ServiceContext, SystemContext,
 };
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
+
+/// Simple combat engine for junk-bot-game
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct SimpleCombatEngine {
+    turn_count: u32,
+    log: Vec<String>,
+    score: u32,
+}
+
+impl SimpleCombatEngine {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn add_log(&mut self, message: String) {
+        self.log.push(message);
+    }
+
+    fn log(&self) -> &[String] {
+        &self.log
+    }
+
+    fn turn_count(&self) -> u32 {
+        self.turn_count
+    }
+
+    fn score(&self) -> u32 {
+        self.score
+    }
+
+    fn add_score(&mut self, points: u32) {
+        self.score += points;
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CombatSceneData {
     pub enemies: Vec<Enemy>,
     /// Combat engine managing turn count, log, and score
     #[serde(skip)]
-    pub combat_engine: Option<CombatSystem>,
+    pub combat_engine: Option<SimpleCombatEngine>,
     /// Show inventory for weapon switching
     pub show_inventory: bool,
     /// Selected inventory index
@@ -40,7 +73,7 @@ impl CombatSceneData {
     pub fn new(enemies: Vec<Enemy>) -> Self {
         Self {
             enemies,
-            combat_engine: Some(CombatSystem::new(TurnBasedCombatConfig::default())),
+            combat_engine: Some(SimpleCombatEngine::new()),
             show_inventory: false,
             inventory_cursor: 0,
             equip_target: EquipTarget::Player,
@@ -52,7 +85,7 @@ impl CombatSceneData {
     pub fn from_room(room: crate::models::entities::Room) -> Self {
         Self {
             enemies: room.enemies,
-            combat_engine: Some(CombatSystem::new(TurnBasedCombatConfig::default())),
+            combat_engine: Some(SimpleCombatEngine::new()),
             show_inventory: false,
             inventory_cursor: 0,
             equip_target: EquipTarget::Player,
@@ -61,13 +94,13 @@ impl CombatSceneData {
     }
 
     /// Get combat engine (lazily initialized)
-    fn engine(&mut self) -> &mut CombatSystem {
+    fn engine(&mut self) -> &mut SimpleCombatEngine {
         self.combat_engine
-            .get_or_insert_with(|| CombatSystem::new(TurnBasedCombatConfig::default()))
+            .get_or_insert_with(|| SimpleCombatEngine::new())
     }
 
     /// Get combat log
-    pub fn combat_log(&self) -> &[issun::prelude::CombatLogEntry] {
+    pub fn combat_log(&self) -> &[String] {
         self.combat_engine.as_ref().map(|e| e.log()).unwrap_or(&[])
     }
 
@@ -207,41 +240,154 @@ impl CombatSceneData {
         }
     }
 
-    /// Process a combat turn using CombatSystem
+    /// Process a combat turn using simplified combat logic
     fn process_turn(&mut self, ctx: &mut GameContext, services: &ServiceContext) {
-        if let Some(combat_service) = services.get_as::<CombatService>("combat_service") {
-            let demo_damage = combat_service.calculate_damage(100, Some(20));
-            self.log(format!(
-                "🔧 Service Registry Demo: 100 dmg - 20 def = {}",
-                demo_damage
-            ));
-        }
+        let engine = self.engine();
+        engine.turn_count += 1;
 
-        // Build party trait object slice (player + bots)
-        let mut party: Vec<&mut dyn Combatant> = vec![&mut ctx.player as &mut dyn Combatant];
-        for bot in ctx.bots.iter_mut() {
-            party.push(bot as &mut dyn Combatant);
-        }
+        // Get combat service for damage calculations
+        let combat_service = services.get_as::<CombatService>("combat_service");
 
-        // Build enemy trait object slice
-        let mut enemies: Vec<&mut dyn Combatant> = self
-            .enemies
-            .iter_mut()
-            .map(|e| e as &mut dyn Combatant)
-            .collect();
-
-        // Process turn using combat engine (CombatSystem internally uses CombatService)
+        // Apply room buff effects
         let damage_multiplier = self.room_buff.damage_multiplier();
         let per_turn_damage = self.room_buff.per_turn_damage();
 
-        // Extract engine to avoid double borrow
-        let engine = self.combat_engine.as_mut().unwrap();
+        // Collect log messages to avoid borrow checker issues
+        let mut log_messages = Vec::new();
 
-        let _result =
-            engine.process_turn_dyn(&mut party, &mut enemies, damage_multiplier, per_turn_damage);
+        // Party attacks enemies (player first)
+        let mut score_to_add = 0;
+        if ctx.player.is_alive() {
+            if let Some(target) = self.enemies.iter_mut().find(|e| e.is_alive()) {
+                let base_damage = ctx.player.equipped_weapon.attack;
+                let damage = if let Some(service) = combat_service {
+                    service.calculate_damage(
+                        (base_damage as f32 * damage_multiplier) as i32,
+                        target.defense(),
+                    )
+                } else {
+                    ((base_damage as f32 * damage_multiplier) as i32).saturating_sub(target.defense().unwrap_or(0))
+                };
 
-        // Sync score from engine to context
-        ctx.score = engine.score();
+                target.hp = target.hp.saturating_sub(damage);
+                log_messages.push(format!(
+                    "{} attacks {} for {} damage!",
+                    ctx.player.name,
+                    target.name,
+                    damage
+                ));
+
+                if target.hp == 0 {
+                    log_messages.push(format!("{} defeated!", target.name));
+                    score_to_add += 100;
+                }
+            }
+        }
+
+        // Then bots attack
+        for bot in ctx.bots.iter_mut() {
+            if bot.is_alive() {
+                if let Some(target) = self.enemies.iter_mut().find(|e| e.is_alive()) {
+                    let base_damage = bot.equipped_weapon.attack;
+                    let damage = if let Some(service) = combat_service {
+                        service.calculate_damage(
+                            (base_damage as f32 * damage_multiplier) as i32,
+                            target.defense(),
+                        )
+                    } else {
+                        ((base_damage as f32 * damage_multiplier) as i32).saturating_sub(target.defense().unwrap_or(0))
+                    };
+
+                    target.hp = target.hp.saturating_sub(damage);
+                    log_messages.push(format!(
+                        "{} attacks {} for {} damage!",
+                        bot.name,
+                        target.name,
+                        damage
+                    ));
+
+                    if target.hp == 0 {
+                        log_messages.push(format!("{} defeated!", target.name));
+                        score_to_add += 100;
+                    }
+                }
+            }
+        }
+
+        // Enemies attack party
+        for enemy in self.enemies.iter_mut() {
+            if enemy.is_alive() {
+                // Find first alive party member
+                if ctx.player.is_alive() {
+                    let damage = if let Some(service) = combat_service {
+                        service.calculate_damage(enemy.attack, ctx.player.defense())
+                    } else {
+                        enemy.attack.saturating_sub(ctx.player.defense().unwrap_or(0))
+                    };
+
+                    ctx.player.hp = ctx.player.hp.saturating_sub(damage);
+                    log_messages.push(format!(
+                        "{} attacks {} for {} damage!",
+                        enemy.name,
+                        ctx.player.name,
+                        damage
+                    ));
+
+                    if ctx.player.hp == 0 {
+                        log_messages.push(format!("{} defeated!", ctx.player.name));
+                    }
+                } else if let Some(bot) = ctx.bots.iter_mut().find(|b| b.is_alive()) {
+                    let damage = if let Some(service) = combat_service {
+                        service.calculate_damage(enemy.attack, bot.defense())
+                    } else {
+                        enemy.attack.saturating_sub(bot.defense().unwrap_or(0))
+                    };
+
+                    bot.hp = bot.hp.saturating_sub(damage);
+                    log_messages.push(format!(
+                        "{} attacks {} for {} damage!",
+                        enemy.name,
+                        bot.name,
+                        damage
+                    ));
+
+                    if bot.hp == 0 {
+                        log_messages.push(format!("{} defeated!", bot.name));
+                    }
+                }
+            }
+        }
+
+        // Apply per-turn damage from room buff
+        if per_turn_damage > 0 {
+            if ctx.player.is_alive() {
+                ctx.player.hp = ctx.player.hp.saturating_sub(per_turn_damage);
+                log_messages.push(format!(
+                    "Room effect deals {} damage to {}!",
+                    per_turn_damage,
+                    ctx.player.name
+                ));
+            }
+            for bot in ctx.bots.iter_mut() {
+                if bot.is_alive() {
+                    bot.hp = bot.hp.saturating_sub(per_turn_damage);
+                    log_messages.push(format!(
+                        "Room effect deals {} damage to {}!",
+                        per_turn_damage,
+                        bot.name
+                    ));
+                }
+            }
+        }
+
+        // Add all log messages and score at once
+        for msg in log_messages {
+            self.engine().add_log(msg);
+        }
+        self.engine().add_score(score_to_add);
+
+        // Sync score
+        ctx.score = self.engine().score();
     }
 
     /// Equip weapon to target (player or bot)

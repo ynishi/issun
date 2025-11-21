@@ -335,7 +335,7 @@ fn render_combat_log(frame: &mut Frame, area: Rect, data: &CombatSceneData) {
     let start_index = log_entries.len().saturating_sub(max_lines);
     let messages: Vec<ListItem> = log_entries[start_index..]
         .iter()
-        .map(|entry| ListItem::new(entry.message.as_str()))
+        .map(|entry| ListItem::new(entry.as_str()))
         .collect();
 
     let list = List::new(messages).block(block);

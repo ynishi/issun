@@ -24,11 +24,11 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize ISSUN framework with plugins
     let game = GameBuilder::new()
-        .with_plugin(TurnBasedCombatPlugin::default())
+        .with_plugin(CombatPlugin::new())
         .map_err(|e| std::io::Error::other(e.to_string()))?
-        .with_plugin(InventoryPlugin::new())
+        .with_plugin(InventoryPlugin::default())
         .map_err(|e| std::io::Error::other(e.to_string()))?
-        .with_plugin(LootPlugin::new())
+        .with_plugin(LootPlugin::default())
         .map_err(|e| std::io::Error::other(e.to_string()))?
         .build()
         .await
