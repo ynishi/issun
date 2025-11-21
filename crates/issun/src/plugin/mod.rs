@@ -109,13 +109,26 @@ pub use inventory::{
 };
 
 pub use loot::{
-    // Types
-    DropConfig,
     // Plugin
     LootPlugin,
+    // Hook
+    LootHook,
+    DefaultLootHook,
+    // Types
+    Rarity,
+    DropConfig,
+    // Resources
+    LootConfig,
     // Service
     LootService,
-    Rarity,
+    // System
+    LootSystem,
+    // Events
+    LootSourceId,
+    LootGenerateRequested,
+    RarityRollRequested,
+    LootGeneratedEvent,
+    LootNotGeneratedEvent,
 };
 
 pub use dungeon::{

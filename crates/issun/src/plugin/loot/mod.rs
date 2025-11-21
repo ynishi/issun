@@ -8,47 +8,55 @@
 //! - 5-tier rarity system (Common → Legendary)
 //! - Weighted random rarity selection
 //! - Drop rate calculations with multipliers
-//! - Multi-source drop counting
-//!
-//! # 80/20 Design
-//!
-//! **Framework provides (80%)**:
-//! - Rarity enum with drop weights
-//! - Drop rate calculation logic
-//! - Weighted random selection algorithms
-//! - DropConfig for configurable drop rates
-//!
-//! **Game implements (20%)**:
-//! - Specific item types and effects
-//! - Loot table definitions
-//! - Item generation rules per rarity
-//! - Integration with game entities
+//! - Event-driven loot generation
+//! - Customizable loot tables via hooks
 //!
 //! # Usage Example
 //!
 //! ```ignore
 //! use issun::prelude::*;
+//! use issun::plugin::loot::{LootPlugin, LootHook, Rarity};
 //!
-//! // In main.rs
+//! // Custom loot hook
+//! struct MyLootHook;
+//!
+//! #[async_trait]
+//! impl LootHook for MyLootHook {
+//!     async fn generate_loot(
+//!         &self,
+//!         source_id: &str,
+//!         rarity: Rarity,
+//!         resources: &ResourceContext,
+//!     ) -> Vec<String> {
+//!         // Return items based on source and rarity
+//!         vec![]
+//!     }
+//! }
+//!
 //! let game = GameBuilder::new()
-//!     .with_plugin(LootPlugin::new())
+//!     .with_plugin(LootPlugin::new().with_hook(MyLootHook))
 //!     .build()
 //!     .await?;
 //!
-//! // In game code
-//! let mut rng = rand::thread_rng();
-//! let config = DropConfig::new(0.3, 1.5); // 30% base * 1.5 multiplier
-//!
-//! if LootService::should_drop(&config, &mut rng) {
-//!     let rarity = LootService::select_rarity(&mut rng);
-//!     // Generate item based on rarity
-//! }
+//! // Generate loot via events
+//! bus.publish(LootGenerateRequested {
+//!     source_id: "goblin_1".to_string(),
+//!     drop_rate: 0.5,
+//! });
 //! ```
 
+mod config;
+mod events;
+mod hook;
 mod plugin;
 mod service;
+mod system;
 mod types;
 
+pub use config::LootConfig;
+pub use events::*;
+pub use hook::{DefaultLootHook, LootHook};
 pub use plugin::LootPlugin;
 pub use service::LootService;
+pub use system::LootSystem;
 pub use types::{DropConfig, Rarity};
