@@ -218,6 +218,21 @@ publish: preflight
 	@echo ""
 	@echo "✅ issun published successfully!"
 	@echo ""
+	@echo "⏳ Waiting 30 seconds for crates.io index to update..."
+	sleep 30
+
+	@echo ""
+	@echo "--- Step 3: Publishing issun-server ---"
+	@echo "  Running dry-run for issun-server..."
+	cargo publish -p issun-server --dry-run --allow-dirty
+
+	@echo "  ✓ Dry-run successful for issun-server"
+	@echo "  Publishing issun-server to crates.io..."
+	cargo publish -p issun-server --allow-dirty
+
+	@echo ""
+	@echo "✅ issun-server published successfully!"
+	@echo ""
 	@echo "🎉 All crates have been successfully published to crates.io!"
 
 # Docker targets
