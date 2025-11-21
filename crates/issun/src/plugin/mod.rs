@@ -28,6 +28,7 @@ pub mod accounting;
 pub mod action;
 pub mod combat;
 pub mod dungeon;
+pub mod economy;
 pub mod faction;
 pub mod inventory;
 pub mod loot;
@@ -406,7 +407,6 @@ pub use accounting::{
     AccountingHook,
     DefaultAccountingHook,
     // Types
-    Currency,
     BudgetChannel,
     // Resources
     AccountingConfig,
@@ -421,6 +421,52 @@ pub use accounting::{
     BudgetTransferRequested,
     SettlementCompletedEvent,
     BudgetTransferredEvent,
+};
+
+pub use economy::{
+    // Plugin
+    EconomyPlugin,
+    // Resources
+    ConversionRules,
+    CurrencyDefinitions,
+    EconomyConfig,
+    ExchangeRates,
+    ResourceDefinitions,
+    // State
+    ResourceInventory,
+    Wallet,
+    // Service
+    EconomyError,
+    EconomyResult,
+    EconomyService,
+    // System
+    EconomySystem,
+    // Types
+    ConversionRule,
+    Currency,
+    CurrencyDefinition,
+    CurrencyId,
+    ExchangeRate,
+    RateType,
+    ResourceDefinition,
+    ResourceId,
+    ResourceType,
+    // Events - Command
+    CurrencyExchangeRequested,
+    ResourceConversionRequested,
+    ResourceAddRequested,
+    ResourceConsumeRequested,
+    // Events - State
+    CurrencyExchanged,
+    CurrencyExchangeFailed,
+    ResourceConverted,
+    ResourceConversionFailed,
+    ResourceAdded,
+    ResourceConsumed,
+    ResourceConsumeFailed,
+    FlowResourceGenerated,
+    CurrencyDeposited,
+    CurrencyWithdrawn,
 };
 
 use crate::builder::RuntimeResourceEntry;
