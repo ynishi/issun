@@ -1,83 +1,118 @@
 # Plugin Design Principles
 
-**日付**: 2025-11-21
-**ステータス**: Accepted
-**背景**: Registry パターンの設計ミスを発見し、正しい設計原則を確立
+**Date**: 2025-11-21
+**Status**: Accepted
+**Context**: Discovered design flaws in the Registry pattern and established correct design principles.
 
 ---
 
-## 問題の背景
+## Background of the Problem
 
-### Registry の設計ミス
+### Design Flaws in Registry
 
-現状の多くのPluginで、`Registry` が以下をすべて内包している：
+Currently, many Plugins use a `Registry` that encapsulates everything:
 
 ```rust
-// ❌ 問題のあるパターン
+// ❌ Problematic Pattern
 pub struct PolicyRegistry {
-    policies: HashMap<PolicyId, Policy>,  // 定義（ReadOnly）
-    active_policy_id: Option<PolicyId>,   // 状態（Mutable）
-    config: PolicyConfig,                 // 設定（ReadOnly）
+    policies: HashMap<PolicyId, Policy>,  // Definitions (ReadOnly)
+    active_policy_id: Option<PolicyId>,   // State (Mutable)
+    config: PolicyConfig,                 // Configuration (ReadOnly)
 }
 ```
 
-**問題点**:
-1. **責務が混在** - 定義/状態/設定が分離されていない
-2. **Store.rs が未使用** - 既存のStoreインフラが活用されていない
-3. **State が肥大化** - 本来ReadOnlyな定義まで状態管理対象に
-4. **Resource の誤用** - Resource として登録されているが、実際には更新される
+**Issues**:
+1.  **Mixed Responsibilities** - Definitions, State, and Configuration are not separated.
+2.  **Store.rs Unused** - Existing Store infrastructure is not being utilized.
+3.  **Bloated State** - ReadOnly definitions are treated as managed state.
+4.  **Misuse of Resource** - Registered as a Resource, but actually updated/mutable.
 
-### 根本原因
+### Root Cause
 
-- GameContext 分割時に深く考えずに `Registry` を作成
-- "Register"（登録する）から類推して、すべてを内包する設計に
-- Asset定義と実行時状態の区別がない
-
----
-
-## 正しい設計原則
-
-### データ種別と格納先
-
-| データ種別 | 格納先 | 可変性 | 例 |
-|---|---|---|---|
-| **Asset/Config定義** | `Resource<BuiltinDefinitions>` | ReadOnly | Policy定義、Territory定義 |
-| **実行時状態** | `Store<State>` | Mutable | active_policy_ids、control値 |
-| **動的生成Entity** | `Repository<CustomDefinitions>` | Mutable | カスタムPolicy、セーブデータ |
-| **設定** | `Resource<Config>` | ReadOnly | aggregation_strategies |
-
-### 設計の核心
-
-1. **Asset/Config定義 = ReadOnly**
-   - ゲーム起動時にロード（JSON、Rust定義、API）
-   - Plugin内では変更されない
-   - 他のPluginからも参照可能（Resources経由）
-
-2. **実行時状態 = Mutableだが最小化**
-   - 本当にユーザーの操作に応じて変化するもののみ
-   - Store を使って管理
-   - バグを減らすため、可能な限り小さく保つ
-
-3. **Repository は必要時のみ**
-   - セーブ/ロード機能実装時
-   - ネットワーク同期実装時
-   - 基本的には Store で十分
-
-### State変更の外部連携方式
-
-| 方式 | タイミング | トランザクション | 用途 |
-|---|---|---|---|
-| **Hook** | State変更と同期 | 完全Tx（ロールバック可） | バリデーション、副作用、計算 |
-| **Event** | State変更後に非同期 | ロールバック不可 | 通知、ログ、UI更新 |
+- `Registry` was created without deep consideration when splitting `GameContext`.
+- The name "Register" led to a design that encapsulates everything.
+- No distinction between Asset definitions and Runtime state.
 
 ---
 
-## 実装パターン
+## Correct Design Principles
 
-### ✅ 正しい実装（PolicyPlugin の例）
+### Architecture Overview
+
+```mermaid
+classDiagram
+    class Plugin {
+        +setup()
+    }
+    class Resource_Definitions {
+        <<ReadOnly>>
+        +Asset Definitions
+    }
+    class Store_State {
+        <<Mutable>>
+        +Runtime State
+    }
+    class Resource_Config {
+        <<ReadOnly>>
+        +Configuration
+    }
+    class Service {
+        <<Stateless>>
+        +Pure Logic
+    }
+    
+    Plugin --> Resource_Definitions : Registers
+    Plugin --> Store_State : Registers
+    Plugin --> Resource_Config : Registers
+    Plugin --> Service : Registers
+    
+    System ..> Resource_Definitions : Reads
+    System ..> Store_State : Reads/Writes
+    System ..> Resource_Config : Reads
+    System ..> Service : Calls
+```
+
+### Data Types and Storage Locations
+
+| Data Type | Storage Location | Mutability | Example |
+|---|---|---|---|
+| **Asset/Config Definitions** | `Resource<BuiltinDefinitions>` | ReadOnly | Policy Definitions, Territory Definitions |
+| **Runtime State** | `Store<State>` | Mutable | active_policy_ids, control values |
+| **Dynamically Generated Entities** | `Repository<CustomDefinitions>` | Mutable | Custom Policies, Save Data |
+| **Configuration** | `Resource<Config>` | ReadOnly | aggregation_strategies |
+
+### Core Design Concepts
+
+1.  **Asset/Config Definitions = ReadOnly**
+    - Loaded at game startup (JSON, Rust definitions, API).
+    - Not changed within the Plugin.
+    - Accessible from other Plugins (via Resources).
+
+2.  **Runtime State = Mutable but Minimized**
+    - Only things that truly change based on user operations.
+    - Managed using `Store`.
+    - Kept as small as possible to reduce bugs.
+
+3.  **Repository only when necessary**
+    - When implementing Save/Load features.
+    - When implementing Network Synchronization.
+    - Basically, `Store` is sufficient.
+
+### External State Change Coordination
+
+| Method | Timing | Transaction | Usage |
+|---|---|---|---|
+| **Hook** | Synchronous with State change | Full Tx (Rollbackable) | Validation, Side effects, Calculation |
+| **Event** | Asynchronous after State change | Not Rollbackable | Notifications, Logs, UI Updates |
+
+---
+
+## Implementation Patterns
+
+### ✅ Correct Implementation (PolicyPlugin Example)
 
 ```rust
-// 1. Builtin定義（Resource、ReadOnly）
+// 1. Builtin Definitions (Resource, ReadOnly)
 #[derive(Resource)]
 pub struct PolicyDefinitions {
     policies: HashMap<PolicyId, Policy>,
@@ -99,7 +134,7 @@ impl PolicyDefinitions {
     }
 }
 
-// 2. 実行時状態（Store、Mutable）
+// 2. Runtime State (Store, Mutable)
 pub type PolicyState = Store<String, PolicyStateEntry>;
 
 #[derive(Clone)]
@@ -107,14 +142,14 @@ pub struct PolicyStateEntry {
     pub active_policy_ids: Vec<PolicyId>,
 }
 
-// 3. 設定（Resource、ReadOnly）
+// 3. Configuration (Resource, ReadOnly)
 #[derive(Resource)]
 pub struct PolicyConfig {
     pub allow_multiple_active: bool,
     pub aggregation_strategies: HashMap<String, AggregationStrategy>,
 }
 
-// 4. Service（ステートレス計算）
+// 4. Service (Stateless Calculation)
 pub struct PolicyService;
 
 impl PolicyService {
@@ -123,43 +158,43 @@ impl PolicyService {
         strategies: &HashMap<String, AggregationStrategy>,
         default_strategy: AggregationStrategy,
     ) -> HashMap<String, f32> {
-        // 純粋関数による計算ロジック
+        // Pure function calculation logic
     }
 }
 
 // 5. Plugin setup
 impl Plugin for PolicyPlugin {
     fn setup(&self, ctx: &mut Context) {
-        // Builtin定義を登録
+        // Register Builtin Definitions
         ctx.resources.register(PolicyDefinitions {
             policies: load_builtin_policies(),
         });
 
-        // State初期化
+        // Initialize State
         let mut state = PolicyState::new();
         state.insert("global".to_string(), PolicyStateEntry {
             active_policy_ids: vec![],
         });
         ctx.resources.register(state);
 
-        // Config登録
+        // Register Config
         ctx.resources.register(self.config.clone());
 
-        // Service登録
+        // Register Service
         ctx.register_service(Box::new(PolicyService));
 
-        // System登録
+        // Register System
         ctx.register_system(PolicySystem::new());
     }
 }
 
-// 6. System での使用
+// 6. Usage in System
 fn policy_activation_system(ctx: &Context) {
     let definitions = ctx.resources.get::<PolicyDefinitions>().unwrap();
     let mut state = ctx.resources.get_mut::<PolicyState>().unwrap();
     let config = ctx.resources.get::<PolicyConfig>().unwrap();
 
-    // 定義を参照、状態を更新
+    // Reference definitions, update state
     if let Some(policy) = definitions.get(&policy_id) {
         let entry = state.get_mut("global").unwrap();
         if config.allow_multiple_active {
@@ -168,34 +203,34 @@ fn policy_activation_system(ctx: &Context) {
             entry.active_policy_ids = vec![policy.id.clone()];
         }
 
-        // Event発行（非同期通知）
+        // Emit Event (Asynchronous Notification)
         events.send(PolicyActivatedEvent { id: policy_id });
     }
 }
 ```
 
-### 動的生成が必要な場合（カスタムPolicy）
+### When Dynamic Generation is Needed (Custom Policy)
 
 ```rust
-// Repository（Mutable、セーブ対象）
+// Repository (Mutable, Save Target)
 pub struct CustomPolicyRepository {
     custom_policies: HashMap<PolicyId, Policy>,
 }
 
 impl CustomPolicyRepository {
     pub fn save(&self) -> Result<(), SaveError> {
-        // ファイル/DBに保存
+        // Save to File/DB
     }
 
     pub fn load() -> Result<Self, LoadError> {
-        // ファイル/DBから読み込み
+        // Load from File/DB
     }
 }
 
 fn custom_policy_creation_system(ctx: &mut Context) {
     let mut repo = ctx.resources.get_mut::<CustomPolicyRepository>().unwrap();
 
-    // ユーザーがゲーム中に作成
+    // Created by user during game
     let custom = Policy::new("custom_1", "My Policy", "...")
         .add_effect("income_multiplier", 1.5);
 
@@ -205,102 +240,97 @@ fn custom_policy_creation_system(ctx: &mut Context) {
 
 ---
 
-## 各層の責務
+## Responsibilities of Each Layer
 
-### Resource（読み取り専用）
+### Resource (Read-Only)
 
-- **Asset定義**: Builtin Policies, Territory Definitions
-- **Config**: 設定値、Aggregation Strategies
-- **原則**: Plugin setup時に登録、以降は変更しない
+- **Asset Definitions**: Builtin Policies, Territory Definitions
+- **Config**: Settings, Aggregation Strategies
+- **Principle**: Registered at Plugin setup, not changed afterwards.
 
-### Store（実行時状態）
+### Store (Runtime State)
 
-- **State**: active_policy_ids, control値
-- **原則**: 最小限に保つ、本当に変化するもののみ
+- **State**: active_policy_ids, control values
+- **Principle**: Keep minimal, only what truly changes.
 
-### Repository（永続化）
+### Repository (Persistence)
 
-- **動的Entity**: カスタムPolicy、セーブデータ
-- **原則**: 必要になってから実装（InMemory = Store で十分な場合が多い）
+- **Dynamic Entities**: Custom Policies, Save Data
+- **Principle**: Implement only when needed (InMemory = Store is often sufficient).
 
-### Service（計算ロジック）
+### Service (Calculation Logic)
 
-- **ステートレス**: 純粋関数
-- **原則**: 状態を持たず、引数で受け取る
-
----
-
-## 移行方針
-
-### 段階的リファクタリング
-
-1. **Phase 1: 設計ドキュメント作成** ✅
-   - 正しい設計原則を文書化
-
-2. **Phase 2: シンプルなPluginから着手**
-   - 状態が少ないPlugin（Reputation、Territory）
-   - Registry → Definitions + State + Config に分離
-
-3. **Phase 3: 複雑なPluginを移行**
-   - 状態が多いPlugin（Policy、Research）
-   - Service層は既に実装済み
-
-4. **Phase 4: 新規Plugin**
-   - 最初から正しい設計で実装
-   - ベストプラクティスとして参照
-
-### リファクタリングチェックリスト
-
-- [ ] Registry を分析（定義/状態/設定を識別）
-- [ ] BuiltinDefinitions を作成（ReadOnly）
-- [ ] State を Store で実装（Mutable、最小化）
-- [ ] Config を Resource に登録（ReadOnly）
-- [ ] System を更新（Resources経由でアクセス）
-- [ ] テストを更新
-- [ ] ドキュメントを更新
+- **Stateless**: Pure functions
+- **Principle**: Holds no state, receives data via arguments.
 
 ---
 
-## よくある質問
+## Migration Strategy
 
-### Q: Registry を完全に廃止すべき？
+### Phased Refactoring
 
-**A**: Yes。Registry は中間層として不要。
+1.  **Phase 1: Create Design Document** ✅
+    - Document correct design principles.
 
-- 定義 → `Resource<BuiltinDefinitions>`
-- 状態 → `Store<State>`
-- 設定 → `Resource<Config>`
+2.  **Phase 2: Start with Simple Plugins**
+    - Plugins with little state (Reputation, Territory).
+    - Separate Registry → Definitions + State + Config.
 
-に直接分離する。
+3.  **Phase 3: Migrate Complex Plugins**
+    - Plugins with much state (Policy, Research).
+    - Service layer is already implemented.
 
-### Q: Store vs Repository の使い分けは？
+4.  **Phase 4: New Plugins**
+    - Implement with correct design from the start.
+    - Refer to as best practice.
+
+### Refactoring Checklist
+
+- [ ] Analyze Registry (Identify Definitions/State/Config)
+- [ ] Create BuiltinDefinitions (ReadOnly)
+- [ ] Implement State with Store (Mutable, Minimized)
+- [ ] Register Config to Resource (ReadOnly)
+- [ ] Update System (Access via Resources)
+- [ ] Update Tests
+- [ ] Update Documentation
+
+---
+
+## FAQ
+
+### Q: Should Registry be completely abolished?
+
+**A**: Yes. Registry is unnecessary as an intermediate layer.
+Separate directly into:
+- Definitions → `Resource<BuiltinDefinitions>`
+- State → `Store<State>`
+- Configuration → `Resource<Config>`
+
+### Q: Store vs Repository?
 
 **A**:
+- **Store**: InMemory, only during game execution (like Redis/Memcache).
+- **Repository**: Persistent, Save/Load/Net Sync (like Postgres).
 
-- **Store**: InMemory、ゲーム実行中のみ（Redis/Memcache的）
-- **Repository**: Persistent、セーブ/ロード/ネット同期（Postgres的）
+Basically, `Store` is sufficient. `Repository` only when needed.
 
-基本的には Store で十分。Repository は必要になってから。
+### Q: Are Resources mutable?
 
-### Q: Resource は変更可能？
+**A**: No (in principle).
+Resources are assumed to be ReadOnly as Asset/Config.
+State that changes at runtime should be stored in `Store`.
 
-**A**: No（原則）。
+### Q: Can other Plugins reference the state?
 
-Resource は Asset/Config として読み取り専用を想定。
-実行時に変更する状態は Store に格納すべき。
-
-### Q: 他のPluginから状態を参照できる？
-
-**A**: Yes。
-
-全て Resources に登録されているため、他のPluginから自由にアクセス可能。
-これがissunの設計の柔軟性。
+**A**: Yes.
+Since everything is registered in Resources, it can be freely accessed from other Plugins.
+This is the flexibility of the `issun` design.
 
 ---
 
-## 参考：既存Pluginの状況
+## Reference: Status of Existing Plugins
 
-### Service層実装済み（計算ロジック分離完了）
+### Service Layer Implemented (Logic Separated)
 
 - ✅ PolicyService
 - ✅ FactionService
@@ -308,7 +338,7 @@ Resource は Asset/Config として読み取り専用を想定。
 - ✅ TerritoryService
 - ✅ ReputationService
 
-### Registry分離が必要
+### Registry Separation Needed
 
 - ❌ PolicyRegistry → Definitions + State + Config
 - ❌ FactionRegistry → Definitions + State + Config
@@ -318,23 +348,23 @@ Resource は Asset/Config として読み取り専用を想定。
 
 ---
 
-## まとめ
+## Summary
 
-**設計の核心**:
+**Core Design**:
 
-1. **定義と状態を分離** - ReadOnlyな定義をStateに混ぜない
-2. **State最小化** - バグを減らすため、変化するもののみ
-3. **Store活用** - 既存インフラを使う
-4. **Resource経由で連携** - 他Pluginから自由にアクセス可能
+1.  **Separate Definitions and State** - Do not mix ReadOnly definitions into State.
+2.  **Minimize State** - Only what changes, to reduce bugs.
+3.  **Utilize Store** - Use existing infrastructure.
+4.  **Coordinate via Resource** - Freely accessible from other Plugins.
 
-**Registry の正体**:
+**The True Nature of Registry**:
 
-- 定義（ReadOnly）+ 状態（Mutable）+ 設定（ReadOnly）を混ぜた中間層
-- GameContext 分割時に深く考えずに作られた
-- **不要**
+- An intermediate layer mixing Definitions (ReadOnly) + State (Mutable) + Config (ReadOnly).
+- Created without deep thought during GameContext split.
+- **Unnecessary**.
 
-**次のステップ**:
+**Next Steps**:
 
-1. シンプルなPluginから段階的にリファクタリング
-2. 新規Pluginは最初から正しい設計で実装
-3. Service層はすでに完成しているので、残りはRegistry分離のみ
+1.  Step-by-step refactoring starting from simple Plugins.
+2.  Implement new Plugins with correct design from the start.
+3.  Service layer is already complete, so only Registry separation remains.
