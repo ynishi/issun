@@ -20,6 +20,7 @@ impl Event for PlayerMove {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore] // Requires relay server running: make server-dev
 async fn test_client_server_connection() {
     // Connect to relay server
     let result = QuicClientBackend::connect_to_server("127.0.0.1:5000").await;
@@ -39,6 +40,7 @@ async fn test_client_server_connection() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore] // Requires relay server running: make server-dev
 async fn test_two_clients_ping_pong() {
     // This test requires the relay server to be running
     // Run: make server-dev
