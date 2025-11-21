@@ -1688,7 +1688,7 @@ fn apply_auto_pump(signature: &Signature, block: &mut Block, args: &AutoPumpArgs
     // If so, we need to insert 'after' pump BEFORE it to preserve return value
     let has_trailing_expr = original
         .last()
-        .map_or(false, |stmt| matches!(stmt, Stmt::Expr(_, None)));
+        .is_some_and(|stmt| matches!(stmt, Stmt::Expr(_, None)));
 
     if args.after && has_trailing_expr {
         // Insert all but last statement

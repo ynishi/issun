@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_service_default() {
-        let service = AccountingService::default();
+        let service = AccountingService;
         assert_eq!(service.name(), "accounting_service");
     }
 }

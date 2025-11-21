@@ -59,10 +59,7 @@ impl ResearchState {
 
     /// Get project state (or default if not exists)
     pub fn get_state(&self, id: &ResearchId) -> ProjectState {
-        self.project_states
-            .get(id)
-            .cloned()
-            .unwrap_or_default()
+        self.project_states.get(id).cloned().unwrap_or_default()
     }
 
     /// Get project status
@@ -77,18 +74,12 @@ impl ResearchState {
 
     /// Set project status
     pub fn set_status(&mut self, id: &ResearchId, status: ResearchStatus) {
-        self.project_states
-            .entry(id.clone())
-            .or_insert_with(ProjectState::new)
-            .status = status;
+        self.project_states.entry(id.clone()).or_default().status = status;
     }
 
     /// Set project progress
     pub fn set_progress(&mut self, id: &ResearchId, progress: f32) {
-        self.project_states
-            .entry(id.clone())
-            .or_insert_with(ProjectState::new)
-            .progress = progress.clamp(0.0, 1.0);
+        self.project_states.entry(id.clone()).or_default().progress = progress.clamp(0.0, 1.0);
     }
 
     /// Add progress to a project

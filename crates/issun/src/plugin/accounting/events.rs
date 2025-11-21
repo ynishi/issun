@@ -3,8 +3,8 @@
 use crate::event::Event;
 use serde::{Deserialize, Serialize};
 
-use super::types::Currency;
 use super::resources::BudgetChannel;
+use super::types::Currency;
 
 // =============================================================================
 // Command Events (Request)

@@ -200,7 +200,13 @@ mod tests {
 
         let mut resources = ResourceContext::new();
         hook.before_settlement(1, &mut resources).await;
-        hook.after_settlement(1, Currency::ZERO, Currency::ZERO, Currency::ZERO, &mut resources)
-            .await;
+        hook.after_settlement(
+            1,
+            Currency::ZERO,
+            Currency::ZERO,
+            Currency::ZERO,
+            &mut resources,
+        )
+        .await;
     }
 }

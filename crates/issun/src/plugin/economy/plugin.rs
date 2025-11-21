@@ -44,6 +44,6 @@ impl Plugin for EconomyPlugin {
         builder.register_service(Box::new(EconomyService));
 
         // Register system
-        builder.register_system(Box::new(EconomySystem::default()));
+        builder.register_system(Box::new(EconomySystem));
     }
 }

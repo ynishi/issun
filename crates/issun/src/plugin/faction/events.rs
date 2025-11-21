@@ -4,7 +4,7 @@ use crate::event::Event;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::types::{FactionId, Outcome, OperationId};
+use super::types::{FactionId, OperationId, Outcome};
 
 // ========================================
 // Command Events (Request)

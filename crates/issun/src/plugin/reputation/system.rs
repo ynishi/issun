@@ -98,7 +98,9 @@ impl<H: ReputationHook> ReputationSystem<H> {
             };
 
             let old_score = match category {
-                Some(cat) => state.get_category(&subject_id, cat).unwrap_or(config.default_score),
+                Some(cat) => state
+                    .get_category(&subject_id, cat)
+                    .unwrap_or(config.default_score),
                 None => state.get(&subject_id).unwrap_or(config.default_score),
             };
 
@@ -168,7 +170,10 @@ impl<H: ReputationHook> ReputationSystem<H> {
                 let old_threshold = old_threshold_name
                     .as_ref()
                     .and_then(|name| config.thresholds.iter().find(|t| &t.name == name));
-                let new_threshold = config.thresholds.iter().find(|t| &t.name == new_threshold_name);
+                let new_threshold = config
+                    .thresholds
+                    .iter()
+                    .find(|t| &t.name == new_threshold_name);
 
                 if let Some(new_threshold) = new_threshold {
                     self.hook
@@ -221,7 +226,9 @@ impl<H: ReputationHook> ReputationSystem<H> {
             };
 
             match category {
-                Some(cat) => state.get_category(&subject_id, cat).unwrap_or(config.default_score),
+                Some(cat) => state
+                    .get_category(&subject_id, cat)
+                    .unwrap_or(config.default_score),
                 None => state.get(&subject_id).unwrap_or(config.default_score),
             }
         };
@@ -277,7 +284,14 @@ impl<H: ReputationHook> ReputationSystem<H> {
 
         // 4. Call hook: on_reputation_changed
         self.hook
-            .on_reputation_changed(&subject_id, old_score, new_score, delta, category, resources)
+            .on_reputation_changed(
+                &subject_id,
+                old_score,
+                new_score,
+                delta,
+                category,
+                resources,
+            )
             .await;
 
         // 5. Check for threshold crossing
@@ -293,7 +307,10 @@ impl<H: ReputationHook> ReputationSystem<H> {
                 let old_threshold = old_threshold_name
                     .as_ref()
                     .and_then(|name| config.thresholds.iter().find(|t| &t.name == name));
-                let new_threshold = config.thresholds.iter().find(|t| &t.name == new_threshold_name);
+                let new_threshold = config
+                    .thresholds
+                    .iter()
+                    .find(|t| &t.name == new_threshold_name);
 
                 if let Some(new_threshold) = new_threshold {
                     self.hook

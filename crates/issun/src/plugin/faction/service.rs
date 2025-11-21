@@ -3,7 +3,7 @@
 //! Provides pure functions for faction operations and calculations.
 //! All functions are stateless and can be used independently.
 
-use super::types::{Faction, Operation, Outcome};
+use super::types::Outcome;
 use rand::Rng;
 
 /// Faction service providing pure faction calculation logic
@@ -132,11 +132,7 @@ impl FactionService {
     /// let rate = FactionService::calculate_success_rate(400.0, 100.0, &[1.5]);
     /// assert_eq!(rate, 1.0); // Clamped
     /// ```
-    pub fn calculate_success_rate(
-        faction_power: f32,
-        difficulty: f32,
-        modifiers: &[f32],
-    ) -> f32 {
+    pub fn calculate_success_rate(faction_power: f32, difficulty: f32, modifiers: &[f32]) -> f32 {
         if difficulty <= 0.0 {
             return 1.0; // No difficulty = guaranteed success
         }
@@ -400,23 +396,19 @@ mod tests {
         assert!(!outcome.success);
 
         // Mid-range success rate (deterministic with fixed seed)
-        let outcome = FactionService::generate_outcome("op-003", 0.5, &mut rng);
-        assert!(outcome.success || !outcome.success); // Either outcome is valid
+        let _outcome = FactionService::generate_outcome("op-003", 0.5, &mut rng);
+        // Either outcome is valid for 0.5 probability
     }
 
     #[test]
     fn test_generate_outcome_with_metrics() {
         let mut rng = StdRng::seed_from_u64(42);
 
-        let success_metrics = HashMap::from([
-            ("territory_gained".into(), 1.0),
-            ("casualties".into(), 5.0),
-        ]);
+        let success_metrics =
+            HashMap::from([("territory_gained".into(), 1.0), ("casualties".into(), 5.0)]);
 
-        let failure_metrics = HashMap::from([
-            ("casualties".into(), 15.0),
-            ("morale_loss".into(), 10.0),
-        ]);
+        let failure_metrics =
+            HashMap::from([("casualties".into(), 15.0), ("morale_loss".into(), 10.0)]);
 
         // 100% success rate
         let outcome = FactionService::generate_outcome_with_metrics(

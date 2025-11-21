@@ -42,7 +42,7 @@ impl From<&str> for PolicyId {
 ///
 /// When multiple policies are active, effects with the same name need to be combined.
 /// Different effect types require different aggregation strategies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum AggregationStrategy {
     /// Multiply values: 1.2 * 1.1 = 1.32
     ///
@@ -53,6 +53,7 @@ pub enum AggregationStrategy {
     /// Policy A: income_multiplier = 1.2 (+20%)
     /// Policy B: income_multiplier = 1.1 (+10%)
     /// Result: 1.2 * 1.1 = 1.32 (+32%)
+    #[default]
     Multiply,
 
     /// Add values: 10.0 + 5.0 = 15.0
@@ -87,12 +88,6 @@ pub enum AggregationStrategy {
     /// Policy B: build_cost = 0.8 (-20%)
     /// Result: min(0.9, 0.8) = 0.8 (-20%, best discount wins)
     Min,
-}
-
-impl Default for AggregationStrategy {
-    fn default() -> Self {
-        Self::Multiply
-    }
 }
 
 impl AggregationStrategy {
@@ -281,8 +276,7 @@ mod tests {
         effects.insert("income_multiplier".into(), 1.2);
         effects.insert("attack_bonus".into(), 10.0);
 
-        let policy = Policy::new("test", "Test", "Test")
-            .with_effects(effects);
+        let policy = Policy::new("test", "Test", "Test").with_effects(effects);
 
         assert_eq!(policy.get_effect("income_multiplier"), Some(1.2));
         assert_eq!(policy.get_effect("attack_bonus"), Some(10.0));

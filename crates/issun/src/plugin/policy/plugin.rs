@@ -217,8 +217,10 @@ mod tests {
 
     #[test]
     fn test_plugin_with_custom_config() {
-        let mut config = PolicyConfig::default();
-        config.allow_multiple_active = true;
+        let config = PolicyConfig {
+            allow_multiple_active: true,
+            ..Default::default()
+        };
 
         let plugin = PolicyPlugin::new().with_config(config);
         assert_eq!(plugin.name(), "policy_plugin");

@@ -4,7 +4,6 @@
 //! All functions are stateless and can be used independently.
 
 use super::state::TerritoryState;
-use super::territories::Territories;
 use super::types::TerritoryId;
 use crate::context::ResourceContext;
 

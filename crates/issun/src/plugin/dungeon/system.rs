@@ -71,10 +71,11 @@ impl DungeonSystem {
             // Validate via hook
             {
                 let resources_ref = resources as &ResourceContext;
-                if let Err(_) = self
+                if self
                     .hook
                     .validate_room_move(&current_room, &request.target_room, resources_ref)
                     .await
+                    .is_err()
                 {
                     continue;
                 }

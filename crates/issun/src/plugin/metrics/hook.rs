@@ -136,11 +136,7 @@ mod tests {
 
     #[async_trait]
     impl MetricsHook for TestHook {
-        async fn on_metric_recorded(
-            &self,
-            value: &MetricValue,
-            _resources: &mut ResourceContext,
-        ) {
+        async fn on_metric_recorded(&self, value: &MetricValue, _resources: &mut ResourceContext) {
             self.recorded_values.lock().await.push(value.clone());
         }
 
@@ -167,7 +163,8 @@ mod tests {
         let mut resources = ResourceContext::new();
 
         let metric_id = MetricId::new("test");
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         let value = MetricValue::new(metric_id.clone(), 42.0, 1000);
         let snapshot = MetricSnapshot::new(1000);
         let report = MetricReport::new(1000, 2000);

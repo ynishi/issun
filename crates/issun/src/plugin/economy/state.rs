@@ -7,6 +7,7 @@ use crate::store::Store;
 pub type Wallet = Store<CurrencyId, Currency>;
 
 /// Helper methods for Wallet
+#[allow(clippy::result_unit_err)]
 pub trait WalletExt {
     fn balance(&self, currency: &CurrencyId) -> Currency;
     fn deposit(&mut self, currency: &CurrencyId, amount: Currency);

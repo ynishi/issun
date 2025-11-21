@@ -51,6 +51,7 @@ struct NetworkState {
 }
 
 #[cfg(feature = "network")]
+#[allow(dead_code)]
 enum NetworkTask {
     Send(Vec<u8>), // Serialized RawNetworkEvent
     Shutdown,

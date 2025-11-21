@@ -43,8 +43,7 @@ impl LootSystem {
     ) {
         self.process_loot_generate_requests(services, resources)
             .await;
-        self.process_rarity_roll_requests(services, resources)
-            .await;
+        self.process_rarity_roll_requests(services, resources).await;
     }
 
     /// Process loot generation requests
@@ -86,7 +85,7 @@ impl LootSystem {
 
             // Roll for drop using service
             let should_drop = {
-                if let Some(service) = services.get_as::<LootService>("loot_service") {
+                if let Some(_service) = services.get_as::<LootService>("loot_service") {
                     let drop_config = super::types::DropConfig::new(effective_rate, 1.0);
                     let mut rng = rand::thread_rng();
                     LootService::should_drop(&drop_config, &mut rng)

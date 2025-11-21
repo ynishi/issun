@@ -64,7 +64,7 @@ impl InventorySystem {
             // Validate via hook
             {
                 let resources_ref = resources as &ResourceContext;
-                if let Err(_) = self
+                if self
                     .hook
                     .validate_add_item(
                         &request.entity_id,
@@ -73,6 +73,7 @@ impl InventorySystem {
                         resources_ref,
                     )
                     .await
+                    .is_err()
                 {
                     continue;
                 }
@@ -81,8 +82,9 @@ impl InventorySystem {
             // Add item (update state)
             {
                 if let Some(mut state) = resources.get_mut::<InventoryState>().await {
-                    if let Err(_) =
-                        state.add_item(&request.entity_id, &request.item_id, request.quantity)
+                    if state
+                        .add_item(&request.entity_id, &request.item_id, request.quantity)
+                        .is_err()
                     {
                         continue;
                     }
@@ -128,8 +130,9 @@ impl InventorySystem {
             // Remove item (update state)
             {
                 if let Some(mut state) = resources.get_mut::<InventoryState>().await {
-                    if let Err(_) =
-                        state.remove_item(&request.entity_id, &request.item_id, request.quantity)
+                    if state
+                        .remove_item(&request.entity_id, &request.item_id, request.quantity)
+                        .is_err()
                     {
                         continue;
                     }
@@ -186,10 +189,11 @@ impl InventorySystem {
             }
 
             // Call hook (item effect)
-            if let Err(_) = self
+            if self
                 .hook
                 .on_item_used(&request.entity_id, &request.item_id, resources)
                 .await
+                .is_err()
             {
                 continue;
             }
@@ -220,7 +224,7 @@ impl InventorySystem {
             // Validate via hook
             {
                 let resources_ref = resources as &ResourceContext;
-                if let Err(_) = self
+                if self
                     .hook
                     .validate_transfer(
                         &request.from_entity,
@@ -230,6 +234,7 @@ impl InventorySystem {
                         resources_ref,
                     )
                     .await
+                    .is_err()
                 {
                     continue;
                 }
@@ -238,12 +243,15 @@ impl InventorySystem {
             // Transfer item (update state)
             {
                 if let Some(mut state) = resources.get_mut::<InventoryState>().await {
-                    if let Err(_) = state.transfer_item(
-                        &request.from_entity,
-                        &request.to_entity,
-                        &request.item_id,
-                        request.quantity,
-                    ) {
+                    if state
+                        .transfer_item(
+                            &request.from_entity,
+                            &request.to_entity,
+                            &request.item_id,
+                            request.quantity,
+                        )
+                        .is_err()
+                    {
                         continue;
                     }
                 } else {

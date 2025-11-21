@@ -12,6 +12,7 @@ use tracing::{debug, info, warn};
 pub struct RoomId(pub u64);
 
 impl RoomId {
+    #[allow(dead_code)]
     pub fn new(id: u64) -> Self {
         Self(id)
     }
@@ -20,6 +21,7 @@ impl RoomId {
         Self(rand::random())
     }
 
+    #[allow(dead_code)]
     pub fn as_u64(&self) -> u64 {
         self.0
     }
@@ -46,9 +48,11 @@ pub enum RoomState {
 #[derive(Debug, Clone)]
 pub struct Room {
     /// Unique room ID
+    #[allow(dead_code)]
     pub id: RoomId,
 
     /// Room name (optional)
+    #[allow(dead_code)]
     pub name: Option<String>,
 
     /// Current state
@@ -64,14 +68,17 @@ pub struct Room {
     pub host: NodeId,
 
     /// Room metadata (game type, map, etc.)
+    #[allow(dead_code)]
     pub metadata: HashMap<String, String>,
 
     /// Creation timestamp
+    #[allow(dead_code)]
     pub created_at: std::time::SystemTime,
 }
 
 impl Room {
     /// Create a new room
+    #[allow(dead_code)]
     pub fn new(host: NodeId, max_clients: usize) -> Self {
         let mut clients = HashSet::new();
         clients.insert(host);
@@ -99,11 +106,13 @@ impl Room {
     }
 
     /// Check if a client is in the room
+    #[allow(dead_code)]
     pub fn contains(&self, client: NodeId) -> bool {
         self.clients.contains(&client)
     }
 
     /// Add a client to the room
+    #[allow(dead_code)]
     pub fn add_client(&mut self, client: NodeId) -> Result<()> {
         if self.is_full() {
             anyhow::bail!("Room is full");
@@ -133,6 +142,7 @@ impl Room {
     }
 
     /// Finish the game
+    #[allow(dead_code)]
     pub fn finish(&mut self) {
         self.state = RoomState::Finished;
     }
@@ -157,6 +167,7 @@ impl RoomManager {
     }
 
     /// Create a new room
+    #[allow(dead_code)]
     pub async fn create_room(
         &self,
         host: NodeId,
@@ -191,6 +202,7 @@ impl RoomManager {
     }
 
     /// Join an existing room
+    #[allow(dead_code)]
     pub async fn join_room(&self, room_id: RoomId, client: NodeId) -> Result<()> {
         // Check if client is already in a room
         {
@@ -250,6 +262,7 @@ impl RoomManager {
     }
 
     /// Get room information
+    #[allow(dead_code)]
     pub async fn get_room(&self, room_id: RoomId) -> Option<Room> {
         let rooms = self.rooms.read().await;
         rooms.get(&room_id).cloned()
@@ -279,6 +292,7 @@ impl RoomManager {
     }
 
     /// List all available rooms
+    #[allow(dead_code)]
     pub async fn list_rooms(&self) -> Vec<Room> {
         let rooms = self.rooms.read().await;
         rooms
@@ -289,6 +303,7 @@ impl RoomManager {
     }
 
     /// Start a game in a room
+    #[allow(dead_code)]
     pub async fn start_game(&self, room_id: RoomId, requester: NodeId) -> Result<()> {
         let mut rooms = self.rooms.write().await;
         let room = rooms

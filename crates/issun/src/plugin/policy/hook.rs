@@ -48,11 +48,7 @@ pub trait PolicyHook: Send + Sync {
     ///
     /// * `policy` - The policy being deactivated
     /// * `resources` - Access to game resources for modification
-    async fn on_policy_deactivated(
-        &self,
-        _policy: &Policy,
-        _resources: &mut ResourceContext,
-    ) {
+    async fn on_policy_deactivated(&self, _policy: &Policy, _resources: &mut ResourceContext) {
         // Default: do nothing
     }
 
@@ -137,7 +133,9 @@ mod tests {
         hook.on_policy_activated(&policy, None, &mut resources)
             .await;
         hook.on_policy_deactivated(&policy, &mut resources).await;
-        let value = hook.calculate_effect(&policy, "test", 1.0, &resources).await;
+        let value = hook
+            .calculate_effect(&policy, "test", 1.0, &resources)
+            .await;
         assert_eq!(value, 1.0);
         let result = hook.validate_activation(&policy, &resources).await;
         assert!(result.is_ok());

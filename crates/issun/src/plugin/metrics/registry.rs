@@ -106,10 +106,7 @@ impl MetricsRegistry {
             return Err(format!("Metric {} not defined", value.metric_id.as_str()));
         }
 
-        let values = self
-            .values
-            .entry(value.metric_id.clone())
-            .or_insert_with(VecDeque::new);
+        let values = self.values.entry(value.metric_id.clone()).or_default();
         values.push_back(value);
 
         // Enforce window size
@@ -269,13 +266,8 @@ mod tests {
     #[test]
     fn test_define_metric() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new(
-            "test",
-            "Test",
-            "Test metric",
-            MetricType::Counter,
-            "count",
-        );
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
 
         registry.define(definition);
         assert!(registry.get_definition(&MetricId::new("test")).is_some());
@@ -284,7 +276,8 @@ mod tests {
     #[test]
     fn test_record_metric() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         registry.define(definition);
 
         let value = MetricValue::new(MetricId::new("test"), 42.0, 100);
@@ -298,12 +291,19 @@ mod tests {
     #[test]
     fn test_aggregate_sum() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         registry.define(definition);
 
-        registry.record(MetricValue::new(MetricId::new("test"), 10.0, 1)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 20.0, 2)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 30.0, 3)).unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 10.0, 1))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 20.0, 2))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 30.0, 3))
+            .unwrap();
 
         let agg = registry
             .aggregate(&MetricId::new("test"), AggregationType::Sum, 0, 10)
@@ -315,12 +315,19 @@ mod tests {
     #[test]
     fn test_aggregate_average() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         registry.define(definition);
 
-        registry.record(MetricValue::new(MetricId::new("test"), 10.0, 1)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 20.0, 2)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 30.0, 3)).unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 10.0, 1))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 20.0, 2))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 30.0, 3))
+            .unwrap();
 
         let agg = registry
             .aggregate(&MetricId::new("test"), AggregationType::Average, 0, 10)
@@ -331,12 +338,19 @@ mod tests {
     #[test]
     fn test_aggregate_min_max() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         registry.define(definition);
 
-        registry.record(MetricValue::new(MetricId::new("test"), 10.0, 1)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 50.0, 2)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 30.0, 3)).unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 10.0, 1))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 50.0, 2))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 30.0, 3))
+            .unwrap();
 
         let min = registry
             .aggregate(&MetricId::new("test"), AggregationType::Min, 0, 10)
@@ -352,11 +366,19 @@ mod tests {
     #[test]
     fn test_aggregate_percentile() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Histogram, "value");
+        let definition = MetricDefinition::new(
+            "test",
+            "Test",
+            "Test metric",
+            MetricType::Histogram,
+            "value",
+        );
         registry.define(definition);
 
         for i in 1..=100 {
-            registry.record(MetricValue::new(MetricId::new("test"), i as f64, i)).unwrap();
+            registry
+                .record(MetricValue::new(MetricId::new("test"), i as f64, i))
+                .unwrap();
         }
 
         let p50 = registry
@@ -376,12 +398,15 @@ mod tests {
             max_values_per_metric: 5,
             ..Default::default()
         });
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         registry.define(definition);
 
         // Record 10 values
         for i in 1..=10 {
-            registry.record(MetricValue::new(MetricId::new("test"), i as f64, i)).unwrap();
+            registry
+                .record(MetricValue::new(MetricId::new("test"), i as f64, i))
+                .unwrap();
         }
 
         // Should only keep last 5
@@ -394,12 +419,19 @@ mod tests {
     #[test]
     fn test_period_filtering() {
         let mut registry = MetricsRegistry::new();
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         registry.define(definition);
 
-        registry.record(MetricValue::new(MetricId::new("test"), 10.0, 1)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 20.0, 5)).unwrap();
-        registry.record(MetricValue::new(MetricId::new("test"), 30.0, 10)).unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 10.0, 1))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 20.0, 5))
+            .unwrap();
+        registry
+            .record(MetricValue::new(MetricId::new("test"), 30.0, 10))
+            .unwrap();
 
         // Only include values from timestamp 3 to 7
         let agg = registry

@@ -1,7 +1,6 @@
 //! Reputation types and data structures
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt;
 
 /// Represents a directed relationship between observer and target

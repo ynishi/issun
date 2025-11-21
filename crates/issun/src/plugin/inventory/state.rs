@@ -32,9 +32,7 @@ impl InventoryState {
 
     /// Get or create inventory for an entity
     fn get_or_create_inventory(&mut self, entity_id: &EntityId) -> &mut HashMap<ItemId, u32> {
-        self.inventories
-            .entry(entity_id.clone())
-            .or_insert_with(HashMap::new)
+        self.inventories.entry(entity_id.clone()).or_default()
     }
 
     /// Get inventory for an entity (read-only)
@@ -97,9 +95,7 @@ impl InventoryState {
             .get_mut(entity_id)
             .ok_or(InventoryError::EntityNotFound)?;
 
-        let current = inventory
-            .get(item_id)
-            .ok_or(InventoryError::ItemNotFound)?;
+        let current = inventory.get(item_id).ok_or(InventoryError::ItemNotFound)?;
 
         if *current < quantity {
             return Err(InventoryError::ItemNotFound);
@@ -297,8 +293,12 @@ mod tests {
         let entity_id = "player_1".to_string();
 
         state.add_item(&entity_id, &"sword".to_string(), 1).unwrap();
-        state.add_item(&entity_id, &"potion".to_string(), 5).unwrap();
-        state.add_item(&entity_id, &"shield".to_string(), 1).unwrap();
+        state
+            .add_item(&entity_id, &"potion".to_string(), 5)
+            .unwrap();
+        state
+            .add_item(&entity_id, &"shield".to_string(), 1)
+            .unwrap();
 
         assert_eq!(state.get_total_items(&entity_id), 7);
         assert_eq!(state.get_slot_count(&entity_id), 3);
@@ -310,7 +310,9 @@ mod tests {
         let entity_id = "player_1".to_string();
 
         state.add_item(&entity_id, &"sword".to_string(), 5).unwrap();
-        state.add_item(&entity_id, &"potion".to_string(), 3).unwrap();
+        state
+            .add_item(&entity_id, &"potion".to_string(), 3)
+            .unwrap();
 
         state.clear_inventory(&entity_id);
 

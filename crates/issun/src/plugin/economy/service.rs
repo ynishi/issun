@@ -106,7 +106,11 @@ impl EconomyService {
     // ========================================================================
 
     /// Get resource quantity
-    pub fn resource_quantity(&self, inventory: &ResourceInventory, resource_id: &ResourceId) -> i64 {
+    pub fn resource_quantity(
+        &self,
+        inventory: &ResourceInventory,
+        resource_id: &ResourceId,
+    ) -> i64 {
         inventory.get(resource_id).cloned().unwrap_or(0)
     }
 
@@ -114,7 +118,7 @@ impl EconomyService {
     pub fn add_resource(
         &self,
         inventory: &mut ResourceInventory,
-        resource_definitions: &ResourceDefinitions,
+        _resource_definitions: &ResourceDefinitions,
         resource_id: &ResourceId,
         amount: i64,
     ) -> EconomyResult<()> {
@@ -156,6 +160,7 @@ impl EconomyService {
     /// This consumes the resource and generates currency in the wallet.
     ///
     /// Returns the amount of currency generated.
+    #[allow(clippy::too_many_arguments)]
     pub fn convert_resource_to_currency(
         &self,
         inventory: &mut ResourceInventory,
@@ -172,7 +177,12 @@ impl EconomyService {
             .ok_or(EconomyError::ConversionRuleNotFound)?;
 
         // Consume resource (if finite, this will check availability)
-        self.consume_resource(inventory, resource_definitions, resource_id, resource_amount)?;
+        self.consume_resource(
+            inventory,
+            resource_definitions,
+            resource_id,
+            resource_amount,
+        )?;
 
         // Generate currency
         let currency_amount = rule.convert(resource_amount);

@@ -53,20 +53,15 @@ impl NetworkMetadata {
 }
 
 /// Event propagation scope
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum NetworkScope {
     /// Broadcast to all nodes (default)
+    #[default]
     Broadcast,
     /// Send to server only (Client -> Server)
     ToServer,
     /// Send to specific node
     Targeted(NodeId),
-}
-
-impl Default for NetworkScope {
-    fn default() -> Self {
-        Self::Broadcast
-    }
 }
 
 /// Wrapper for networked events with metadata

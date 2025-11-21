@@ -35,7 +35,6 @@
 //! }
 //! ```
 
-use serde::{Deserialize, Serialize};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -207,6 +206,8 @@ impl Default for States {
 
 #[cfg(test)]
 mod tests {
+    use serde::{Deserialize, Serialize};
+
     use super::*;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

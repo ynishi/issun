@@ -69,12 +69,7 @@ impl ReputationService {
     /// let value = ReputationService::apply_reputation_change(10.0, -20.0, 0.0, 100.0);
     /// assert_eq!(value, 0.0);
     /// ```
-    pub fn apply_reputation_change(
-        current_value: f32,
-        delta: f32,
-        min: f32,
-        max: f32,
-    ) -> f32 {
+    pub fn apply_reputation_change(current_value: f32, delta: f32, min: f32, max: f32) -> f32 {
         (current_value + delta).clamp(min, max)
     }
 
@@ -194,11 +189,7 @@ impl ReputationService {
     /// let crossed = ReputationService::check_threshold_crossed(40.0, 50.0, 50.0);
     /// assert_eq!(crossed, Some(true));
     /// ```
-    pub fn check_threshold_crossed(
-        old_value: f32,
-        new_value: f32,
-        threshold: f32,
-    ) -> Option<bool> {
+    pub fn check_threshold_crossed(old_value: f32, new_value: f32, threshold: f32) -> Option<bool> {
         let old_below = old_value < threshold;
         let new_below = new_value < threshold;
 

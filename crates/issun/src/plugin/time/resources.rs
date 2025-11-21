@@ -2,10 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 
-// Re-export old GameClock temporarily for backwards compatibility during migration
-#[deprecated(since = "0.2.0", note = "Use GameTimer and ActionPoints separately")]
-pub type GameClock = GameTimer;
-
 /// Game timer resource for tracking in-game time progression
 ///
 /// This resource provides pure time management without action point coupling.

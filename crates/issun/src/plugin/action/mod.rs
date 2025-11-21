@@ -10,4 +10,4 @@ pub use events::{ActionConsumedEvent, ActionsResetEvent};
 pub use hook::{ActionHook, DefaultActionHook};
 pub use plugin::{ActionConfig, ActionPlugin};
 pub use resources::{ActionConsumed, ActionError, ActionPoints};
-pub use systems::{ActionAutoAdvanceSystem, ActionResetSystem, ActionSystem};
+pub use systems::{ActionResetSystem, ActionSystem};

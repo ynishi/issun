@@ -43,430 +43,428 @@ pub mod time;
 
 // Re-exports for convenience
 pub use action::{
-    // Plugin
-    ActionPlugin,
     // Config
     ActionConfig,
+    // Plugin
+    ActionPlugin,
     // Types
     ActionPoints,
 };
 
 pub use combat::{
-    // Plugin
-    CombatPlugin,
-    // Hook
-    CombatHook,
-    DefaultCombatHook,
-    // Types
-    Combatant,
-    CombatLogEntry,
-    CombatResult,
-    // Resources
-    CombatConfig,
-    CombatState,
-    BattleState,
-    // Service
-    CombatService,
-    DamageResult,
-    // System
-    CombatSystem,
     // Events
     BattleId,
-    CombatStartRequested,
-    CombatTurnAdvanceRequested,
+    BattleState,
+    // Resources
+    CombatConfig,
     CombatEndRequested,
-    CombatStartedEvent,
-    CombatTurnCompletedEvent,
     CombatEndedEvent,
+    // Hook
+    CombatHook,
+    CombatLogEntry,
+    // Plugin
+    CombatPlugin,
+    CombatResult,
+    // Service
+    CombatService,
+    CombatStartRequested,
+    CombatStartedEvent,
+    CombatState,
+    // System
+    CombatSystem,
+    CombatTurnAdvanceRequested,
+    CombatTurnCompletedEvent,
+    // Types
+    Combatant,
+    DamageResult,
+    DefaultCombatHook,
 };
 
 pub use inventory::{
-    // Plugin
-    InventoryPlugin,
-    // Hook
-    InventoryHook,
     DefaultInventoryHook,
-    // Types
-    Item,
-    ItemId,
     EntityId,
-    InventoryError,
     // Resources
     InventoryConfig,
-    InventoryState,
+    InventoryError,
+    // Hook
+    InventoryHook,
+    // Plugin
+    InventoryPlugin,
     // Service
     InventoryService,
+    InventoryState,
     // System
     InventorySystem,
+    // Types
+    Item,
     // Events
     ItemAddRequested,
-    ItemRemoveRequested,
-    ItemUseRequested,
-    ItemTransferRequested,
     ItemAddedEvent,
+    ItemId,
+    ItemRemoveRequested,
     ItemRemovedEvent,
-    ItemUsedEvent,
+    ItemTransferRequested,
     ItemTransferredEvent,
+    ItemUseRequested,
+    ItemUsedEvent,
 };
 
 pub use loot::{
-    // Plugin
-    LootPlugin,
-    // Hook
-    LootHook,
     DefaultLootHook,
-    // Types
-    Rarity,
     DropConfig,
     // Resources
     LootConfig,
+    LootGenerateRequested,
+    LootGeneratedEvent,
+    // Hook
+    LootHook,
+    LootNotGeneratedEvent,
+    // Plugin
+    LootPlugin,
     // Service
     LootService,
-    // System
-    LootSystem,
     // Events
     LootSourceId,
-    LootGenerateRequested,
+    // System
+    LootSystem,
+    // Types
+    Rarity,
     RarityRollRequested,
-    LootGeneratedEvent,
-    LootNotGeneratedEvent,
 };
 
 pub use dungeon::{
-    // Plugin
-    DungeonPlugin,
-    // Hook
-    DungeonHook,
-    DefaultDungeonHook,
     // Types
     Connection,
     ConnectionPattern,
-    RoomId,
+    ConnectionUnlockRequested,
+    ConnectionUnlockedEvent,
+    DefaultDungeonHook,
     // Resources
     DungeonConfig,
-    DungeonState,
+    // Hook
+    DungeonHook,
+    // Plugin
+    DungeonPlugin,
     // Service
     DungeonService,
+    DungeonState,
     // System
     DungeonSystem,
+    FloorAdvanceRequested,
+    FloorAdvancedEvent,
+    RoomEnteredEvent,
+    RoomId,
     // Events
     RoomMoveRequested,
-    FloorAdvanceRequested,
-    ConnectionUnlockRequested,
-    RoomEnteredEvent,
-    FloorAdvancedEvent,
-    ConnectionUnlockedEvent,
 };
 
 pub use room_buff::{
-    // Plugin
-    RoomBuffPlugin,
-    // Hook
-    RoomBuffHook,
-    DefaultRoomBuffHook,
     // Types
     ActiveBuff,
+    ActiveBuffs,
+    BuffAppliedEvent,
+    BuffApplyRequested,
     BuffConfig,
     BuffDuration,
     BuffEffect,
-    // Resources
-    RoomBuffDatabase,
-    ActiveBuffs,
+    BuffExpiredEvent,
+    // Events
+    BuffId,
+    BuffRemoveRequested,
+    BuffRemovedEvent,
     // Service
     BuffService,
     // System
     BuffSystem,
-    // Events
-    BuffId,
-    BuffApplyRequested,
-    BuffRemoveRequested,
     BuffTickRequested,
-    BuffAppliedEvent,
-    BuffRemovedEvent,
-    BuffExpiredEvent,
+    DefaultRoomBuffHook,
+    // Resources
+    RoomBuffDatabase,
+    // Hook
+    RoomBuffHook,
+    // Plugin
+    RoomBuffPlugin,
 };
 
 pub use territory::{
-    // Plugin
-    TerritoryPlugin,
-    // Hook
-    TerritoryHook,
-    DefaultTerritoryHook,
-    // Types
-    Territory,
-    TerritoryId,
-    TerritoryEffects,
-    TerritoryError,
     ControlChanged,
+    DefaultTerritoryHook,
     Developed,
     // Resources
     Territories,
-    TerritoryState,
-    // Service
-    TerritoryService,
-    // System
-    TerritorySystem,
+    // Types
+    Territory,
     // Events
     TerritoryControlChangeRequested,
     TerritoryControlChangedEvent,
-    TerritoryDevelopmentRequested,
     TerritoryDevelopedEvent,
+    TerritoryDevelopmentRequested,
+    TerritoryEffects,
     TerritoryEffectsUpdatedEvent,
+    TerritoryError,
+    // Hook
+    TerritoryHook,
+    TerritoryId,
+    // Plugin
+    TerritoryPlugin,
+    // Service
+    TerritoryService,
+    TerritoryState,
+    // System
+    TerritorySystem,
 };
 
 pub use faction::{
-    // Plugin
-    FactionPlugin,
-    // Hook
-    FactionHook,
     DefaultFactionHook,
     // Types
     Faction,
-    FactionId,
-    Operation,
-    OperationId,
-    OperationStatus,
-    Outcome,
     FactionError,
-    // Resources
-    Factions,
+    // Hook
+    FactionHook,
+    FactionId,
+    // Plugin
+    FactionPlugin,
     FactionState,
     // System
     FactionSystem,
+    // Resources
+    Factions,
+    Operation,
+    OperationCompletedEvent,
+    OperationFailedEvent,
+    OperationId,
     // Events
     OperationLaunchRequested,
     OperationLaunchedEvent,
     OperationResolveRequested,
-    OperationCompletedEvent,
-    OperationFailedEvent,
+    OperationStatus,
+    Outcome,
 };
 
 pub use policy::{
-    // Plugin
-    PolicyPlugin,
-    // Hook
-    PolicyHook,
-    DefaultPolicyHook,
-    // Types
-    Policy,
-    PolicyId,
     AggregationStrategy,
+    DefaultPolicyHook,
     // Resources
     Policies,
-    PolicyConfig,
-    PolicyState,
+    // Types
+    Policy,
     // Events
     PolicyActivateRequested,
     PolicyActivatedEvent,
+    PolicyConfig,
+    PolicyCycleRequested,
     PolicyDeactivateRequested,
     PolicyDeactivatedEvent,
-    PolicyCycleRequested,
+    // Hook
+    PolicyHook,
+    PolicyId,
+    // Plugin
+    PolicyPlugin,
+    PolicyState,
 };
 
 pub use reputation::{
-    // Plugin
-    ReputationPlugin,
-    // Hook
-    ReputationHook,
     DefaultReputationHook,
-    // Types
-    SubjectId,
-    ReputationEntry,
-    ReputationThreshold,
-    ReputationError,
-    // Resources
-    ReputationConfig,
-    ReputationState,
-    // Service
-    ReputationService,
-    // System
-    ReputationSystem,
     // Events
     ReputationChangeRequested,
     ReputationChangedEvent,
+    // Resources
+    ReputationConfig,
+    ReputationEntry,
+    ReputationError,
+    // Hook
+    ReputationHook,
+    // Plugin
+    ReputationPlugin,
+    // Service
+    ReputationService,
     ReputationSetRequested,
+    ReputationState,
+    // System
+    ReputationSystem,
+    ReputationThreshold,
     ReputationThresholdCrossedEvent,
+    // Types
+    SubjectId,
 };
 
 pub use research::{
-    // Plugin
-    ResearchPlugin,
+    DefaultResearchHook,
+    ProgressModel,
+    ResearchCancelRequested,
+    ResearchCancelledEvent,
+    ResearchCompleteRequested,
+    ResearchCompletedEvent,
+    ResearchConfig,
+    ResearchError,
     // Hook
     ResearchHook,
-    DefaultResearchHook,
     // Types
     ResearchId,
+    // Plugin
+    ResearchPlugin,
+    ResearchProgressRequested,
+    ResearchProgressUpdatedEvent,
     ResearchProject,
-    ResearchResult,
-    ResearchStatus,
-    ResearchError,
     // Resources
     ResearchProjects,
-    ResearchConfig,
-    ResearchState,
-    ProgressModel,
-    // System
-    ResearchSystem,
     // Events
     ResearchQueueRequested,
-    ResearchStartRequested,
-    ResearchCancelRequested,
-    ResearchProgressRequested,
-    ResearchCompleteRequested,
     ResearchQueuedEvent,
+    ResearchResult,
+    ResearchStartRequested,
     ResearchStartedEvent,
-    ResearchCompletedEvent,
-    ResearchProgressUpdatedEvent,
-    ResearchCancelledEvent,
+    ResearchState,
+    ResearchStatus,
+    // System
+    ResearchSystem,
 };
 
 pub use metrics::{
-    // Plugin
-    MetricsPlugin,
-    // Hook
-    MetricsHook,
-    NoOpMetricsHook,
+    AggregatedMetric,
+    AggregationType,
+    ClearMetricsRequested,
+    CreateSnapshotRequested,
+    // Events
+    DefineMetricRequested,
+    GenerateReportRequested,
+    MetricDefined,
+    MetricDefinition,
     // Types
     MetricId,
-    MetricType,
-    MetricValue,
-    MetricDefinition,
-    AggregationType,
-    AggregatedMetric,
-    // Resource
-    MetricsRegistry,
-    MetricsConfig,
+    MetricRecorded,
+    MetricRemoved,
     // Reporting
     MetricReport,
     MetricSnapshot,
+    MetricType,
+    MetricValue,
+    MetricsCleared,
+    MetricsConfig,
+    // Hook
+    MetricsHook,
+    // Plugin
+    MetricsPlugin,
+    // Resource
+    MetricsRegistry,
     // System
     MetricsSystem,
-    // Events
-    DefineMetricRequested,
+    NoOpMetricsHook,
     RecordMetricRequested,
-    CreateSnapshotRequested,
-    GenerateReportRequested,
     RemoveMetricRequested,
-    ClearMetricsRequested,
-    MetricDefined,
-    MetricRecorded,
-    SnapshotCreated,
     ReportGenerated,
-    MetricRemoved,
-    MetricsCleared,
+    SnapshotCreated,
 };
 
 pub use save_load::{
-    // Plugin
-    SaveLoadPlugin,
-    // Hook
-    SaveLoadHook,
-    DefaultSaveLoadHook,
-    // Config
-    SaveLoadConfig,
-    SaveFormat,
-    // System
-    SaveLoadSystem,
-    // Events - Command
-    SaveGameRequested,
-    LoadGameRequested,
-    DeleteSaveRequested,
-    ListSavesRequested,
-    GetSaveMetadataRequested,
+    AutoSaveCompleted,
     AutoSaveRequested,
+    DefaultSaveLoadHook,
+    DeleteSaveRequested,
+    GameLoaded,
     // Events - State
     GameSaved,
-    GameLoaded,
+    GetSaveMetadataRequested,
+    ListSavesRequested,
+    LoadGameRequested,
     SaveDeleted,
-    SavesListed,
-    SaveMetadataRetrieved,
-    AutoSaveCompleted,
+    SaveFormat,
+    // Events - Command
+    SaveGameRequested,
+    // Config
+    SaveLoadConfig,
     SaveLoadFailed,
+    // Hook
+    SaveLoadHook,
+    // Plugin
+    SaveLoadPlugin,
+    // System
+    SaveLoadSystem,
+    SaveMetadataRetrieved,
+    SavesListed,
 };
 
 pub use time::{
     // Events
     ActionConsumedEvent,
     AdvanceTimeRequested,
-    DayChanged,
-    DayPassedEvent,
     // Plugins
     BuiltInTimePlugin,
-    TurnBasedTimePlugin,
+    DayChanged,
     // Resources
-    GameClock,
     GameTimer,
     // Config
     TimeConfig,
+    TurnBasedTimePlugin,
 };
 
 pub use accounting::{
-    // Plugin
-    AccountingPlugin,
-    // Hook
-    AccountingHook,
-    DefaultAccountingHook,
-    // Types
-    BudgetChannel,
     // Resources
     AccountingConfig,
-    AccountingState,
-    BudgetLedger,
+    // Hook
+    AccountingHook,
+    // Plugin
+    AccountingPlugin,
     // Service
     AccountingService,
+    AccountingState,
     // System
     AccountingSystem,
+    // Types
+    BudgetChannel,
+    BudgetLedger,
+    BudgetTransferRequested,
+    BudgetTransferredEvent,
+    DefaultAccountingHook,
+    SettlementCompletedEvent,
     // Events
     SettlementRequested,
-    BudgetTransferRequested,
-    SettlementCompletedEvent,
-    BudgetTransferredEvent,
 };
 
 pub use economy::{
-    // Plugin
-    EconomyPlugin,
+    // Types
+    ConversionRule,
     // Resources
     ConversionRules,
+    Currency,
+    CurrencyDefinition,
     CurrencyDefinitions,
+    CurrencyDeposited,
+    CurrencyExchangeFailed,
+    // Events - Command
+    CurrencyExchangeRequested,
+    // Events - State
+    CurrencyExchanged,
+    CurrencyId,
+    CurrencyWithdrawn,
     EconomyConfig,
-    ExchangeRates,
-    ResourceDefinitions,
-    // State
-    ResourceInventory,
-    Wallet,
     // Service
     EconomyError,
+    // Plugin
+    EconomyPlugin,
     EconomyResult,
     EconomyService,
     // System
     EconomySystem,
-    // Types
-    ConversionRule,
-    Currency,
-    CurrencyDefinition,
-    CurrencyId,
     ExchangeRate,
-    RateType,
-    ResourceDefinition,
-    ResourceId,
-    ResourceType,
-    // Events - Command
-    CurrencyExchangeRequested,
-    ResourceConversionRequested,
-    ResourceAddRequested,
-    ResourceConsumeRequested,
-    // Events - State
-    CurrencyExchanged,
-    CurrencyExchangeFailed,
-    ResourceConverted,
-    ResourceConversionFailed,
-    ResourceAdded,
-    ResourceConsumed,
-    ResourceConsumeFailed,
+    ExchangeRates,
     FlowResourceGenerated,
-    CurrencyDeposited,
-    CurrencyWithdrawn,
+    RateType,
+    ResourceAddRequested,
+    ResourceAdded,
+    ResourceConsumeFailed,
+    ResourceConsumeRequested,
+    ResourceConsumed,
+    ResourceConversionFailed,
+    ResourceConversionRequested,
+    ResourceConverted,
+    ResourceDefinition,
+    ResourceDefinitions,
+    ResourceId,
+    // State
+    ResourceInventory,
+    ResourceType,
+    Wallet,
 };
 
 use crate::builder::RuntimeResourceEntry;

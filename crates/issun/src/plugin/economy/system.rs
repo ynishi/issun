@@ -4,7 +4,7 @@ use super::events::*;
 use super::resources::{ConversionRules, ResourceDefinitions};
 use super::service::EconomyService;
 use super::state::{ResourceInventory, Wallet};
-use super::types::{ResourceType, CurrencyId, ResourceId};
+use super::types::ResourceType;
 use crate::context::{ResourceContext, ServiceContext};
 use crate::event::EventBus;
 use crate::system::System;
@@ -50,10 +50,26 @@ impl EconomySystem {
         // Collect command events
         let (exchange_requests, conversion_requests, add_requests, consume_requests) = {
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-                let exchange = bus.reader::<CurrencyExchangeRequested>().iter().cloned().collect::<Vec<_>>();
-                let conversion = bus.reader::<ResourceConversionRequested>().iter().cloned().collect::<Vec<_>>();
-                let add = bus.reader::<ResourceAddRequested>().iter().cloned().collect::<Vec<_>>();
-                let consume = bus.reader::<ResourceConsumeRequested>().iter().cloned().collect::<Vec<_>>();
+                let exchange = bus
+                    .reader::<CurrencyExchangeRequested>()
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let conversion = bus
+                    .reader::<ResourceConversionRequested>()
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let add = bus
+                    .reader::<ResourceAddRequested>()
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let consume = bus
+                    .reader::<ResourceConsumeRequested>()
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
                 (exchange, conversion, add, consume)
             } else {
                 return;
@@ -241,12 +257,15 @@ impl EconomySystem {
             }
         };
 
-        if let Ok(_) = service.add_resource(
-            &mut inventory,
-            &resource_defs,
-            &request.resource_id,
-            request.amount,
-        ) {
+        if service
+            .add_resource(
+                &mut inventory,
+                &resource_defs,
+                &request.resource_id,
+                request.amount,
+            )
+            .is_ok()
+        {
             let new_total = service.resource_quantity(&inventory, &request.resource_id);
             drop(inventory);
             drop(resource_defs);

@@ -86,7 +86,11 @@ impl ResearchSystem {
             // Validate prerequisites via hook
             {
                 let resources_ref = resources as &ResourceContext;
-                match self.hook.validate_prerequisites(&project, resources_ref).await {
+                match self
+                    .hook
+                    .validate_prerequisites(&project, resources_ref)
+                    .await
+                {
                     Ok(()) => {}
                     Err(_) => continue,
                 }
@@ -108,7 +112,7 @@ impl ResearchSystem {
             // Queue research (update state)
             {
                 if let Some(mut state) = resources.get_mut::<ResearchState>().await {
-                    if let Err(_) = state.queue(&request.project_id) {
+                    if state.queue(&request.project_id).is_err() {
                         continue;
                     }
                 } else {
@@ -119,7 +123,7 @@ impl ResearchSystem {
             // Auto-activate if slots available
             {
                 let config = resources.get::<ResearchConfig>().await;
-                let mut state = resources.get_mut::<ResearchState>().await;
+                let state = resources.get_mut::<ResearchState>().await;
 
                 if let (Some(cfg), Some(mut st)) = (config, state) {
                     let max_slots = if cfg.allow_parallel_research {
@@ -210,7 +214,7 @@ impl ResearchSystem {
             // Cancel (update state)
             {
                 if let Some(mut state) = resources.get_mut::<ResearchState>().await {
-                    if let Err(_) = state.cancel(&request.project_id) {
+                    if state.cancel(&request.project_id).is_err() {
                         continue;
                     }
                 } else {
@@ -221,7 +225,7 @@ impl ResearchSystem {
             // Auto-activate next queued
             {
                 let config = resources.get::<ResearchConfig>().await;
-                let mut state = resources.get_mut::<ResearchState>().await;
+                let state = resources.get_mut::<ResearchState>().await;
 
                 if let (Some(cfg), Some(mut st)) = (config, state) {
                     let max_slots = if cfg.allow_parallel_research {
@@ -290,7 +294,7 @@ impl ResearchSystem {
                 // Auto-activate next
                 {
                     let config = resources.get::<ResearchConfig>().await;
-                    let mut state = resources.get_mut::<ResearchState>().await;
+                    let state = resources.get_mut::<ResearchState>().await;
 
                     if let (Some(cfg), Some(mut st)) = (config, state) {
                         let max_slots = if cfg.allow_parallel_research {
@@ -320,7 +324,9 @@ impl ResearchSystem {
                     };
 
                     // Call hook
-                    self.hook.on_research_completed(&proj, &result, resources).await;
+                    self.hook
+                        .on_research_completed(&proj, &result, resources)
+                        .await;
 
                     // Publish event
                     if let Some(mut bus) = resources.get_mut::<EventBus>().await {
@@ -374,7 +380,7 @@ impl ResearchSystem {
             // Complete (update state)
             {
                 if let Some(mut state) = resources.get_mut::<ResearchState>().await {
-                    if let Err(_) = state.complete(&request.project_id) {
+                    if state.complete(&request.project_id).is_err() {
                         continue;
                     }
                 } else {
@@ -385,7 +391,7 @@ impl ResearchSystem {
             // Auto-activate next
             {
                 let config = resources.get::<ResearchConfig>().await;
-                let mut state = resources.get_mut::<ResearchState>().await;
+                let state = resources.get_mut::<ResearchState>().await;
 
                 if let (Some(cfg), Some(mut st)) = (config, state) {
                     let max_slots = if cfg.allow_parallel_research {
@@ -405,7 +411,9 @@ impl ResearchSystem {
             };
 
             // Call hook
-            self.hook.on_research_completed(&project, &result, resources).await;
+            self.hook
+                .on_research_completed(&project, &result, resources)
+                .await;
 
             // Publish event
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
@@ -461,7 +469,7 @@ impl ResearchSystem {
         // Auto-activate next after completions
         if !completed.is_empty() {
             let config = resources.get::<ResearchConfig>().await;
-            let mut state = resources.get_mut::<ResearchState>().await;
+            let state = resources.get_mut::<ResearchState>().await;
 
             if let (Some(cfg), Some(mut st)) = (config, state) {
                 let max_slots = if cfg.allow_parallel_research {
@@ -491,7 +499,9 @@ impl ResearchSystem {
                     metadata: proj.metadata.clone(),
                 };
 
-                self.hook.on_research_completed(&proj, &result, resources).await;
+                self.hook
+                    .on_research_completed(&proj, &result, resources)
+                    .await;
 
                 if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                     bus.publish(ResearchCompletedEvent {

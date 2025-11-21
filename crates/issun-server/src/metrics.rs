@@ -13,6 +13,7 @@ pub struct Metrics {
     pub connected_clients: Gauge,
 
     /// Total number of active rooms
+    #[allow(dead_code)]
     pub active_rooms: Gauge,
 
     /// Total events relayed (by scope type)
@@ -25,9 +26,11 @@ pub struct Metrics {
     pub relay_latency: HistogramVec,
 
     /// Total bytes sent
+    #[allow(dead_code)]
     pub bytes_sent: CounterVec,
 
     /// Total bytes received
+    #[allow(dead_code)]
     pub bytes_received: CounterVec,
 }
 
@@ -106,11 +109,13 @@ impl Metrics {
     }
 
     /// Set active rooms count
+    #[allow(dead_code)]
     pub fn set_active_rooms(&self, count: usize) {
         self.active_rooms.set(count as f64);
     }
 
     /// Record bytes sent
+    #[allow(dead_code)]
     pub fn record_bytes_sent(&self, client_id: &str, bytes: usize) {
         self.bytes_sent
             .with_label_values(&[client_id])
@@ -118,6 +123,7 @@ impl Metrics {
     }
 
     /// Record bytes received
+    #[allow(dead_code)]
     pub fn record_bytes_received(&self, client_id: &str, bytes: usize) {
         self.bytes_received
             .with_label_values(&[client_id])

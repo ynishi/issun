@@ -138,7 +138,6 @@ impl GameBuilder {
             resources: resource_context,
             services: service_context,
             systems: system_context,
-            context,
             entities,
             assets,
         })
@@ -286,12 +285,6 @@ pub struct Game {
     pub services: crate::context::ServiceContext,
     /// System context - stateful orchestration
     pub systems: crate::context::SystemContext,
-
-    /// Legacy: Old unified context (deprecated)
-    /// Kept for backward compatibility. Will be removed in future versions.
-    #[deprecated(since = "0.2.0", note = "Use resources, services, and systems instead")]
-    pub context: crate::context::Context,
-
     /// Registered entities from plugins
     pub entities: HashMap<String, Box<dyn crate::entity::Entity>>,
     /// Registered assets from plugins
@@ -299,26 +292,6 @@ pub struct Game {
 }
 
 impl Game {
-    /// Get the legacy game context (deprecated)
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use resources(), services(), or systems() instead"
-    )]
-    #[allow(deprecated)]
-    pub fn context(&self) -> &crate::context::Context {
-        &self.context
-    }
-
-    /// Get mutable reference to legacy game context (deprecated)
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use resources_mut(), services_mut(), or systems_mut() instead"
-    )]
-    #[allow(deprecated)]
-    pub fn context_mut(&mut self) -> &mut crate::context::Context {
-        &mut self.context
-    }
-
     /// Get reference to resource context
     pub fn resources(&self) -> &crate::context::ResourceContext {
         &self.resources

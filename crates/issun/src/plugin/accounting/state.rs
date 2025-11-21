@@ -26,7 +26,7 @@ impl AccountingState {
     /// Check if settlement should run for the given day
     pub fn should_run_settlement(&self, current_day: u32, period: u32) -> bool {
         // Check if it's a settlement day
-        if current_day % period != 0 {
+        if !current_day.is_multiple_of(period) {
             return false;
         }
 

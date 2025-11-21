@@ -175,9 +175,12 @@ mod tests {
         };
 
         // Should not panic
-        hook.on_control_changed(&territory, &change, &mut resources).await;
+        hook.on_control_changed(&territory, &change, &mut resources)
+            .await;
 
-        let cost = hook.calculate_development_cost(&territory, 0, &resources).await;
+        let cost = hook
+            .calculate_development_cost(&territory, 0, &resources)
+            .await;
         assert!(cost.is_ok());
         assert_eq!(cost.unwrap(), 100); // (0 + 1) * 100
 
@@ -186,10 +189,13 @@ mod tests {
             old_level: 0,
             new_level: 1,
         };
-        hook.on_developed(&territory, &developed, &mut resources).await;
+        hook.on_developed(&territory, &developed, &mut resources)
+            .await;
 
         let effects = TerritoryEffects::default();
-        let result = hook.calculate_effects(&territory, effects.clone(), &resources).await;
+        let result = hook
+            .calculate_effects(&territory, effects.clone(), &resources)
+            .await;
         assert_eq!(result.income_multiplier, effects.income_multiplier);
     }
 
@@ -201,11 +207,17 @@ mod tests {
         let territory = Territory::new("test", "Test");
 
         // Level 0 -> 1
-        let cost = hook.calculate_development_cost(&territory, 0, &resources).await.unwrap();
+        let cost = hook
+            .calculate_development_cost(&territory, 0, &resources)
+            .await
+            .unwrap();
         assert_eq!(cost, 100); // (0 + 1) * 100
 
         // Level 3 -> 4
-        let cost = hook.calculate_development_cost(&territory, 3, &resources).await.unwrap();
+        let cost = hook
+            .calculate_development_cost(&territory, 3, &resources)
+            .await
+            .unwrap();
         assert_eq!(cost, 400); // (3 + 1) * 100
     }
 }

@@ -16,9 +16,7 @@ pub struct ActionConfig {
 
 impl Default for ActionConfig {
     fn default() -> Self {
-        Self {
-            max_per_period: 3,
-        }
+        Self { max_per_period: 3 }
     }
 }
 
@@ -187,9 +185,7 @@ mod tests {
 
     #[test]
     fn test_plugin_with_custom_config() {
-        let config = ActionConfig {
-            max_per_period: 5,
-        };
+        let config = ActionConfig { max_per_period: 5 };
         let plugin = ActionPlugin::new(config.clone());
         assert_eq!(plugin.config.max_per_period, 5);
     }
@@ -208,8 +204,8 @@ mod tests {
 
     #[test]
     fn test_plugin_with_hook() {
-        let plugin = ActionPlugin::new(ActionConfig { max_per_period: 3 })
-            .with_hook(DefaultActionHook);
+        let plugin =
+            ActionPlugin::new(ActionConfig { max_per_period: 3 }).with_hook(DefaultActionHook);
         assert_eq!(plugin.config.max_per_period, 3);
     }
 }

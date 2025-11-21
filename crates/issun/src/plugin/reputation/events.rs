@@ -1,7 +1,7 @@
 //! Events for reputation changes
 
-use crate::event::Event;
 use super::types::SubjectId;
+use crate::event::Event;
 use serde::{Deserialize, Serialize};
 
 // ============================================================================

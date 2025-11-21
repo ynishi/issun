@@ -47,11 +47,7 @@ pub trait ActionHook: Send + Sync {
     ///
     /// * `consumed` - Details about the consumed action
     /// * `resources` - Access to game resources for modification
-    async fn on_action_consumed(
-        &self,
-        consumed: &ActionConsumed,
-        resources: &mut ResourceContext,
-    );
+    async fn on_action_consumed(&self, consumed: &ActionConsumed, resources: &mut ResourceContext);
 
     /// Called when actions are depleted
     ///

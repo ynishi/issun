@@ -72,8 +72,7 @@ mod tests {
     use super::*;
 
     fn create_test_policy(id: &str, name: &str) -> Policy {
-        Policy::new(id, name, "Test policy")
-            .add_effect("income_multiplier", 1.2)
+        Policy::new(id, name, "Test policy").add_effect("income_multiplier", 1.2)
     }
 
     #[test]
@@ -92,7 +91,10 @@ mod tests {
         assert_eq!(policies.len(), 1);
         assert!(!policies.is_empty());
         assert!(policies.get(&PolicyId::new("test")).is_some());
-        assert_eq!(policies.get(&PolicyId::new("test")).unwrap().name, "Test Policy");
+        assert_eq!(
+            policies.get(&PolicyId::new("test")).unwrap().name,
+            "Test Policy"
+        );
     }
 
     #[test]

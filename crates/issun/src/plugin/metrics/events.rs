@@ -117,7 +117,8 @@ mod tests {
 
     #[test]
     fn test_define_metric_requested() {
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Counter, "count");
         let event = DefineMetricRequested {
             definition: definition.clone(),
         };
@@ -178,7 +179,8 @@ mod tests {
 
     #[test]
     fn test_metric_defined() {
-        let definition = MetricDefinition::new("test", "Test", "Test metric", MetricType::Gauge, "value");
+        let definition =
+            MetricDefinition::new("test", "Test", "Test metric", MetricType::Gauge, "value");
         let event = MetricDefined {
             definition: definition.clone(),
         };

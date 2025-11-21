@@ -197,9 +197,7 @@ mod tests {
         hook.on_research_queued(&project, &mut resources).await;
         hook.on_research_started(&project, &mut resources).await;
 
-        let cost = hook
-            .calculate_research_cost(&project, &resources)
-            .await;
+        let cost = hook.calculate_research_cost(&project, &resources).await;
         assert_eq!(cost, Ok(0));
 
         let progress = hook.calculate_progress(&project, 0.1, &resources).await;
@@ -219,9 +217,7 @@ mod tests {
         let project = ResearchProject::new("test", "Test", "Test").with_cost(5000);
         let resources = ResourceContext::new();
 
-        let cost = hook
-            .calculate_research_cost(&project, &resources)
-            .await;
+        let cost = hook.calculate_research_cost(&project, &resources).await;
         assert_eq!(cost, Ok(5000));
     }
 }

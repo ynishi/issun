@@ -226,7 +226,9 @@ mod tests {
         hook.on_item_removed(&entity_id, &item_id, 1, &mut resources)
             .await;
 
-        let result = hook.on_item_used(&entity_id, &item_id, &mut resources).await;
+        let result = hook
+            .on_item_used(&entity_id, &item_id, &mut resources)
+            .await;
         assert!(result.is_ok());
     }
 }

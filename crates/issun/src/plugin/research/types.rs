@@ -39,9 +39,10 @@ impl From<&str> for ResearchId {
 }
 
 /// Status of a research project
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ResearchStatus {
     /// Available but not started
+    #[default]
     Available,
 
     /// Queued for research
@@ -55,12 +56,6 @@ pub enum ResearchStatus {
 
     /// Failed or cancelled
     Failed,
-}
-
-impl Default for ResearchStatus {
-    fn default() -> Self {
-        Self::Available
-    }
 }
 
 /// A research/development/learning project
@@ -279,8 +274,7 @@ mod tests {
 
     #[test]
     fn test_research_project_with_cost() {
-        let project = ResearchProject::new("test", "Test", "Test")
-            .with_cost(5000);
+        let project = ResearchProject::new("test", "Test", "Test").with_cost(5000);
 
         assert_eq!(project.cost, 5000);
     }
@@ -291,8 +285,7 @@ mod tests {
         metrics.insert("effectiveness".into(), 1.5);
         metrics.insert("reliability".into(), 0.85);
 
-        let project = ResearchProject::new("test", "Test", "Test")
-            .with_metrics(metrics);
+        let project = ResearchProject::new("test", "Test", "Test").with_metrics(metrics);
 
         assert_eq!(project.get_metric("effectiveness"), Some(1.5));
         assert_eq!(project.get_metric("reliability"), Some(0.85));
@@ -322,8 +315,7 @@ mod tests {
         let mut metrics = HashMap::new();
         metrics.insert("effectiveness".into(), 1.5);
 
-        let result = ResearchResult::new(ResearchId::new("test"), true)
-            .with_metrics(metrics);
+        let result = ResearchResult::new(ResearchId::new("test"), true).with_metrics(metrics);
 
         assert_eq!(result.final_metrics.get("effectiveness"), Some(&1.5));
     }

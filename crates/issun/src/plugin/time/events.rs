@@ -58,20 +58,6 @@ pub struct DayChanged {
 
 impl Event for DayChanged {}
 
-/// Event published when a game day ends and a new day begins
-///
-/// # Deprecated
-///
-/// Use `DayChanged` instead for clearer semantics.
-#[deprecated(since = "0.2.0", note = "Use DayChanged instead")]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DayPassedEvent {
-    /// The new day number that has just begun
-    pub day: u32,
-}
-
-impl Event for DayPassedEvent {}
-
 /// Event published when an action point is consumed
 ///
 /// This event can be used to track player actions or update UI.
@@ -119,25 +105,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_day_passed_event_creation() {
-        let event = DayPassedEvent { day: 5 };
-        assert_eq!(event.day, 5);
-    }
-
-    #[test]
     fn test_action_consumed_event_creation() {
         let event = ActionConsumedEvent {
             actions_remaining: 3,
         };
         assert_eq!(event.actions_remaining, 3);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_day_passed_event_clone() {
-        let event1 = DayPassedEvent { day: 10 };
-        let event2 = event1.clone();
-        assert_eq!(event1, event2);
     }
 }

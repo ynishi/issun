@@ -64,8 +64,7 @@ impl TerritoryState {
     pub fn initialize(&mut self, id: &TerritoryId) {
         self.control.insert(id.clone(), 0.0);
         self.development.insert(id.clone(), 0);
-        self.effects
-            .insert(id.clone(), TerritoryEffects::default());
+        self.effects.insert(id.clone(), TerritoryEffects::default());
     }
 
     /// Check if a territory is initialized

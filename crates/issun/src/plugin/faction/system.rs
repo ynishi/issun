@@ -114,7 +114,7 @@ impl FactionSystem {
             // Launch operation (add to state)
             {
                 if let Some(mut state) = resources.get_mut::<FactionState>().await {
-                    if let Err(_) = state.launch_operation(operation.clone()) {
+                    if state.launch_operation(operation.clone()).is_err() {
                         continue; // Failed to launch
                     }
                 } else {
@@ -193,7 +193,10 @@ impl FactionSystem {
 
             {
                 if let Some(mut state) = resources.get_mut::<FactionState>().await {
-                    if let Err(_) = state.update_operation_status(&request.operation_id, status) {
+                    if state
+                        .update_operation_status(&request.operation_id, status)
+                        .is_err()
+                    {
                         continue; // Failed to update status
                     }
                 } else {
@@ -246,7 +249,8 @@ impl FactionSystem {
         resources: &mut ResourceContext,
     ) {
         self.process_operation_launches(services, resources).await;
-        self.process_operation_resolutions(services, resources).await;
+        self.process_operation_resolutions(services, resources)
+            .await;
     }
 }
 

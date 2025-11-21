@@ -147,7 +147,7 @@ impl ConversionRules {
     pub fn register(&mut self, rule: ConversionRule) {
         self.rules
             .entry(rule.resource.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(rule);
     }
 
@@ -162,11 +162,9 @@ impl ConversionRules {
         resource_id: &ResourceId,
         currency_id: &CurrencyId,
     ) -> Option<&ConversionRule> {
-        self.rules.get(resource_id).and_then(|rules| {
-            rules
-                .iter()
-                .find(|rule| &rule.currency == currency_id)
-        })
+        self.rules
+            .get(resource_id)
+            .and_then(|rules| rules.iter().find(|rule| &rule.currency == currency_id))
     }
 
     pub fn all(&self) -> impl Iterator<Item = &ConversionRule> {

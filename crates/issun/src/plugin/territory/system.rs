@@ -297,9 +297,7 @@ mod tests {
         // Publish development request
         {
             let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-            bus.publish(TerritoryDevelopmentRequested {
-                id: "nova".into(),
-            });
+            bus.publish(TerritoryDevelopmentRequested { id: "nova".into() });
             bus.dispatch();
         }
 

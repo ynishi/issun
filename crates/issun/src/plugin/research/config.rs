@@ -4,9 +4,10 @@ use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 
 /// Progress model for research projects
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ProgressModel {
     /// Fixed progress per turn (e.g., 0.1 per turn = 10 turns)
+    #[default]
     TurnBased,
 
     /// Real-time progress (requires GameTimer plugin)
@@ -14,12 +15,6 @@ pub enum ProgressModel {
 
     /// Manual progress updates via events
     Manual,
-}
-
-impl Default for ProgressModel {
-    fn default() -> Self {
-        Self::TurnBased
-    }
 }
 
 /// Configuration for research system (ReadOnly)

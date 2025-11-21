@@ -1,10 +1,7 @@
 //! Hook trait for custom room buff behavior
 
-use crate::context::ResourceContext;
+use crate::{context::ResourceContext, plugin::ActiveBuff};
 use async_trait::async_trait;
-
-use super::events::BuffId;
-use super::types::{ActiveBuff, BuffConfig};
 
 /// Trait for custom room buff behavior
 ///
@@ -99,6 +96,8 @@ impl RoomBuffHook for DefaultRoomBuffHook {
 
 #[cfg(test)]
 mod tests {
+    use crate::plugin::{ActiveBuff, BuffConfig};
+
     use super::*;
 
     #[tokio::test]

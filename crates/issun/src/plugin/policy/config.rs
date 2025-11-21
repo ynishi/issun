@@ -67,14 +67,15 @@ mod tests {
 
     #[test]
     fn test_custom_config() {
-        let mut config = PolicyConfig::default();
-        config.allow_multiple_active = true;
-        config.max_active_policies = Some(3);
-        config.enable_cycling = false;
-        config.aggregation_strategies.insert(
-            "income_multiplier".into(),
-            AggregationStrategy::Multiply,
-        );
+        let mut config = PolicyConfig {
+            allow_multiple_active: true,
+            max_active_policies: Some(3),
+            enable_cycling: false,
+            ..Default::default()
+        };
+        config
+            .aggregation_strategies
+            .insert("income_multiplier".into(), AggregationStrategy::Multiply);
 
         assert!(config.allow_multiple_active);
         assert_eq!(config.max_active_policies, Some(3));

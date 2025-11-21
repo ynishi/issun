@@ -36,7 +36,7 @@ impl MetricSnapshot {
     pub fn add_value(&mut self, value: MetricValue) {
         self.values
             .entry(value.metric_id.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(value);
     }
 
@@ -110,7 +110,10 @@ impl MetricReport {
 
         let label = self.label.as_deref().unwrap_or("Metric Report");
         lines.push(format!("=== {} ===", label));
-        lines.push(format!("Period: {} - {}", self.period_start, self.period_end));
+        lines.push(format!(
+            "Period: {} - {}",
+            self.period_start, self.period_end
+        ));
         lines.push(format!("Generated at: {}", self.timestamp));
         lines.push(format!("Total metrics: {}", self.aggregated_metrics.len()));
         lines.push(String::new());
@@ -118,10 +121,7 @@ impl MetricReport {
         // Group metrics by metric_id
         let mut grouped: HashMap<&MetricId, Vec<&AggregatedMetric>> = HashMap::new();
         for metric in &self.aggregated_metrics {
-            grouped
-                .entry(&metric.metric_id)
-                .or_insert_with(Vec::new)
-                .push(metric);
+            grouped.entry(&metric.metric_id).or_default().push(metric);
         }
 
         for (metric_id, metrics) in grouped.iter() {
@@ -139,7 +139,10 @@ impl MetricReport {
                     AggregationType::Last => "Last",
                     AggregationType::Rate => "Rate",
                 };
-                lines.push(format!("  {}: {} (n={})", agg_type, metric.value, metric.count));
+                lines.push(format!(
+                    "  {}: {} (n={})",
+                    agg_type, metric.value, metric.count
+                ));
             }
             lines.push(String::new());
         }

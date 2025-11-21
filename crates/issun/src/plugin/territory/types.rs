@@ -195,8 +195,7 @@ mod tests {
             "description": "A bustling port city",
             "region": "north"
         });
-        let territory = Territory::new("nova", "Nova Harbor")
-            .with_metadata(metadata.clone());
+        let territory = Territory::new("nova", "Nova Harbor").with_metadata(metadata.clone());
         assert_eq!(territory.metadata, metadata);
     }
 
@@ -245,7 +244,13 @@ mod tests {
     #[test]
     fn test_territory_error_display() {
         assert_eq!(TerritoryError::NotFound.to_string(), "Territory not found");
-        assert_eq!(TerritoryError::InvalidControl.to_string(), "Invalid control value");
-        assert_eq!(TerritoryError::MaxDevelopment.to_string(), "Territory already at maximum development");
+        assert_eq!(
+            TerritoryError::InvalidControl.to_string(),
+            "Invalid control value"
+        );
+        assert_eq!(
+            TerritoryError::MaxDevelopment.to_string(),
+            "Territory already at maximum development"
+        );
     }
 }

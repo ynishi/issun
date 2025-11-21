@@ -114,7 +114,10 @@ impl ActionPoints {
     /// let result = points.consume_with("Build structure");
     /// assert!(matches!(result, Err(ActionError::Depleted)));
     /// ```
-    pub fn consume_with(&mut self, context: impl Into<String>) -> Result<ActionConsumed, ActionError> {
+    pub fn consume_with(
+        &mut self,
+        context: impl Into<String>,
+    ) -> Result<ActionConsumed, ActionError> {
         if self.available == 0 {
             return Err(ActionError::Depleted);
         }

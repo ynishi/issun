@@ -297,9 +297,7 @@ impl ResearchService {
         project
             .metrics
             .iter()
-            .filter_map(|(key, value)| {
-                weights.get(key).map(|weight| value * weight)
-            })
+            .filter_map(|(key, value)| weights.get(key).map(|weight| value * weight))
             .sum()
     }
 
@@ -393,10 +391,7 @@ mod tests {
 
     #[test]
     fn test_check_prerequisites() {
-        let required = vec![
-            ResearchId::new("writing"),
-            ResearchId::new("philosophy"),
-        ];
+        let required = vec![ResearchId::new("writing"), ResearchId::new("philosophy")];
 
         // All prerequisites met
         let completed = vec![

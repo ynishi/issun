@@ -64,7 +64,7 @@ impl CombatSystem {
             // Start battle (update state)
             {
                 if let Some(mut state) = resources.get_mut::<CombatState>().await {
-                    if let Err(_) = state.start_battle(request.battle_id.clone()) {
+                    if state.start_battle(request.battle_id.clone()).is_err() {
                         continue;
                     }
                 } else {
@@ -122,10 +122,11 @@ impl CombatSystem {
             // Call hook: before_turn
             {
                 let resources_ref = resources as &ResourceContext;
-                if let Err(_) = self
+                if self
                     .hook
                     .before_turn(&request.battle_id, turn, resources_ref)
                     .await
+                    .is_err()
                 {
                     continue;
                 }
@@ -198,7 +199,7 @@ impl CombatSystem {
             // End battle (update state)
             {
                 if let Some(mut state) = resources.get_mut::<CombatState>().await {
-                    if let Err(_) = state.end_battle() {
+                    if state.end_battle().is_err() {
                         continue;
                     }
                 } else {

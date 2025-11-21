@@ -229,11 +229,7 @@ impl PolicyService {
     /// );
     /// assert_eq!(new_attack, 60.0); // 50 + 10
     /// ```
-    pub fn apply_effect(
-        base_value: f32,
-        effect_value: f32,
-        strategy: AggregationStrategy,
-    ) -> f32 {
+    pub fn apply_effect(base_value: f32, effect_value: f32, strategy: AggregationStrategy) -> f32 {
         strategy.aggregate(base_value, effect_value)
     }
 
@@ -270,11 +266,9 @@ impl PolicyService {
     /// assert_eq!(total, 18.0); // 10 + 5 + 3
     /// ```
     pub fn combine_values(values: &[f32], strategy: AggregationStrategy) -> f32 {
-        values
-            .iter()
-            .fold(strategy.initial_value(), |acc, value| {
-                strategy.aggregate(acc, *value)
-            })
+        values.iter().fold(strategy.initial_value(), |acc, value| {
+            strategy.aggregate(acc, *value)
+        })
     }
 
     // ========================================

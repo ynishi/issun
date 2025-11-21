@@ -220,10 +220,18 @@ mod tests {
         let mut state = FactionState::new();
 
         state
-            .launch_operation(Operation::new("op-001", FactionId::new("crimson"), "Test 1"))
+            .launch_operation(Operation::new(
+                "op-001",
+                FactionId::new("crimson"),
+                "Test 1",
+            ))
             .unwrap();
         state
-            .launch_operation(Operation::new("op-002", FactionId::new("crimson"), "Test 2"))
+            .launch_operation(Operation::new(
+                "op-002",
+                FactionId::new("crimson"),
+                "Test 2",
+            ))
             .unwrap();
         state
             .launch_operation(Operation::new("op-003", FactionId::new("azure"), "Test 3"))
@@ -239,10 +247,18 @@ mod tests {
         let mut state = FactionState::new();
 
         state
-            .launch_operation(Operation::new("op-001", FactionId::new("crimson"), "Test 1"))
+            .launch_operation(Operation::new(
+                "op-001",
+                FactionId::new("crimson"),
+                "Test 1",
+            ))
             .unwrap();
         state
-            .launch_operation(Operation::new("op-002", FactionId::new("crimson"), "Test 2"))
+            .launch_operation(Operation::new(
+                "op-002",
+                FactionId::new("crimson"),
+                "Test 2",
+            ))
             .unwrap();
 
         state
@@ -288,10 +304,18 @@ mod tests {
         let mut state = FactionState::new();
 
         state
-            .launch_operation(Operation::new("op-001", FactionId::new("crimson"), "Test 1"))
+            .launch_operation(Operation::new(
+                "op-001",
+                FactionId::new("crimson"),
+                "Test 1",
+            ))
             .unwrap();
         state
-            .launch_operation(Operation::new("op-002", FactionId::new("crimson"), "Test 2"))
+            .launch_operation(Operation::new(
+                "op-002",
+                FactionId::new("crimson"),
+                "Test 2",
+            ))
             .unwrap();
         state
             .launch_operation(Operation::new("op-003", FactionId::new("azure"), "Test 3"))

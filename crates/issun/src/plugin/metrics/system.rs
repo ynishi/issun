@@ -100,7 +100,9 @@ impl MetricsSystem {
 
             if success {
                 // Call hook
-                self.hook.on_metric_recorded(&request.value, resources).await;
+                self.hook
+                    .on_metric_recorded(&request.value, resources)
+                    .await;
 
                 // Publish state event
                 if let Some(mut bus) = resources.get_mut::<EventBus>().await {

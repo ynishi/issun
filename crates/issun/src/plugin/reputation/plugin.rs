@@ -32,6 +32,7 @@ use super::types::ReputationThreshold;
 pub struct ReputationPlugin<H: ReputationHook = DefaultReputationHook> {
     config: ReputationConfig,
     thresholds: Vec<ReputationThreshold>,
+    #[allow(dead_code)]
     hook: H,
 }
 

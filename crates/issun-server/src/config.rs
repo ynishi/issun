@@ -15,9 +15,11 @@ pub struct ServerConfig {
     pub key_path: PathBuf,
 
     /// Maximum concurrent connections
+    #[allow(dead_code)]
     pub max_clients: usize,
 
     /// Heartbeat interval in seconds
+    #[allow(dead_code)]
     pub heartbeat_interval: u64,
 
     /// Metrics HTTP server port

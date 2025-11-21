@@ -28,9 +28,11 @@ use super::state::PolicyState;
 /// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
 pub struct PolicySystem {
+    #[allow(dead_code)]
     hook: Arc<dyn PolicyHook>,
 }
 
+#[allow(dead_code)]
 impl PolicySystem {
     /// Create a new PolicySystem with a custom hook
     pub fn new(hook: Arc<dyn PolicyHook>) -> Self {
@@ -86,11 +88,7 @@ impl PolicySystem {
             // Validate activation via hook (read-only resources access)
             {
                 let resources_ref = resources as &ResourceContext;
-                match self
-                    .hook
-                    .validate_activation(&policy, resources_ref)
-                    .await
-                {
+                match self.hook.validate_activation(&policy, resources_ref).await {
                     Ok(()) => {}
                     Err(_) => continue, // Hook rejected activation
                 }
@@ -502,8 +500,10 @@ mod tests {
         policies.add(Policy::new("policy3", "Policy 3", "Test"));
         resources.insert(policies);
 
-        let mut config = PolicyConfig::default();
-        config.enable_cycling = true;
+        let config = PolicyConfig {
+            enable_cycling: true,
+            ..Default::default()
+        };
         resources.insert(config);
 
         let mut state = PolicyState::new();

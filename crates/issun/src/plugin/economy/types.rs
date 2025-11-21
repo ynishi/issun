@@ -372,14 +372,10 @@ mod tests {
 
     #[test]
     fn test_resource_definition_builder() {
-        let resource = ResourceDefinition::new(
-            "gold",
-            "Gold",
-            "Precious metal",
-            ResourceType::Stock,
-        )
-        .with_finite()
-        .with_metadata("rarity", "legendary");
+        let resource =
+            ResourceDefinition::new("gold", "Gold", "Precious metal", ResourceType::Stock)
+                .with_finite()
+                .with_metadata("rarity", "legendary");
 
         assert_eq!(resource.id.0, "gold");
         assert_eq!(resource.name, "Gold");
@@ -389,11 +385,7 @@ mod tests {
 
     #[test]
     fn test_exchange_rate_convert() {
-        let rate = ExchangeRate::new(
-            CurrencyId::new("usd"),
-            CurrencyId::new("jpy"),
-            150.0,
-        );
+        let rate = ExchangeRate::new(CurrencyId::new("usd"), CurrencyId::new("jpy"), 150.0);
 
         let usd = Currency::new(100);
         let jpy = rate.convert(usd);
@@ -414,11 +406,7 @@ mod tests {
 
     #[test]
     fn test_exchange_rate_fractional() {
-        let rate = ExchangeRate::new(
-            CurrencyId::new("eur"),
-            CurrencyId::new("usd"),
-            1.1,
-        );
+        let rate = ExchangeRate::new(CurrencyId::new("eur"), CurrencyId::new("usd"), 1.1);
 
         let eur = Currency::new(100);
         let usd = rate.convert(eur);

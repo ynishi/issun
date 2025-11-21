@@ -191,11 +191,7 @@ impl Operation {
     /// assert_eq!(op.id.as_str(), "op-001");
     /// assert_eq!(op.name, "Capture Nova Harbor");
     /// ```
-    pub fn new(
-        id: impl Into<String>,
-        faction_id: FactionId,
-        name: impl Into<String>,
-    ) -> Self {
+    pub fn new(id: impl Into<String>, faction_id: FactionId, name: impl Into<String>) -> Self {
         Self {
             id: OperationId::new(id),
             faction_id,
@@ -366,11 +362,7 @@ mod tests {
 
     #[test]
     fn test_operation_creation() {
-        let op = Operation::new(
-            "op-001",
-            FactionId::new("crimson"),
-            "Capture Nova Harbor",
-        );
+        let op = Operation::new("op-001", FactionId::new("crimson"), "Capture Nova Harbor");
         assert_eq!(op.id.as_str(), "op-001");
         assert_eq!(op.faction_id.as_str(), "crimson");
         assert_eq!(op.name, "Capture Nova Harbor");
