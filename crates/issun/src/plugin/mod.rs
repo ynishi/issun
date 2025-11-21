@@ -158,19 +158,31 @@ pub use dungeon::{
 };
 
 pub use room_buff::{
+    // Plugin
+    RoomBuffPlugin,
+    // Hook
+    RoomBuffHook,
+    DefaultRoomBuffHook,
     // Types
     ActiveBuff,
-    ActiveBuffs,
     BuffConfig,
     BuffDuration,
     BuffEffect,
+    // Resources
+    RoomBuffDatabase,
+    ActiveBuffs,
     // Service
     BuffService,
     // System
     BuffSystem,
-    RoomBuffDatabase,
-    // Plugin
-    RoomBuffPlugin,
+    // Events
+    BuffId,
+    BuffApplyRequested,
+    BuffRemoveRequested,
+    BuffTickRequested,
+    BuffAppliedEvent,
+    BuffRemovedEvent,
+    BuffExpiredEvent,
 };
 
 pub use territory::{

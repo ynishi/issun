@@ -1,5 +1,6 @@
 //! Room buff plugin types
 
+use crate::state::State;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -72,6 +73,8 @@ pub enum BuffEffect {
 pub struct ActiveBuffs {
     pub buffs: Vec<ActiveBuff>,
 }
+
+impl State for ActiveBuffs {}
 
 impl ActiveBuffs {
     pub fn new() -> Self {
