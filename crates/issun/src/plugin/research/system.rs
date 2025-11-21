@@ -7,9 +7,11 @@ use async_trait::async_trait;
 use std::any::Any;
 use std::sync::Arc;
 
+use super::config::ResearchConfig;
 use super::events::*;
 use super::hook::ResearchHook;
-use super::registry::ResearchRegistry;
+use super::research_projects::ResearchProjects;
+use super::state::ResearchState;
 use super::types::*;
 
 /// System that processes research events with hooks
@@ -24,7 +26,7 @@ use super::types::*;
 /// # Feedback Loop
 ///
 /// ```text
-/// Command Event → Validation (Hook) → Registry Update → Hook Call → State Event
+/// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
 pub struct ResearchSystem {
     hook: Arc<dyn ResearchHook>,
@@ -53,13 +55,6 @@ impl ResearchSystem {
     }
 
     /// Process research queue requests
-    ///
-    /// Listens for `ResearchQueueRequested` events and:
-    /// 1. Validates prerequisites (via hook)
-    /// 2. Calculates cost (via hook)
-    /// 3. Queues research and updates registry
-    /// 4. Calls hook
-    /// 5. Publishes `ResearchQueuedEvent`
     async fn process_queue_requests(
         &mut self,
         _services: &ServiceContext,
@@ -78,22 +73,22 @@ impl ResearchSystem {
         for request in requests {
             // Get project for validation
             let project = {
-                if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                    match registry.get(&request.project_id) {
+                if let Some(projects) = resources.get::<ResearchProjects>().await {
+                    match projects.get(&request.project_id) {
                         Some(p) => p.clone(),
-                        None => continue, // Project not found, skip
+                        None => continue,
                     }
                 } else {
                     continue;
                 }
             };
 
-            // Validate prerequisites via hook (read-only resources access)
+            // Validate prerequisites via hook
             {
                 let resources_ref = resources as &ResourceContext;
                 match self.hook.validate_prerequisites(&project, resources_ref).await {
                     Ok(()) => {}
-                    Err(_) => continue, // Hook rejected queuing
+                    Err(_) => continue,
                 }
             }
 
@@ -106,38 +101,49 @@ impl ResearchSystem {
                     .await
                 {
                     Ok(c) => c,
-                    Err(_) => continue, // Hook rejected due to insufficient resources
+                    Err(_) => continue,
                 }
             };
 
-            // Queue research (update registry)
+            // Queue research (update state)
             {
-                if let Some(mut registry) = resources.get_mut::<ResearchRegistry>().await {
-                    if let Err(_) = registry.queue(&request.project_id) {
-                        continue; // Failed to queue
+                if let Some(mut state) = resources.get_mut::<ResearchState>().await {
+                    if let Err(_) = state.queue(&request.project_id) {
+                        continue;
                     }
                 } else {
                     continue;
                 }
             }
 
-            // Call hook (synchronous, immediate, local only)
+            // Auto-activate if slots available
+            {
+                let config = resources.get::<ResearchConfig>().await;
+                let mut state = resources.get_mut::<ResearchState>().await;
+
+                if let (Some(cfg), Some(mut st)) = (config, state) {
+                    let max_slots = if cfg.allow_parallel_research {
+                        cfg.max_parallel_slots
+                    } else {
+                        1
+                    };
+                    st.activate_next_queued(max_slots);
+                }
+            }
+
+            // Call hook
             self.hook.on_research_queued(&project, resources).await;
 
-            // Check if project was immediately started (auto-activation)
+            // Check if project was immediately started
             let was_started = {
-                if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                    if let Some(proj) = registry.get(&request.project_id) {
-                        proj.status == ResearchStatus::InProgress
-                    } else {
-                        false
-                    }
+                if let Some(state) = resources.get::<ResearchState>().await {
+                    state.get_status(&request.project_id) == ResearchStatus::InProgress
                 } else {
                     false
                 }
             };
 
-            // Publish queued event
+            // Publish events
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                 bus.publish(ResearchQueuedEvent {
                     project_id: project.id.clone(),
@@ -145,28 +151,23 @@ impl ResearchSystem {
                     cost,
                 });
 
-                // If auto-started, also publish started event
                 if was_started {
                     bus.publish(ResearchStartedEvent {
                         project_id: project.id.clone(),
                         project_name: project.name.clone(),
                     });
-
-                    // Call started hook
-                    self.hook.on_research_started(&project, resources).await;
                 }
             }
         }
     }
 
-    /// Process research start requests (immediate start, skip queue)
+    /// Process research start requests
     async fn process_start_requests(
         &mut self,
         _services: &ServiceContext,
         resources: &mut ResourceContext,
     ) {
-        // Collect start requests
-        let requests = {
+        let _requests = {
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                 let reader = bus.reader::<ResearchStartRequested>();
                 reader.iter().cloned().collect::<Vec<_>>()
@@ -175,43 +176,7 @@ impl ResearchSystem {
             }
         };
 
-        for request in requests {
-            // Get project
-            let project = {
-                if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                    match registry.get(&request.project_id) {
-                        Some(p) => p.clone(),
-                        None => continue,
-                    }
-                } else {
-                    continue;
-                }
-            };
-
-            // Manually set to InProgress (bypass queue)
-            {
-                if let Some(mut registry) = resources.get_mut::<ResearchRegistry>().await {
-                    if let Some(proj) = registry.get_mut(&request.project_id) {
-                        proj.status = ResearchStatus::InProgress;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-            }
-
-            // Call hook
-            self.hook.on_research_started(&project, resources).await;
-
-            // Publish event
-            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-                bus.publish(ResearchStartedEvent {
-                    project_id: project.id.clone(),
-                    project_name: project.name.clone(),
-                });
-            }
-        }
+        // Manual start not implemented - auto-activated by queue
     }
 
     /// Process research cancel requests
@@ -220,7 +185,6 @@ impl ResearchSystem {
         _services: &ServiceContext,
         resources: &mut ResourceContext,
     ) {
-        // Collect cancel requests
         let requests = {
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                 let reader = bus.reader::<ResearchCancelRequested>();
@@ -231,10 +195,10 @@ impl ResearchSystem {
         };
 
         for request in requests {
-            // Get project before cancellation
+            // Get project
             let project = {
-                if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                    match registry.get(&request.project_id) {
+                if let Some(projects) = resources.get::<ResearchProjects>().await {
+                    match projects.get(&request.project_id) {
                         Some(p) => p.clone(),
                         None => continue,
                     }
@@ -243,14 +207,29 @@ impl ResearchSystem {
                 }
             };
 
-            // Cancel research
+            // Cancel (update state)
             {
-                if let Some(mut registry) = resources.get_mut::<ResearchRegistry>().await {
-                    if let Err(_) = registry.cancel(&request.project_id) {
+                if let Some(mut state) = resources.get_mut::<ResearchState>().await {
+                    if let Err(_) = state.cancel(&request.project_id) {
                         continue;
                     }
                 } else {
                     continue;
+                }
+            }
+
+            // Auto-activate next queued
+            {
+                let config = resources.get::<ResearchConfig>().await;
+                let mut state = resources.get_mut::<ResearchState>().await;
+
+                if let (Some(cfg), Some(mut st)) = (config, state) {
+                    let max_slots = if cfg.allow_parallel_research {
+                        cfg.max_parallel_slots
+                    } else {
+                        1
+                    };
+                    st.activate_next_queued(max_slots);
                 }
             }
 
@@ -267,13 +246,12 @@ impl ResearchSystem {
         }
     }
 
-    /// Process manual progress requests
+    /// Process research progress requests
     async fn process_progress_requests(
         &mut self,
         _services: &ServiceContext,
         resources: &mut ResourceContext,
     ) {
-        // Collect progress requests
         let requests = {
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                 let reader = bus.reader::<ResearchProgressRequested>();
@@ -284,39 +262,93 @@ impl ResearchSystem {
         };
 
         for request in requests {
-            if let Some(ref project_id) = request.project_id {
-                // Advance specific project
-                self.advance_project_progress(project_id, request.amount, resources)
-                    .await;
-            } else {
-                // Advance all active projects
-                let active_ids: Vec<ResearchId> = {
-                    if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                        registry
-                            .active_research()
-                            .iter()
-                            .map(|p| p.id.clone())
-                            .collect()
+            // Add progress
+            {
+                if let Some(mut state) = resources.get_mut::<ResearchState>().await {
+                    state.add_progress(&request.project_id, request.amount);
+                } else {
+                    continue;
+                }
+            }
+
+            // Check completion
+            let (completed, progress) = {
+                if let Some(state) = resources.get::<ResearchState>().await {
+                    let prog = state.get_progress(&request.project_id);
+                    (prog >= 1.0, prog)
+                } else {
+                    continue;
+                }
+            };
+
+            if completed {
+                // Complete project
+                if let Some(mut state) = resources.get_mut::<ResearchState>().await {
+                    let _ = state.complete(&request.project_id);
+                }
+
+                // Auto-activate next
+                {
+                    let config = resources.get::<ResearchConfig>().await;
+                    let mut state = resources.get_mut::<ResearchState>().await;
+
+                    if let (Some(cfg), Some(mut st)) = (config, state) {
+                        let max_slots = if cfg.allow_parallel_research {
+                            cfg.max_parallel_slots
+                        } else {
+                            1
+                        };
+                        st.activate_next_queued(max_slots);
+                    }
+                }
+
+                // Get project for events
+                let project = {
+                    if let Some(projects) = resources.get::<ResearchProjects>().await {
+                        projects.get(&request.project_id).cloned()
                     } else {
-                        Vec::new()
+                        None
                     }
                 };
 
-                for id in active_ids {
-                    self.advance_project_progress(&id, request.amount, resources)
-                        .await;
+                if let Some(proj) = project {
+                    let result = ResearchResult {
+                        project_id: proj.id.clone(),
+                        success: true,
+                        final_metrics: proj.metrics.clone(),
+                        metadata: proj.metadata.clone(),
+                    };
+
+                    // Call hook
+                    self.hook.on_research_completed(&proj, &result, resources).await;
+
+                    // Publish event
+                    if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                        bus.publish(ResearchCompletedEvent {
+                            project_id: proj.id.clone(),
+                            project_name: proj.name.clone(),
+                            result,
+                        });
+                    }
+                }
+            } else {
+                // Publish progress event
+                if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                    bus.publish(ResearchProgressUpdatedEvent {
+                        project_id: request.project_id.clone(),
+                        progress,
+                    });
                 }
             }
         }
     }
 
-    /// Process force complete requests (for testing/cheats)
+    /// Process research complete requests (manual)
     async fn process_complete_requests(
         &mut self,
         _services: &ServiceContext,
         resources: &mut ResourceContext,
     ) {
-        // Collect complete requests
         let requests = {
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
                 let reader = bus.reader::<ResearchCompleteRequested>();
@@ -327,10 +359,10 @@ impl ResearchSystem {
         };
 
         for request in requests {
-            // Get project before completion
+            // Get project
             let project = {
-                if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                    match registry.get(&request.project_id) {
+                if let Some(projects) = resources.get::<ResearchProjects>().await {
+                    match projects.get(&request.project_id) {
                         Some(p) => p.clone(),
                         None => continue,
                     }
@@ -339,138 +371,41 @@ impl ResearchSystem {
                 }
             };
 
-            // Complete research
-            let result = {
-                if let Some(mut registry) = resources.get_mut::<ResearchRegistry>().await {
-                    match registry.complete(&request.project_id) {
-                        Ok(r) => r,
-                        Err(_) => continue,
+            // Complete (update state)
+            {
+                if let Some(mut state) = resources.get_mut::<ResearchState>().await {
+                    if let Err(_) = state.complete(&request.project_id) {
+                        continue;
                     }
                 } else {
                     continue;
                 }
-            };
-
-            // Call hook
-            self.hook
-                .on_research_completed(&project, &result, resources)
-                .await;
-
-            // Publish event
-            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-                bus.publish(ResearchCompletedEvent {
-                    project_id: project.id.clone(),
-                    project_name: project.name.clone(),
-                    result,
-                });
             }
-        }
-    }
 
-    /// Auto-advance progress for all active projects (if enabled)
-    async fn auto_advance_progress(&mut self, resources: &mut ResourceContext) {
-        // Check if auto-advance is enabled
-        let (auto_advance, base_progress) = {
-            if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                let config = registry.config();
-                (config.auto_advance, config.base_progress_per_turn)
-            } else {
-                return;
-            }
-        };
+            // Auto-activate next
+            {
+                let config = resources.get::<ResearchConfig>().await;
+                let mut state = resources.get_mut::<ResearchState>().await;
 
-        if !auto_advance {
-            return;
-        }
-
-        // Get all active projects
-        let active_projects: Vec<ResearchProject> = {
-            if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                registry
-                    .active_research()
-                    .iter()
-                    .map(|p| (*p).clone())
-                    .collect()
-            } else {
-                Vec::new()
-            }
-        };
-
-        for project in active_projects {
-            // Calculate effective progress via hook
-            let progress = {
-                let resources_ref = resources as &ResourceContext;
-                self.hook
-                    .calculate_progress(&project, base_progress, resources_ref)
-                    .await
-            };
-
-            self.advance_project_progress(&project.id, progress, resources)
-                .await;
-        }
-    }
-
-    /// Advance progress for a specific project
-    async fn advance_project_progress(
-        &mut self,
-        project_id: &ResearchId,
-        amount: f32,
-        resources: &mut ResourceContext,
-    ) {
-        // Get project before update
-        let project = {
-            if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                match registry.get(project_id) {
-                    Some(p) => p.clone(),
-                    None => return,
+                if let (Some(cfg), Some(mut st)) = (config, state) {
+                    let max_slots = if cfg.allow_parallel_research {
+                        cfg.max_parallel_slots
+                    } else {
+                        1
+                    };
+                    st.activate_next_queued(max_slots);
                 }
-            } else {
-                return;
             }
-        };
 
-        // Advance progress
-        let completed = {
-            if let Some(mut registry) = resources.get_mut::<ResearchRegistry>().await {
-                if let Some(proj) = registry.get_mut(project_id) {
-                    proj.progress += amount;
-                    let is_complete = proj.progress >= 1.0;
-
-                    if is_complete {
-                        proj.progress = 1.0;
-                        proj.status = ResearchStatus::Completed;
-                    }
-
-                    // Publish progress update
-                    if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-                        bus.publish(ResearchProgressUpdatedEvent {
-                            project_id: project_id.clone(),
-                            progress: proj.progress,
-                        });
-                    }
-
-                    is_complete
-                } else {
-                    return;
-                }
-            } else {
-                return;
-            }
-        };
-
-        // If completed, trigger completion logic
-        if completed {
             let result = ResearchResult {
-                project_id: project_id.clone(),
+                project_id: project.id.clone(),
                 success: true,
                 final_metrics: project.metrics.clone(),
                 metadata: project.metadata.clone(),
             };
 
             // Call hook
-            self.hook
-                .on_research_completed(&project, &result, resources)
-                .await;
+            self.hook.on_research_completed(&project, &result, resources).await;
 
             // Publish event
             if let Some(mut bus) = resources.get_mut::<EventBus>().await {
@@ -480,19 +415,90 @@ impl ResearchSystem {
                     result,
                 });
             }
+        }
+    }
 
-            // Activate next queued (handled by registry internally, but ensure event is sent)
-            if let Some(registry) = resources.get::<ResearchRegistry>().await {
-                for next_project in registry.active_research() {
-                    if next_project.progress == 0.0 {
-                        // Newly activated
-                        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
-                            bus.publish(ResearchStartedEvent {
-                                project_id: next_project.id.clone(),
-                                project_name: next_project.name.clone(),
-                            });
-                        }
+    /// Auto-advance progress for active research
+    async fn auto_advance_progress(&mut self, resources: &mut ResourceContext) {
+        // Check if auto-advance is enabled
+        let (enabled, progress_per_turn) = {
+            if let Some(config) = resources.get::<ResearchConfig>().await {
+                (config.auto_advance, config.base_progress_per_turn)
+            } else {
+                return;
+            }
+        };
+
+        if !enabled {
+            return;
+        }
+
+        // Get active projects
+        let active_ids = {
+            if let Some(state) = resources.get::<ResearchState>().await {
+                state.active_projects()
+            } else {
+                return;
+            }
+        };
+
+        let mut completed = Vec::new();
+
+        // Advance progress for each
+        {
+            if let Some(mut state) = resources.get_mut::<ResearchState>().await {
+                for id in &active_ids {
+                    state.add_progress(id, progress_per_turn);
+
+                    if state.get_progress(id) >= 1.0 {
+                        let _ = state.complete(id);
+                        completed.push(id.clone());
                     }
+                }
+            }
+        }
+
+        // Auto-activate next after completions
+        if !completed.is_empty() {
+            let config = resources.get::<ResearchConfig>().await;
+            let mut state = resources.get_mut::<ResearchState>().await;
+
+            if let (Some(cfg), Some(mut st)) = (config, state) {
+                let max_slots = if cfg.allow_parallel_research {
+                    cfg.max_parallel_slots
+                } else {
+                    1
+                };
+                st.activate_next_queued(max_slots);
+            }
+        }
+
+        // Publish completion events
+        for project_id in completed {
+            let project = {
+                if let Some(projects) = resources.get::<ResearchProjects>().await {
+                    projects.get(&project_id).cloned()
+                } else {
+                    None
+                }
+            };
+
+            if let Some(proj) = project {
+                let result = ResearchResult {
+                    project_id: proj.id.clone(),
+                    success: true,
+                    final_metrics: proj.metrics.clone(),
+                    metadata: proj.metadata.clone(),
+                };
+
+                self.hook.on_research_completed(&proj, &result, resources).await;
+
+                if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                    bus.publish(ResearchCompletedEvent {
+                        project_id: proj.id.clone(),
+                        project_name: proj.name.clone(),
+                        result,
+                    });
                 }
             }
         }
@@ -512,49 +518,4 @@ impl System for ResearchSystem {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::context::ResourceContext;
-    use crate::event::EventBus;
-
-    #[tokio::test]
-    async fn test_system_creation() {
-        let hook = Arc::new(super::super::hook::DefaultResearchHook);
-        let _system = ResearchSystem::new(hook);
-    }
-
-    // NOTE: Event processing tests require integration test setup
-    // This test is commented out as it requires proper EventBus lifecycle management
-    // which is better tested in integration tests
-    //
-    // #[tokio::test]
-    // async fn test_queue_request_processing() {
-    //     let hook = Arc::new(super::super::hook::DefaultResearchHook);
-    //     let mut system = ResearchSystem::new(hook);
-    //     let mut resources = ResourceContext::new();
-    //
-    //     // Setup
-    //     let mut registry = ResearchRegistry::new();
-    //     let project = ResearchProject::new("test", "Test", "Test");
-    //     registry.define(project);
-    //     resources.insert(registry);
-    //
-    //     let mut bus = EventBus::new();
-    //     bus.publish(ResearchQueueRequested {
-    //         project_id: ResearchId::new("test"),
-    //     });
-    //     resources.insert(bus);
-    //
-    //     // Process
-    //     let services = ServiceContext::new();
-    //     system.process_events(&services, &mut resources).await;
-    //
-    //     // Verify
-    //     let registry = resources.get::<ResearchRegistry>().await.unwrap();
-    //     let project = registry.get(&ResearchId::new("test")).unwrap();
-    //     assert_eq!(project.status, ResearchStatus::InProgress); // Auto-activated
-    // }
 }

@@ -36,8 +36,7 @@ impl Event for ResearchCancelRequested {}
 /// Request to advance research progress manually
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResearchProgressRequested {
-    /// None = advance all active projects
-    pub project_id: Option<ResearchId>,
+    pub project_id: ResearchId,
     pub amount: f32,
 }
 
@@ -119,14 +118,14 @@ mod tests {
     }
 
     #[test]
-    fn test_progress_requested_with_none() {
+    fn test_progress_requested() {
         let event = ResearchProgressRequested {
-            project_id: None,
+            project_id: ResearchId::new("test_project"),
             amount: 0.5,
         };
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: ResearchProgressRequested = serde_json::from_str(&json).unwrap();
-        assert!(deserialized.project_id.is_none());
+        assert_eq!(deserialized.project_id.as_str(), "test_project");
         assert_eq!(deserialized.amount, 0.5);
     }
 }

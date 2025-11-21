@@ -229,9 +229,10 @@ pub use research::{
     ResearchResult,
     ResearchStatus,
     ResearchError,
-    // Resource
-    ResearchRegistry,
+    // Resources
+    ResearchProjects,
     ResearchConfig,
+    ResearchState,
     ProgressModel,
     // System
     ResearchSystem,

@@ -1,7 +1,9 @@
 //! Research plugin implementation
 
+use super::config::ResearchConfig;
 use super::hook::{DefaultResearchHook, ResearchHook};
-use super::registry::{ResearchConfig, ResearchRegistry};
+use super::research_projects::ResearchProjects;
+use super::state::ResearchState;
 use super::system::ResearchSystem;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
@@ -10,7 +12,7 @@ use std::sync::Arc;
 /// Built-in research/development/learning management plugin
 ///
 /// This plugin provides research/development/crafting progression for games.
-/// It registers ResearchRegistry resource and ResearchSystem that handles:
+/// It registers ResearchProjects, ResearchConfig, ResearchState resources and ResearchSystem that handles:
 /// - Processing research queue requests
 /// - Processing research start/cancel requests
 /// - Processing progress updates (manual or auto)
@@ -58,6 +60,7 @@ use std::sync::Arc;
 /// ```
 pub struct ResearchPlugin {
     hook: Arc<dyn ResearchHook>,
+    projects: ResearchProjects,
     config: ResearchConfig,
 }
 
@@ -65,10 +68,12 @@ impl ResearchPlugin {
     /// Create a new research plugin
     ///
     /// Uses the default hook (no-op) and default config by default.
-    /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
+    /// Use `with_hook()` to add custom behavior, `with_projects()` to define research projects,
+    /// and `with_config()` to customize configuration.
     pub fn new() -> Self {
         Self {
             hook: Arc::new(DefaultResearchHook),
+            projects: ResearchProjects::new(),
             config: ResearchConfig::default(),
         }
     }
@@ -114,6 +119,27 @@ impl ResearchPlugin {
         self
     }
 
+    /// Add research project definitions
+    ///
+    /// # Arguments
+    ///
+    /// * `projects` - Collection of research project definitions
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use issun::plugin::research::{ResearchPlugin, ResearchProjects, ResearchProject};
+    ///
+    /// let mut projects = ResearchProjects::new();
+    /// projects.define(ResearchProject::new("tech_1", "Advanced Technology", "Research description"));
+    ///
+    /// let plugin = ResearchPlugin::new().with_projects(projects);
+    /// ```
+    pub fn with_projects(mut self, projects: ResearchProjects) -> Self {
+        self.projects = projects;
+        self
+    }
+
     /// Set custom research configuration
     ///
     /// # Arguments
@@ -154,8 +180,14 @@ impl Plugin for ResearchPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register research registry resource
-        builder.register_runtime_state(ResearchRegistry::with_config(self.config.clone()));
+        // Register research project definitions (ReadOnly)
+        builder.register_resource(self.projects.clone());
+
+        // Register research configuration (ReadOnly)
+        builder.register_resource(self.config.clone());
+
+        // Register research state (Mutable)
+        builder.register_runtime_state(ResearchState::new());
 
         // Register research system with hook
         builder.register_system(Box::new(ResearchSystem::new(self.hook.clone())));

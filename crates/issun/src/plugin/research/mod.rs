@@ -60,30 +60,31 @@
 //! .add_metric("effectiveness", 1.5)
 //! .add_metric("reliability", 0.85);
 //!
-//! // Add to registry
-//! let mut registry = resources.get_mut::<ResearchRegistry>().await.unwrap();
-//! registry.define(project);
-//!
-//! // Queue research
+//! // Note: Projects should be added via plugin configuration
+//! // Queue research via event
 //! let mut bus = resources.get_mut::<EventBus>().await.unwrap();
 //! bus.publish(ResearchQueueRequested {
 //!     project_id: ResearchId::new("plasma_rifle"),
 //! });
 //! ```
 
+mod config;
 mod events;
 mod hook;
 mod plugin;
-mod registry;
+mod research_projects;
 mod service;
+mod state;
 mod system;
 mod types;
 
 // Re-export public API
+pub use config::{ProgressModel, ResearchConfig};
 pub use events::*;
 pub use hook::{DefaultResearchHook, ResearchHook};
 pub use plugin::ResearchPlugin;
-pub use registry::{ProgressModel, ResearchConfig, ResearchRegistry};
+pub use research_projects::ResearchProjects;
 pub use service::ResearchService;
+pub use state::ResearchState;
 pub use system::ResearchSystem;
 pub use types::{ResearchError, ResearchId, ResearchProject, ResearchResult, ResearchStatus};
