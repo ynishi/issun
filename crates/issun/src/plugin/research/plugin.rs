@@ -5,8 +5,7 @@ use super::hook::{DefaultResearchHook, ResearchHook};
 use super::research_projects::ResearchProjects;
 use super::state::ResearchState;
 use super::system::ResearchSystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Built-in research/development/learning management plugin
@@ -58,10 +57,19 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:research")]
 pub struct ResearchPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn ResearchHook>,
+    #[plugin(resource)]
     projects: ResearchProjects,
+    #[plugin(resource)]
     config: ResearchConfig,
+    #[plugin(runtime_state)]
+    state: ResearchState,
+    #[plugin(system)]
+    system: ResearchSystem,
 }
 
 impl ResearchPlugin {
@@ -71,10 +79,13 @@ impl ResearchPlugin {
     /// Use `with_hook()` to add custom behavior, `with_projects()` to define research projects,
     /// and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultResearchHook);
         Self {
-            hook: Arc::new(DefaultResearchHook),
+            hook: hook.clone(),
             projects: ResearchProjects::new(),
             config: ResearchConfig::default(),
+            state: ResearchState::new(),
+            system: ResearchSystem::new(hook),
         }
     }
 
@@ -115,7 +126,9 @@ impl ResearchPlugin {
     /// let plugin = ResearchPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: ResearchHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = ResearchSystem::new(hook);
         self
     }
 
@@ -173,39 +186,14 @@ impl Default for ResearchPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for ResearchPlugin {
-    fn name(&self) -> &'static str {
-        "research_plugin"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register research project definitions (ReadOnly)
-        builder.register_resource(self.projects.clone());
-
-        // Register research configuration (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register research state (Mutable)
-        builder.register_runtime_state(ResearchState::new());
-
-        // Register research system with hook
-        builder.register_system(Box::new(ResearchSystem::new(self.hook.clone())));
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_plugin_creation() {
-        let plugin = ResearchPlugin::new();
-        assert_eq!(plugin.name(), "research_plugin");
+        let _plugin = ResearchPlugin::new();
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -215,8 +203,8 @@ mod tests {
         #[async_trait::async_trait]
         impl ResearchHook for CustomHook {}
 
-        let plugin = ResearchPlugin::new().with_hook(CustomHook);
-        assert_eq!(plugin.name(), "research_plugin");
+        let _plugin = ResearchPlugin::new().with_hook(CustomHook);
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -227,7 +215,7 @@ mod tests {
             ..Default::default()
         };
 
-        let plugin = ResearchPlugin::new().with_config(config);
-        assert_eq!(plugin.name(), "research_plugin");
+        let _plugin = ResearchPlugin::new().with_config(config);
+        // Plugin derive macro automatically implements name()
     }
 }
