@@ -34,37 +34,16 @@ pub trait Combatant {
 }
 
 /// Combat log entry
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CombatLogEntry {
     pub turn: u32,
     pub message: String,
 }
 
 /// Combat result
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum CombatResult {
     Victory,
     Defeat,
     Ongoing,
-}
-
-/// Configuration for turn-based combat
-#[derive(Debug, Clone)]
-pub struct TurnBasedCombatConfig {
-    /// Enable combat log
-    pub enable_log: bool,
-    /// Max log entries to keep
-    pub max_log_entries: usize,
-    /// Score per enemy defeated
-    pub score_per_enemy: u32,
-}
-
-impl Default for TurnBasedCombatConfig {
-    fn default() -> Self {
-        Self {
-            enable_log: true,
-            max_log_entries: 100,
-            score_per_enemy: 10,
-        }
-    }
 }

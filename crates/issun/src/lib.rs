@@ -115,8 +115,9 @@ pub mod prelude {
         AutoSaveRequested,
         GameSaved,
         GameLoaded,
-        TurnBasedCombatConfig,
-        TurnBasedCombatPlugin,
+        CombatPlugin,
+        CombatConfig,
+        CombatHook,
     };
     pub use crate::resources::{Resource, Resources};
     pub use crate::scene::{Scene, SceneDirector, SceneTransition};

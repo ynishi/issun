@@ -51,18 +51,32 @@ pub use action::{
 };
 
 pub use combat::{
-    CombatLogEntry,
-    CombatResult,
-    // Service
-    CombatService,
-    // Engine
-    CombatSystem,
+    // Plugin
+    CombatPlugin,
+    // Hook
+    CombatHook,
+    DefaultCombatHook,
     // Types
     Combatant,
+    CombatLogEntry,
+    CombatResult,
+    // Resources
+    CombatConfig,
+    CombatState,
+    BattleState,
+    // Service
+    CombatService,
     DamageResult,
-    TurnBasedCombatConfig,
-    // Plugin
-    TurnBasedCombatPlugin,
+    // System
+    CombatSystem,
+    // Events
+    BattleId,
+    CombatStartRequested,
+    CombatTurnAdvanceRequested,
+    CombatEndRequested,
+    CombatStartedEvent,
+    CombatTurnCompletedEvent,
+    CombatEndedEvent,
 };
 
 pub use inventory::{

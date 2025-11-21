@@ -1,297 +1,240 @@
 //! Combat system implementation
-//!
-//! Core turn-based combat processing system.
 
-use super::service::CombatService;
-use super::{CombatLogEntry, CombatResult, Combatant, TurnBasedCombatConfig};
+use crate::context::{ResourceContext, ServiceContext};
+use crate::event::EventBus;
+use crate::system::System;
+use async_trait::async_trait;
+use std::any::Any;
+use std::sync::Arc;
 
-/// Core combat system
+use super::config::CombatConfig;
+use super::events::*;
+use super::hook::CombatHook;
+use super::state::CombatState;
+use super::types::CombatResult;
+
+/// System that processes combat events with hooks
 ///
-/// Generic over party members (P) and enemies (E) that implement Combatant
+/// This system:
+/// 1. Processes combat start requests
+/// 2. Processes combat turn advance requests
+/// 3. Processes combat end requests
+/// 4. Calls hooks for custom behavior
+/// 5. Publishes state change events for network replication
 ///
-/// This demonstrates the System pattern for Application Logic.
-/// CombatSystem orchestrates combat flow using CombatService.
-#[derive(Debug, Clone, issun_macros::System)]
-#[system(name = "combat_system")]
+/// # Feedback Loop
+///
+/// ```text
+/// Command Event → Validation (Hook) → State Update → Hook Call → State Event
+/// ```
 pub struct CombatSystem {
-    turn_count: u32,
-    log: Vec<CombatLogEntry>,
-    config: TurnBasedCombatConfig,
-    score: u32,
-    combat_service: CombatService,
+    hook: Arc<dyn CombatHook>,
 }
 
 impl CombatSystem {
-    pub fn new(config: TurnBasedCombatConfig) -> Self {
-        Self {
-            turn_count: 0,
-            log: Vec::new(),
-            config,
-            score: 0,
-            combat_service: CombatService::new(),
-        }
+    /// Create a new CombatSystem with a custom hook
+    pub fn new(hook: Arc<dyn CombatHook>) -> Self {
+        Self { hook }
     }
 
-    /// Get current turn count
-    pub fn turn_count(&self) -> u32 {
-        self.turn_count
-    }
-
-    /// Get combat log
-    pub fn log(&self) -> &[CombatLogEntry] {
-        &self.log
-    }
-
-    /// Get accumulated score
-    pub fn score(&self) -> u32 {
-        self.score
-    }
-
-    /// Add log entry
-    pub fn add_log(&mut self, message: String) {
-        if !self.config.enable_log {
-            return;
-        }
-
-        self.log.push(CombatLogEntry {
-            turn: self.turn_count,
-            message,
-        });
-
-        // Trim log if exceeds max
-        if self.log.len() > self.config.max_log_entries {
-            self.log
-                .drain(0..self.log.len() - self.config.max_log_entries);
-        }
-    }
-
-    /// Process a full combat turn with trait objects (for heterogeneous parties)
-    ///
-    /// # Arguments
-    ///
-    /// * `party` - Mutable slice of party member trait objects
-    /// * `enemies` - Mutable slice of enemy trait objects
-    /// * `damage_multiplier` - Multiplier for enemy damage (e.g., room buffs)
-    /// * `per_turn_damage` - Damage applied to all party members per turn (e.g., poison)
-    ///
-    /// Returns CombatResult indicating Victory, Defeat, or Ongoing
-    pub fn process_turn_dyn(
+    /// Process all combat events
+    pub async fn process_events(
         &mut self,
-        party: &mut [&mut dyn Combatant],
-        enemies: &mut [&mut dyn Combatant],
-        damage_multiplier: f32,
-        per_turn_damage: i32,
-    ) -> CombatResult {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        _services: &ServiceContext,
+        resources: &mut ResourceContext,
+    ) {
+        self.process_start_requests(resources).await;
+        self.process_turn_advance_requests(resources).await;
+        self.process_end_requests(resources).await;
+    }
 
-        self.turn_count += 1;
-        self.add_log(format!("--- Turn {} ---", self.turn_count));
+    /// Process combat start requests
+    async fn process_start_requests(&mut self, resources: &mut ResourceContext) {
+        // Collect start requests
+        let requests = {
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                let reader = bus.reader::<CombatStartRequested>();
+                reader.iter().cloned().collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
 
-        // Party attacks enemies (sequential targeting)
-        for attacker_ref in party.iter_mut().filter(|p| p.is_alive()) {
-            if let Some(enemy_ref) = enemies.iter_mut().find(|e| e.is_alive()) {
-                let attacker_name = attacker_ref.name().to_string();
-                let enemy_name = enemy_ref.name().to_string();
-
-                // Use CombatService for damage calculation (with defense)
-                let attacker_combatant: &mut dyn Combatant = *attacker_ref;
-                let enemy_combatant: &mut dyn Combatant = *enemy_ref;
-                let result =
-                    self.combat_service
-                        .apply_attack(attacker_combatant, enemy_combatant, 1.0);
-
-                self.add_log(format!(
-                    "{} attacks {} for {} damage!",
-                    attacker_name, enemy_name, result.actual_damage
-                ));
-
-                if result.is_dead {
-                    self.add_log(format!("{} defeated!", enemy_name));
-                    self.score += self.config.score_per_enemy;
+        for request in requests {
+            // Start battle (update state)
+            {
+                if let Some(mut state) = resources.get_mut::<CombatState>().await {
+                    if let Err(_) = state.start_battle(request.battle_id.clone()) {
+                        continue;
+                    }
+                } else {
+                    continue;
                 }
             }
-        }
 
-        // Enemies attack party (random targeting)
-        for enemy_ref in enemies.iter_mut().filter(|e| e.is_alive()) {
-            // Build list of alive party members for targeting
-            let alive_party_indices: Vec<usize> = party
-                .iter()
-                .enumerate()
-                .filter(|(_, p)| p.is_alive())
-                .map(|(i, _)| i)
-                .collect();
-
-            if alive_party_indices.is_empty() {
-                break;
+            // Publish event
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                bus.publish(CombatStartedEvent {
+                    battle_id: request.battle_id.clone(),
+                });
             }
-
-            let enemy_name = enemy_ref.name().to_string();
-
-            // Random target
-            let target_idx = rng.gen_range(0..alive_party_indices.len());
-            let party_idx = alive_party_indices[target_idx];
-
-            let target_name = party[party_idx].name().to_string();
-
-            // Use CombatService for damage calculation (with multiplier and defense)
-            // enemy_ref is &mut &mut dyn Combatant, *enemy_ref gives &mut dyn Combatant
-            // party[idx] already gives &mut dyn Combatant (no deref needed)
-            let enemy_combatant: &mut dyn Combatant = *enemy_ref;
-            let target_combatant: &mut dyn Combatant = party[party_idx];
-            let result = self.combat_service.apply_attack(
-                enemy_combatant,
-                target_combatant,
-                damage_multiplier,
-            );
-
-            self.add_log(format!(
-                "{} attacks {} for {} damage!",
-                enemy_name, target_name, result.actual_damage
-            ));
-        }
-
-        // Apply per-turn damage (e.g., contamination)
-        if per_turn_damage > 0 {
-            for member_ref in party.iter_mut().filter(|p| p.is_alive()) {
-                // Per-turn damage ignores defense
-                let member_combatant: &mut dyn Combatant = *member_ref;
-                let result =
-                    self.combat_service
-                        .apply_damage(member_combatant, per_turn_damage, None);
-                self.add_log(format!(
-                    "☢️ Contamination damages {} for {} HP!",
-                    member_combatant.name(),
-                    result.actual_damage
-                ));
-            }
-        }
-
-        // Check win/lose conditions
-        let all_enemies_dead = enemies.iter().all(|e| !e.is_alive());
-        let all_party_dead = party.iter().all(|p| !p.is_alive());
-
-        if all_enemies_dead {
-            CombatResult::Victory
-        } else if all_party_dead {
-            self.add_log("Your party has been defeated...".to_string());
-            CombatResult::Defeat
-        } else {
-            CombatResult::Ongoing
         }
     }
 
-    /// Process a full combat turn
-    ///
-    /// # Arguments
-    ///
-    /// * `party` - Mutable slice of party members
-    /// * `enemies` - Mutable slice of enemies
-    /// * `damage_multiplier` - Multiplier for enemy damage (e.g., room buffs)
-    /// * `per_turn_damage` - Damage applied to all party members per turn (e.g., poison)
-    ///
-    /// Returns CombatResult indicating Victory, Defeat, or Ongoing
-    pub fn process_turn<P, E>(
-        &mut self,
-        party: &mut [P],
-        enemies: &mut [E],
-        damage_multiplier: f32,
-        per_turn_damage: i32,
-    ) -> CombatResult
-    where
-        P: Combatant,
-        E: Combatant,
-    {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+    /// Process combat turn advance requests
+    async fn process_turn_advance_requests(&mut self, resources: &mut ResourceContext) {
+        // Collect turn advance requests
+        let requests = {
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                let reader = bus.reader::<CombatTurnAdvanceRequested>();
+                reader.iter().cloned().collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
 
-        self.turn_count += 1;
-        self.add_log(format!("--- Turn {} ---", self.turn_count));
+        for request in requests {
+            // Verify battle is active
+            let is_active = {
+                if let Some(state) = resources.get::<CombatState>().await {
+                    state.current_battle() == Some(&request.battle_id)
+                } else {
+                    false
+                }
+            };
 
-        // Party attacks enemies (sequential targeting)
-        for attacker in party.iter_mut().filter(|p| p.is_alive()) {
-            if let Some(enemy) = enemies.iter_mut().find(|e| e.is_alive()) {
-                let damage = attacker.attack();
-                let attacker_name = attacker.name().to_string();
-                let enemy_name = enemy.name().to_string();
+            if !is_active {
+                continue;
+            }
 
-                enemy.take_damage(damage);
-                self.add_log(format!(
-                    "{} attacks {} for {} damage!",
-                    attacker_name, enemy_name, damage
-                ));
+            // Advance turn
+            let turn = {
+                if let Some(mut state) = resources.get_mut::<CombatState>().await {
+                    match state.advance_turn() {
+                        Ok(t) => t,
+                        Err(_) => continue,
+                    }
+                } else {
+                    continue;
+                }
+            };
 
-                if !enemy.is_alive() {
-                    self.add_log(format!("{} defeated!", enemy_name));
-                    self.score += self.config.score_per_enemy;
+            // Call hook: before_turn
+            {
+                let resources_ref = resources as &ResourceContext;
+                if let Err(_) = self
+                    .hook
+                    .before_turn(&request.battle_id, turn, resources_ref)
+                    .await
+                {
+                    continue;
                 }
             }
-        }
 
-        // Enemies attack party (random targeting)
-        let alive_enemies: Vec<(String, i32)> = enemies
-            .iter()
-            .filter(|e| e.is_alive())
-            .map(|e| (e.name().to_string(), e.attack()))
-            .collect();
+            // Call hook: process_turn (main combat logic)
+            let log_entries = self
+                .hook
+                .process_turn(&request.battle_id, turn, resources)
+                .await;
 
-        // Build list of alive party member names
-        let mut alive_party_names: Vec<String> = party
-            .iter()
-            .filter(|p| p.is_alive())
-            .map(|p| p.name().to_string())
-            .collect();
-
-        for (enemy_name, base_damage) in alive_enemies {
-            if alive_party_names.is_empty() {
-                break;
-            }
-
-            // Apply damage multiplier
-            let damage = (base_damage as f32 * damage_multiplier) as i32;
-
-            // Random target
-            let target_idx = rng.gen_range(0..alive_party_names.len());
-            let target_name = alive_party_names[target_idx].clone();
-
-            // Find and damage the target
-            if let Some(target) = party.iter_mut().find(|p| p.name() == target_name) {
-                target.take_damage(damage);
-                self.add_log(format!(
-                    "{} attacks {} for {} damage!",
-                    enemy_name, target_name, damage
-                ));
-
-                if !target.is_alive() {
-                    alive_party_names.retain(|n| n != &target_name);
+            // Add log entries to state
+            {
+                let config = resources.get::<CombatConfig>().await;
+                if let Some(mut state) = resources.get_mut::<CombatState>().await {
+                    if let Some(cfg) = config {
+                        if cfg.enable_log {
+                            for entry in &log_entries {
+                                state.add_log(entry.clone(), cfg.max_log_entries);
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        // Apply per-turn damage (e.g., contamination)
-        if per_turn_damage > 0 {
-            for member in party.iter_mut().filter(|p| p.is_alive()) {
-                member.take_damage(per_turn_damage);
-                self.add_log(format!(
-                    "☢️ Contamination damages {} for {} HP!",
-                    member.name(),
-                    per_turn_damage
-                ));
+            // Call hook: after_turn
+            self.hook
+                .after_turn(&request.battle_id, turn, &log_entries, resources)
+                .await;
+
+            // Publish event
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                bus.publish(CombatTurnCompletedEvent {
+                    battle_id: request.battle_id.clone(),
+                    turn,
+                    log_entries,
+                });
             }
         }
+    }
 
-        // Check win/lose conditions
-        let all_enemies_dead = enemies.iter().all(|e| !e.is_alive());
-        let all_party_dead = party.iter().all(|p| !p.is_alive());
+    /// Process combat end requests
+    async fn process_end_requests(&mut self, resources: &mut ResourceContext) {
+        // Collect end requests
+        let requests = {
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                let reader = bus.reader::<CombatEndRequested>();
+                reader.iter().cloned().collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
 
-        if all_enemies_dead {
-            CombatResult::Victory
-        } else if all_party_dead {
-            self.add_log("Your party has been defeated...".to_string());
-            CombatResult::Defeat
-        } else {
-            CombatResult::Ongoing
+        for request in requests {
+            // Get final state before ending
+            let (total_turns, score) = {
+                if let Some(state) = resources.get::<CombatState>().await {
+                    if state.current_battle() != Some(&request.battle_id) {
+                        continue;
+                    }
+                    (state.turn_count(), state.score())
+                } else {
+                    continue;
+                }
+            };
+
+            // Default result is Ongoing (user requested end)
+            let result = CombatResult::Ongoing;
+
+            // End battle (update state)
+            {
+                if let Some(mut state) = resources.get_mut::<CombatState>().await {
+                    if let Err(_) = state.end_battle() {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            // Call hook
+            self.hook
+                .on_combat_ended(&request.battle_id, &result, total_turns, score, resources)
+                .await;
+
+            // Publish event
+            if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+                bus.publish(CombatEndedEvent {
+                    battle_id: request.battle_id.clone(),
+                    result,
+                    total_turns,
+                    score,
+                });
+            }
         }
+    }
+}
+
+#[async_trait]
+impl System for CombatSystem {
+    fn name(&self) -> &'static str {
+        "combat_system"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
