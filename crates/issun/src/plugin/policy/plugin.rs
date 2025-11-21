@@ -5,8 +5,7 @@ use super::hook::{DefaultPolicyHook, PolicyHook};
 use super::policies::Policies;
 use super::state::PolicyState;
 use super::system::PolicySystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Built-in policy management plugin
@@ -57,10 +56,19 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:policy")]
 pub struct PolicyPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn PolicyHook>,
+    #[plugin(resource)]
     config: PolicyConfig,
+    #[plugin(resource)]
     policies: Policies,
+    #[plugin(runtime_state)]
+    state: PolicyState,
+    #[plugin(system)]
+    system: PolicySystem,
 }
 
 impl PolicyPlugin {
@@ -69,10 +77,13 @@ impl PolicyPlugin {
     /// Uses the default hook (no-op) and default config by default.
     /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultPolicyHook);
         Self {
-            hook: Arc::new(DefaultPolicyHook),
+            hook: hook.clone(),
             config: PolicyConfig::default(),
             policies: Policies::new(),
+            state: PolicyState::new(),
+            system: PolicySystem::new(hook),
         }
     }
 
@@ -110,7 +121,9 @@ impl PolicyPlugin {
     /// let plugin = PolicyPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: PolicyHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = PolicySystem::new(hook);
         self
     }
 
@@ -169,39 +182,14 @@ impl Default for PolicyPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for PolicyPlugin {
-    fn name(&self) -> &'static str {
-        "policy_plugin"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register policy definitions (ReadOnly)
-        builder.register_resource(self.policies.clone());
-
-        // Register policy config (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register policy state (Mutable)
-        builder.register_runtime_state(PolicyState::new());
-
-        // Register policy system with hook
-        builder.register_system(Box::new(PolicySystem::new(self.hook.clone())));
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_plugin_creation() {
-        let plugin = PolicyPlugin::new();
-        assert_eq!(plugin.name(), "policy_plugin");
+        let _plugin = PolicyPlugin::new();
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -211,8 +199,8 @@ mod tests {
         #[async_trait::async_trait]
         impl PolicyHook for CustomHook {}
 
-        let plugin = PolicyPlugin::new().with_hook(CustomHook);
-        assert_eq!(plugin.name(), "policy_plugin");
+        let _plugin = PolicyPlugin::new().with_hook(CustomHook);
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -222,8 +210,8 @@ mod tests {
             ..Default::default()
         };
 
-        let plugin = PolicyPlugin::new().with_config(config);
-        assert_eq!(plugin.name(), "policy_plugin");
+        let _plugin = PolicyPlugin::new().with_config(config);
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -233,7 +221,7 @@ mod tests {
         let mut policies = Policies::new();
         policies.add(Policy::new("test", "Test", "Test policy"));
 
-        let plugin = PolicyPlugin::new().with_policies(policies);
-        assert_eq!(plugin.name(), "policy_plugin");
+        let _plugin = PolicyPlugin::new().with_policies(policies);
+        // Plugin derive macro automatically implements name()
     }
 }
