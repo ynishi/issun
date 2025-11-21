@@ -4,8 +4,7 @@ use super::factions::Factions;
 use super::hook::{DefaultFactionHook, FactionHook};
 use super::state::FactionState;
 use super::system::FactionSystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Built-in faction management plugin
@@ -60,9 +59,17 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:faction")]
 pub struct FactionPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn FactionHook>,
+    #[plugin(resource)]
     factions: Factions,
+    #[plugin(runtime_state)]
+    state: FactionState,
+    #[plugin(system)]
+    system: FactionSystem,
 }
 
 impl FactionPlugin {
@@ -71,9 +78,12 @@ impl FactionPlugin {
     /// Uses the default hook (no-op) by default.
     /// Use `with_hook()` to add custom behavior.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultFactionHook);
         Self {
-            hook: Arc::new(DefaultFactionHook),
+            hook: hook.clone(),
             factions: Factions::new(),
+            state: FactionState::new(),
+            system: FactionSystem::new(hook),
         }
     }
 
@@ -113,7 +123,9 @@ impl FactionPlugin {
     ///     .with_hook(MyHook);
     /// ```
     pub fn with_hook(mut self, hook: impl FactionHook + 'static) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = FactionSystem::new(hook);
         self
     }
 
@@ -145,49 +157,26 @@ impl Default for FactionPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for FactionPlugin {
-    fn name(&self) -> &'static str {
-        "issun:faction"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register faction definitions (ReadOnly)
-        builder.register_resource(self.factions.clone());
-
-        // Register faction state (Mutable)
-        builder.register_runtime_state(FactionState::new());
-
-        // Register system with hook
-        builder.register_system(Box::new(FactionSystem::new(Arc::clone(&self.hook))));
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_plugin_name() {
-        let plugin = FactionPlugin::default();
-        assert_eq!(plugin.name(), "issun:faction");
+        let _plugin = FactionPlugin::default();
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
     fn test_plugin_default() {
-        let plugin = FactionPlugin::default();
+        let _plugin = FactionPlugin::default();
         // Should not panic
-        assert_eq!(plugin.name(), "issun:faction");
     }
 
     #[test]
     fn test_plugin_with_hook() {
-        let plugin = FactionPlugin::new().with_hook(DefaultFactionHook);
-        assert_eq!(plugin.name(), "issun:faction");
+        let _plugin = FactionPlugin::new().with_hook(DefaultFactionHook);
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
@@ -197,7 +186,7 @@ mod tests {
         let mut factions = Factions::new();
         factions.add(Faction::new("crimson", "Crimson Syndicate"));
 
-        let plugin = FactionPlugin::new().with_factions(factions);
-        assert_eq!(plugin.name(), "issun:faction");
+        let _plugin = FactionPlugin::new().with_factions(factions);
+        // Plugin derive macro automatically implements name()
     }
 }
