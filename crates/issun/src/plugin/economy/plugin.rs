@@ -6,44 +6,22 @@ use super::resources::{
 use super::service::EconomyService;
 use super::state::{ResourceInventory, Wallet};
 use super::system::EconomySystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 
 /// Plugin for economy system
+#[derive(Default, Plugin)]
+#[plugin(name = "issun:economy")]
+// Resources
+#[plugin(resource = CurrencyDefinitions)]
+#[plugin(resource = EconomyConfig)]
+#[plugin(resource = ResourceDefinitions)]
+#[plugin(resource = ConversionRules)]
+#[plugin(resource = ExchangeRates)]
+// States
+#[plugin(state = Wallet)]
+#[plugin(state = ResourceInventory)]
+// Service
+#[plugin(service = EconomyService)]
+// System
+#[plugin(system = EconomySystem)]
 pub struct EconomyPlugin;
-
-impl Default for EconomyPlugin {
-    fn default() -> Self {
-        Self
-    }
-}
-
-#[async_trait]
-impl Plugin for EconomyPlugin {
-    fn name(&self) -> &'static str {
-        "issun:economy"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register currency resources
-        builder.register_resource(CurrencyDefinitions::new());
-        builder.register_resource(EconomyConfig::default());
-
-        // Register resource system resources
-        builder.register_resource(ResourceDefinitions::new());
-        builder.register_resource(ConversionRules::new());
-
-        // Register exchange system resources
-        builder.register_resource(ExchangeRates::new());
-
-        // Register runtime states
-        builder.register_runtime_state(Wallet::new());
-        builder.register_runtime_state(ResourceInventory::new());
-
-        // Register service
-        builder.register_service(Box::new(EconomyService));
-
-        // Register system
-        builder.register_system(Box::new(EconomySystem));
-    }
-}

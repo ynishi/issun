@@ -25,6 +25,7 @@ use super::types::DungeonState;
 /// ```text
 /// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
+#[derive(Clone)]
 pub struct DungeonSystem {
     hook: Arc<dyn DungeonHook>,
 }

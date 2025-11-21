@@ -627,13 +627,13 @@ pub fn derive_resource(input: TokenStream) -> TokenStream {
 /// #[plugin(state = MyState)]
 /// pub struct MyPlugin;
 /// ```
-#[proc_macro_derive(Plugin, attributes(plugin))]
+#[proc_macro_derive(Plugin, attributes(plugin, resource, state, system, service))]
 pub fn derive_plugin(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
     let crate_name = get_crate_name();
 
-    // Parse plugin attributes
+    // Parse plugin attributes (struct level)
     let mut plugin_name = None;
     let mut services = Vec::new();
     let mut systems = Vec::new();
@@ -698,33 +698,66 @@ pub fn derive_plugin(input: TokenStream) -> TokenStream {
             .collect::<String>()
     });
 
-    // Generate service registrations
-    let service_registrations = services.iter().map(|ty| {
+    // Generate registrations from attributes (Type::default())
+    let attr_service_registrations = services.iter().map(|ty| {
         quote! {
             builder.register_service(Box::new(#ty::default()));
         }
     });
 
-    // Generate system registrations
-    let system_registrations = systems.iter().map(|ty| {
+    let attr_system_registrations = systems.iter().map(|ty| {
         quote! {
             builder.register_system(Box::new(#ty::default()));
         }
     });
 
-    // Generate state registrations
-    let state_registrations = states.iter().map(|ty| {
+    let attr_state_registrations = states.iter().map(|ty| {
         quote! {
             builder.register_runtime_state(#ty::default());
         }
     });
 
-    // Generate resource registrations
-    let resource_registrations = resources.iter().map(|ty| {
+    let attr_resource_registrations = resources.iter().map(|ty| {
         quote! {
             builder.register_resource(#ty::default());
         }
     });
+
+    // Parse field attributes (instance registration)
+    let mut field_registrations = Vec::new();
+
+    if let Data::Struct(data) = &input.data {
+        for field in &data.fields {
+            let field_name = &field.ident;
+
+            // Skip fields without identifiers (tuple structs) for now, or handle them if needed.
+            // The requirement implies named fields for clarity, but let's support named fields primarily.
+            if field_name.is_none() {
+                continue;
+            }
+            let field_access = quote! { self.#field_name };
+
+            for attr in &field.attrs {
+                if attr.path().is_ident("resource") {
+                    field_registrations.push(quote! {
+                        builder.register_resource(#field_access.clone());
+                    });
+                } else if attr.path().is_ident("state") {
+                    field_registrations.push(quote! {
+                        builder.register_runtime_state(#field_access.clone());
+                    });
+                } else if attr.path().is_ident("system") {
+                    field_registrations.push(quote! {
+                        builder.register_system(Box::new(#field_access.clone()));
+                    });
+                } else if attr.path().is_ident("service") {
+                    field_registrations.push(quote! {
+                        builder.register_service(Box::new(#field_access.clone()));
+                    });
+                }
+            }
+        }
+    }
 
     let expanded = quote! {
         #[::async_trait::async_trait]
@@ -735,10 +768,15 @@ pub fn derive_plugin(input: TokenStream) -> TokenStream {
 
             fn build(&self, builder: &mut dyn #crate_name::plugin::PluginBuilder) {
                 use #crate_name::plugin::PluginBuilderExt;
-                #(#service_registrations)*
-                #(#system_registrations)*
-                #(#state_registrations)*
-                #(#resource_registrations)*
+
+                // Attribute-based registrations (Types)
+                #(#attr_service_registrations)*
+                #(#attr_system_registrations)*
+                #(#attr_state_registrations)*
+                #(#attr_resource_registrations)*
+
+                // Field-based registrations (Instances)
+                #(#field_registrations)*
             }
         }
     };

@@ -4,8 +4,7 @@ use super::hook::{DefaultDungeonHook, DungeonHook};
 use super::service::DungeonService;
 use super::system::DungeonSystem;
 use super::types::{DungeonConfig, DungeonState};
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Dungeon plugin
@@ -56,9 +55,22 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:dungeon")]
 pub struct DungeonPlugin {
     hook: Arc<dyn DungeonHook>,
+
+    #[resource]
     config: DungeonConfig,
+
+    #[state]
+    state: DungeonState,
+
+    #[service]
+    service: DungeonService,
+
+    #[system]
+    system: DungeonSystem,
 }
 
 impl DungeonPlugin {
@@ -67,9 +79,13 @@ impl DungeonPlugin {
     /// Uses the default hook (no-op) and default config by default.
     /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultDungeonHook);
         Self {
-            hook: Arc::new(DefaultDungeonHook),
+            hook: hook.clone(),
             config: DungeonConfig::default(),
+            state: DungeonState::default(),
+            service: DungeonService::new(),
+            system: DungeonSystem::new(hook),
         }
     }
 
@@ -107,7 +123,10 @@ impl DungeonPlugin {
     /// let plugin = DungeonPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: DungeonHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        // Re-create system with new hook
+        self.system = DungeonSystem::new(hook);
         self
     }
 
@@ -142,38 +161,10 @@ impl Default for DungeonPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for DungeonPlugin {
-    fn name(&self) -> &'static str {
-        "issun:dungeon"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register dungeon config (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register dungeon state (Mutable)
-        builder.register_runtime_state(DungeonState::default());
-
-        // Register dungeon service (Domain Service - pure logic)
-        builder.register_service(Box::new(DungeonService::new()));
-
-        // Register dungeon system with hook
-        builder.register_system(Box::new(DungeonSystem::new(self.hook.clone())));
-    }
-
-    fn dependencies(&self) -> Vec<&'static str> {
-        vec![]
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plugin::Plugin;
 
     #[test]
     fn test_plugin_creation() {

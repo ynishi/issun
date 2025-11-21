@@ -21,9 +21,16 @@
 //!
 //! // 2. Define a metric
 //! let metric_id = MetricId::new("player_score");
-//! let definition = MetricDefinition::new(metric_id.clone(), MetricType::Counter);
+//! let definition = MetricDefinition::new(
+//!     "player_score",
+//!     "Player Score",
+//!     "Total player score points",
+//!     MetricType::Counter,
+//!     "points"
+//! );
 //!
 //! // 3. Record values
+//! let timestamp = 1000; // game time or epoch time
 //! let value = MetricValue::new(metric_id, 100.0, timestamp);
 //!
 //! // 4. Generate reports with aggregations

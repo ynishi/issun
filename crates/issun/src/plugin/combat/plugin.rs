@@ -5,8 +5,7 @@ use super::hook::{CombatHook, DefaultCombatHook};
 use super::service::CombatService;
 use super::state::CombatState;
 use super::system::CombatSystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Turn-based combat plugin
@@ -56,9 +55,22 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:combat")]
 pub struct CombatPlugin {
     hook: Arc<dyn CombatHook>,
+
+    #[resource]
     config: CombatConfig,
+
+    #[state]
+    state: CombatState,
+
+    #[service]
+    service: CombatService,
+
+    #[system]
+    system: CombatSystem,
 }
 
 impl CombatPlugin {
@@ -67,9 +79,13 @@ impl CombatPlugin {
     /// Uses the default hook (no-op) and default config by default.
     /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultCombatHook);
         Self {
-            hook: Arc::new(DefaultCombatHook),
+            hook: hook.clone(),
             config: CombatConfig::default(),
+            state: CombatState::new(),
+            service: CombatService::new(),
+            system: CombatSystem::new(hook),
         }
     }
 
@@ -109,7 +125,10 @@ impl CombatPlugin {
     /// let plugin = CombatPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: CombatHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        // Re-create system with new hook
+        self.system = CombatSystem::new(hook);
         self
     }
 
@@ -144,38 +163,10 @@ impl Default for CombatPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for CombatPlugin {
-    fn name(&self) -> &'static str {
-        "issun:combat"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register combat config (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register combat state (Mutable)
-        builder.register_runtime_state(CombatState::new());
-
-        // Register combat service (Domain Service - pure logic)
-        builder.register_service(Box::new(CombatService::new()));
-
-        // Register combat system with hook
-        builder.register_system(Box::new(CombatSystem::new(self.hook.clone())));
-    }
-
-    fn dependencies(&self) -> Vec<&'static str> {
-        vec![]
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plugin::Plugin;
 
     #[test]
     fn test_plugin_creation() {

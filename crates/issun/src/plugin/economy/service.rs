@@ -21,7 +21,7 @@ pub enum EconomyError {
 }
 
 /// Service for currency calculations and transactions
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct EconomyService;
 
 impl EconomyService {
