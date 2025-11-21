@@ -36,6 +36,7 @@ pub mod policy;
 pub mod reputation;
 pub mod research;
 pub mod room_buff;
+pub mod save_load;
 pub mod territory;
 pub mod time;
 
@@ -127,8 +128,13 @@ pub use territory::{
     TerritoryError,
     ControlChanged,
     Developed,
-    // Resource
-    TerritoryRegistry,
+    // Resources
+    Territories,
+    TerritoryState,
+    // Service
+    TerritoryService,
+    // System
+    TerritorySystem,
     // Events
     TerritoryControlChangeRequested,
     TerritoryControlChangedEvent,
@@ -273,6 +279,34 @@ pub use metrics::{
     ReportGenerated,
     MetricRemoved,
     MetricsCleared,
+};
+
+pub use save_load::{
+    // Plugin
+    SaveLoadPlugin,
+    // Hook
+    SaveLoadHook,
+    DefaultSaveLoadHook,
+    // Config
+    SaveLoadConfig,
+    SaveFormat,
+    // System
+    SaveLoadSystem,
+    // Events - Command
+    SaveGameRequested,
+    LoadGameRequested,
+    DeleteSaveRequested,
+    ListSavesRequested,
+    GetSaveMetadataRequested,
+    AutoSaveRequested,
+    // Events - State
+    GameSaved,
+    GameLoaded,
+    SaveDeleted,
+    SavesListed,
+    SaveMetadataRetrieved,
+    AutoSaveCompleted,
+    SaveLoadFailed,
 };
 
 pub use time::{

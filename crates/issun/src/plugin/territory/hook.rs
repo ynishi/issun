@@ -78,7 +78,8 @@ pub trait TerritoryHook: Send + Sync {
     ///
     /// # Arguments
     ///
-    /// * `territory` - The territory to develop
+    /// * `territory` - The territory to develop (definition only)
+    /// * `current_level` - Current development level from TerritoryState
     /// * `resources` - Access to game resources (read-only for calculations)
     ///
     /// # Returns
@@ -90,11 +91,12 @@ pub trait TerritoryHook: Send + Sync {
     /// Returns fixed cost based on development level: `100 * (level + 1)`
     async fn calculate_development_cost(
         &self,
-        territory: &Territory,
+        _territory: &Territory,
+        current_level: u32,
         _resources: &ResourceContext,
     ) -> Result<i64, String> {
         // Default: fixed cost based on level
-        Ok(100 * (territory.development_level + 1) as i64)
+        Ok(100 * (current_level + 1) as i64)
     }
 
     /// Called after territory is developed
@@ -175,7 +177,7 @@ mod tests {
         // Should not panic
         hook.on_control_changed(&territory, &change, &mut resources).await;
 
-        let cost = hook.calculate_development_cost(&territory, &resources).await;
+        let cost = hook.calculate_development_cost(&territory, 0, &resources).await;
         assert!(cost.is_ok());
         assert_eq!(cost.unwrap(), 100); // (0 + 1) * 100
 
@@ -196,12 +198,14 @@ mod tests {
         let hook = DefaultTerritoryHook;
         let resources = ResourceContext::new();
 
-        let territory_lv0 = Territory::new("test", "Test").with_development(0);
-        let cost = hook.calculate_development_cost(&territory_lv0, &resources).await.unwrap();
+        let territory = Territory::new("test", "Test");
+
+        // Level 0 -> 1
+        let cost = hook.calculate_development_cost(&territory, 0, &resources).await.unwrap();
         assert_eq!(cost, 100); // (0 + 1) * 100
 
-        let territory_lv3 = Territory::new("test", "Test").with_development(3);
-        let cost = hook.calculate_development_cost(&territory_lv3, &resources).await.unwrap();
+        // Level 3 -> 4
+        let cost = hook.calculate_development_cost(&territory, 3, &resources).await.unwrap();
         assert_eq!(cost, 400); // (3 + 1) * 100
     }
 }

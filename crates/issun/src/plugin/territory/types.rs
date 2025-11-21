@@ -38,7 +38,10 @@ impl From<&str> for TerritoryId {
     }
 }
 
-/// A territory with control, development, and effects
+/// A territory definition (read-only asset)
+///
+/// Contains only the immutable definition of a territory.
+/// Runtime state (control, development) is managed separately in TerritoryState.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Territory {
     /// Unique identifier
@@ -47,22 +50,13 @@ pub struct Territory {
     /// Display name
     pub name: String,
 
-    /// Control/Ownership: 0.0 (no control) to 1.0 (full control)
-    pub control: f32,
-
-    /// Development level: 0 (undeveloped) to N
-    pub development_level: u32,
-
-    /// Effects applied by this territory
-    pub effects: TerritoryEffects,
-
     /// Game-specific metadata (extensible)
     #[serde(default)]
     pub metadata: serde_json::Value,
 }
 
 impl Territory {
-    /// Create a new territory
+    /// Create a new territory definition
     ///
     /// # Arguments
     ///
@@ -76,46 +70,20 @@ impl Territory {
     ///
     /// let territory = Territory::new("nova-harbor", "Nova Harbor");
     /// assert_eq!(territory.id.as_str(), "nova-harbor");
-    /// assert_eq!(territory.control, 0.0);
-    /// assert_eq!(territory.development_level, 0);
+    /// assert_eq!(territory.name, "Nova Harbor");
     /// ```
     pub fn new(id: impl Into<String>, name: impl Into<String>) -> Self {
         Self {
             id: TerritoryId::new(id),
             name: name.into(),
-            control: 0.0,
-            development_level: 0,
-            effects: TerritoryEffects::default(),
             metadata: serde_json::Value::Null,
         }
-    }
-
-    /// Create a territory with initial control
-    pub fn with_control(mut self, control: f32) -> Self {
-        self.control = control.clamp(0.0, 1.0);
-        self
-    }
-
-    /// Create a territory with initial development level
-    pub fn with_development(mut self, level: u32) -> Self {
-        self.development_level = level;
-        self
     }
 
     /// Create a territory with custom metadata
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
         self.metadata = metadata;
         self
-    }
-
-    /// Check if fully controlled
-    pub fn is_controlled(&self) -> bool {
-        self.control >= 1.0
-    }
-
-    /// Check if developed to a certain level
-    pub fn is_developed_to(&self, level: u32) -> bool {
-        self.development_level >= level
     }
 }
 
@@ -219,32 +187,17 @@ mod tests {
         let territory = Territory::new("nova", "Nova Harbor");
         assert_eq!(territory.id.as_str(), "nova");
         assert_eq!(territory.name, "Nova Harbor");
-        assert_eq!(territory.control, 0.0);
-        assert_eq!(territory.development_level, 0);
-        assert!(!territory.is_controlled());
-        assert!(territory.is_developed_to(0));
-        assert!(!territory.is_developed_to(1));
     }
 
     #[test]
-    fn test_territory_with_control() {
+    fn test_territory_with_metadata() {
+        let metadata = serde_json::json!({
+            "description": "A bustling port city",
+            "region": "north"
+        });
         let territory = Territory::new("nova", "Nova Harbor")
-            .with_control(0.5);
-        assert_eq!(territory.control, 0.5);
-
-        // Test clamping
-        let territory = Territory::new("nova", "Nova Harbor")
-            .with_control(1.5);
-        assert_eq!(territory.control, 1.0);
-    }
-
-    #[test]
-    fn test_territory_with_development() {
-        let territory = Territory::new("nova", "Nova Harbor")
-            .with_development(3);
-        assert_eq!(territory.development_level, 3);
-        assert!(territory.is_developed_to(3));
-        assert!(territory.is_developed_to(2));
+            .with_metadata(metadata.clone());
+        assert_eq!(territory.metadata, metadata);
     }
 
     #[test]

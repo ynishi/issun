@@ -1,11 +1,11 @@
-//! Territory definitions (read-only asset/config)
+//! Territory collection (read-only resource)
 
 use super::types::*;
 use issun_macros::Resource as DeriveResource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Territory definitions (read-only)
+/// Collection of all territory definitions (read-only)
 ///
 /// Contains all territory definitions loaded from assets/config.
 /// These are immutable during gameplay.
@@ -13,24 +13,24 @@ use std::collections::HashMap;
 /// # Example
 ///
 /// ```ignore
-/// use issun::plugin::territory::{TerritoryDefinitions, Territory};
+/// use issun::plugin::territory::{Territories, Territory};
 ///
-/// let mut definitions = TerritoryDefinitions::new();
-/// definitions.add(Territory::new("nova", "Nova Harbor"));
-/// definitions.add(Territory::new("rust-city", "Rust City"));
+/// let mut territories = Territories::new();
+/// territories.add(Territory::new("nova", "Nova Harbor"));
+/// territories.add(Territory::new("rust-city", "Rust City"));
 ///
 /// // Query
-/// if let Some(territory) = definitions.get(&"nova".into()) {
+/// if let Some(territory) = territories.get(&"nova".into()) {
 ///     println!("Found: {}", territory.name);
 /// }
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveResource)]
-pub struct TerritoryDefinitions {
+pub struct Territories {
     territories: HashMap<TerritoryId, Territory>,
 }
 
-impl TerritoryDefinitions {
-    /// Create a new empty definitions
+impl Territories {
+    /// Create a new empty collection
     pub fn new() -> Self {
         Self {
             territories: HashMap::new(),
@@ -76,7 +76,7 @@ impl TerritoryDefinitions {
     }
 }
 
-impl Default for TerritoryDefinitions {
+impl Default for Territories {
     fn default() -> Self {
         Self::new()
     }
@@ -87,58 +87,58 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_definitions_new() {
-        let definitions = TerritoryDefinitions::new();
-        assert_eq!(definitions.len(), 0);
-        assert!(definitions.is_empty());
+    fn test_territories_new() {
+        let territories = Territories::new();
+        assert_eq!(territories.len(), 0);
+        assert!(territories.is_empty());
     }
 
     #[test]
     fn test_add_and_get() {
-        let mut definitions = TerritoryDefinitions::new();
+        let mut territories = Territories::new();
         let territory = Territory::new("nova", "Nova Harbor");
-        definitions.add(territory);
+        territories.add(territory);
 
-        assert_eq!(definitions.len(), 1);
-        assert!(!definitions.is_empty());
+        assert_eq!(territories.len(), 1);
+        assert!(!territories.is_empty());
 
-        let retrieved = definitions.get(&TerritoryId::new("nova"));
+        let retrieved = territories.get(&TerritoryId::new("nova"));
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().name, "Nova Harbor");
     }
 
     #[test]
     fn test_contains() {
-        let mut definitions = TerritoryDefinitions::new();
-        definitions.add(Territory::new("nova", "Nova Harbor"));
+        let mut territories = Territories::new();
+        territories.add(Territory::new("nova", "Nova Harbor"));
 
-        assert!(definitions.contains(&TerritoryId::new("nova")));
-        assert!(!definitions.contains(&TerritoryId::new("rust")));
+        assert!(territories.contains(&TerritoryId::new("nova")));
+        assert!(!territories.contains(&TerritoryId::new("rust")));
     }
 
     #[test]
     fn test_iter() {
-        let mut definitions = TerritoryDefinitions::new();
-        definitions.add(Territory::new("nova", "Nova Harbor"));
-        definitions.add(Territory::new("rust", "Rust City"));
+        let mut territories = Territories::new();
+        territories.add(Territory::new("nova", "Nova Harbor"));
+        territories.add(Territory::new("rust", "Rust City"));
 
-        let count = definitions.iter().count();
+        let count = territories.iter().count();
         assert_eq!(count, 2);
 
-        let names: Vec<_> = definitions.iter().map(|t| t.name.as_str()).collect();
+        let names: Vec<_> = territories.iter().map(|t| t.name.as_str()).collect();
         assert!(names.contains(&"Nova Harbor"));
         assert!(names.contains(&"Rust City"));
     }
 
     #[test]
     fn test_query() {
-        let mut definitions = TerritoryDefinitions::new();
-        definitions.add(Territory::new("nova", "Nova Harbor").with_control(0.8));
-        definitions.add(Territory::new("rust", "Rust City").with_control(0.3));
+        let mut territories = Territories::new();
+        territories.add(Territory::new("nova", "Nova Harbor"));
+        territories.add(Territory::new("rust", "Rust City"));
 
-        // Query territories with high initial control
-        let high_control = definitions.query(|t| t.control > 0.5);
-        assert_eq!(high_control.len(), 1);
-        assert_eq!(high_control[0].id.as_str(), "nova");
+        // Query by name
+        let nova_only = territories.query(|t| t.name == "Nova Harbor");
+        assert_eq!(nova_only.len(), 1);
+        assert_eq!(nova_only[0].id.as_str(), "nova");
     }
 }

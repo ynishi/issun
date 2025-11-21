@@ -106,6 +106,15 @@ pub mod prelude {
         RoomBuffDatabase,
         RoomBuffPlugin,
         RoomId,
+        // Save/Load
+        SaveLoadPlugin,
+        SaveLoadConfig,
+        SaveFormat,
+        SaveGameRequested,
+        LoadGameRequested,
+        AutoSaveRequested,
+        GameSaved,
+        GameLoaded,
         TurnBasedCombatConfig,
         TurnBasedCombatPlugin,
     };

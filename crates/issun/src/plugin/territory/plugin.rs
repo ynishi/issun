@@ -1,8 +1,9 @@
 //! Territory plugin implementation
 
 use super::hook::{DefaultTerritoryHook, TerritoryHook};
-use super::registry::TerritoryRegistry;
+use super::state::TerritoryState;
 use super::system::TerritorySystem;
+use super::territories::Territories;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -10,7 +11,8 @@ use std::sync::Arc;
 /// Built-in territory management plugin
 ///
 /// This plugin provides territory management for strategy games.
-/// It registers TerritoryRegistry resource and TerritorySystem that handles:
+/// It registers Territories (definitions) and TerritoryState (runtime state) resources,
+/// and TerritorySystem that handles:
 /// - Processing territory control changes
 /// - Processing territory development
 /// - Custom hooks for game-specific behavior
@@ -120,8 +122,11 @@ impl Plugin for TerritoryPlugin {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register resource
-        builder.register_runtime_state(TerritoryRegistry::new());
+        // Register territory definitions (ReadOnly asset)
+        builder.register_resource(Territories::new());
+
+        // Register territory state (Mutable runtime state)
+        builder.register_runtime_state(TerritoryState::new());
 
         // Register system with hook
         builder.register_system(Box::new(TerritorySystem::new(Arc::clone(&self.hook))));

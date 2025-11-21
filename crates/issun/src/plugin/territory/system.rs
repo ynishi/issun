@@ -9,7 +9,8 @@ use std::sync::Arc;
 
 use super::events::*;
 use super::hook::TerritoryHook;
-use super::registry::TerritoryRegistry;
+use super::state::TerritoryState;
+use super::territories::Territories;
 
 /// System that processes territory events with hooks
 ///
@@ -31,7 +32,7 @@ impl TerritorySystem {
     /// Process control change requests
     ///
     /// Listens for `TerritoryControlChangeRequested` events and:
-    /// 1. Updates registry
+    /// 1. Updates TerritoryState
     /// 2. Calls hook
     /// 3. Publishes `TerritoryControlChangedEvent`
     pub async fn process_control_changes(
@@ -50,22 +51,22 @@ impl TerritorySystem {
         };
 
         for request in requests {
-            // Update registry
+            // Update state
             let change = {
-                if let Some(mut registry) = resources.get_mut::<TerritoryRegistry>().await {
-                    match registry.adjust_control(&request.id, request.delta) {
-                        Ok(change) => change,
-                        Err(_) => continue,
+                if let Some(mut state) = resources.get_mut::<TerritoryState>().await {
+                    match state.adjust_control(&request.id, request.delta) {
+                        Some(change) => change,
+                        None => continue,
                     }
                 } else {
                     continue;
                 }
             };
 
-            // Get territory for hook
+            // Get territory definition for hook
             let territory = {
-                if let Some(registry) = resources.get::<TerritoryRegistry>().await {
-                    match registry.get(&request.id) {
+                if let Some(territories) = resources.get::<Territories>().await {
+                    match territories.get(&request.id) {
                         Some(t) => t.clone(),
                         None => continue,
                     }
@@ -95,7 +96,7 @@ impl TerritorySystem {
     ///
     /// Listens for `TerritoryDevelopmentRequested` events and:
     /// 1. Calls hook to calculate cost
-    /// 2. Updates registry if cost calculation succeeds
+    /// 2. Updates TerritoryState if cost calculation succeeds
     /// 3. Calls hook for post-development
     /// 4. Publishes `TerritoryDevelopedEvent`
     pub async fn process_development_requests(
@@ -114,27 +115,39 @@ impl TerritorySystem {
         };
 
         for request in requests {
-            // Get territory and calculate cost (via hook)
-            let (_territory, _cost) = {
-                if let Some(registry) = resources.get::<TerritoryRegistry>().await {
-                    let territory = match registry.get(&request.id) {
-                        Some(t) => t.clone(),
-                        None => continue,
-                    };
+            // Get territory definition and current level
+            let (territory, current_level) = {
+                let territories = match resources.get::<Territories>().await {
+                    Some(t) => t,
+                    None => continue,
+                };
 
-                    let cost = match self
-                        .hook
-                        .calculate_development_cost(&territory, resources)
-                        .await
-                    {
-                        Ok(cost) => cost,
-                        Err(_) => continue, // Hook rejected development
-                    };
+                let territory = match territories.get(&request.id) {
+                    Some(t) => t.clone(),
+                    None => continue,
+                };
 
-                    (territory, cost)
-                } else {
-                    continue;
-                }
+                let state = match resources.get::<TerritoryState>().await {
+                    Some(s) => s,
+                    None => continue,
+                };
+
+                let current_level = match state.get_development(&request.id) {
+                    Some(level) => level,
+                    None => continue,
+                };
+
+                (territory, current_level)
+            };
+
+            // Calculate cost via hook
+            let _cost = match self
+                .hook
+                .calculate_development_cost(&territory, current_level, resources)
+                .await
+            {
+                Ok(cost) => cost,
+                Err(_) => continue, // Hook rejected development
             };
 
             // NOTE: Cost deduction is game-specific and should be handled
@@ -142,21 +155,9 @@ impl TerritorySystem {
 
             // Develop territory
             let developed = {
-                if let Some(mut registry) = resources.get_mut::<TerritoryRegistry>().await {
-                    match registry.develop(&request.id) {
-                        Ok(dev) => dev,
-                        Err(_) => continue,
-                    }
-                } else {
-                    continue;
-                }
-            };
-
-            // Get updated territory for hook
-            let territory = {
-                if let Some(registry) = resources.get::<TerritoryRegistry>().await {
-                    match registry.get(&request.id) {
-                        Some(t) => t.clone(),
+                if let Some(mut state) = resources.get_mut::<TerritoryState>().await {
+                    match state.develop(&request.id) {
+                        Some(dev) => dev,
                         None => continue,
                     }
                 } else {
@@ -215,14 +216,23 @@ impl System for TerritorySystem {
 mod tests {
     use super::*;
     use crate::event::EventBus;
-    use crate::plugin::territory::{DefaultTerritoryHook, Territory};
+    use crate::plugin::territory::{DefaultTerritoryHook, Territories, Territory, TerritoryId};
 
     #[tokio::test]
     async fn test_territory_system_control_change() {
         let mut resources = ResourceContext::new();
-        let mut registry = TerritoryRegistry::new();
-        registry.add(Territory::new("nova", "Nova Harbor").with_control(0.5));
-        resources.insert(registry);
+
+        // Set up Territories (definitions)
+        let mut territories = Territories::new();
+        territories.add(Territory::new("nova", "Nova Harbor"));
+        resources.insert(territories);
+
+        // Set up TerritoryState (runtime state)
+        let mut state = TerritoryState::new();
+        state.initialize(&TerritoryId::new("nova"));
+        state.set_control(&TerritoryId::new("nova"), 0.5);
+        resources.insert(state);
+
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
@@ -242,10 +252,10 @@ mod tests {
         // Process system
         system.process_events(&services, &mut resources).await;
 
-        // Check registry updated
-        let registry = resources.get::<TerritoryRegistry>().await.unwrap();
-        let territory = registry.get(&"nova".into()).unwrap();
-        assert_eq!(territory.control, 0.7);
+        // Check state updated
+        let state = resources.get::<TerritoryState>().await.unwrap();
+        let control = state.get_control(&"nova".into()).unwrap();
+        assert!((control - 0.7).abs() < 0.001);
 
         // Dispatch to make events visible
         {
@@ -266,9 +276,18 @@ mod tests {
     #[tokio::test]
     async fn test_territory_system_development() {
         let mut resources = ResourceContext::new();
-        let mut registry = TerritoryRegistry::new();
-        registry.add(Territory::new("nova", "Nova Harbor").with_development(1));
-        resources.insert(registry);
+
+        // Set up Territories (definitions)
+        let mut territories = Territories::new();
+        territories.add(Territory::new("nova", "Nova Harbor"));
+        resources.insert(territories);
+
+        // Set up TerritoryState (runtime state)
+        let mut state = TerritoryState::new();
+        state.initialize(&TerritoryId::new("nova"));
+        state.set_development(&TerritoryId::new("nova"), 1);
+        resources.insert(state);
+
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
@@ -287,10 +306,10 @@ mod tests {
         // Process system
         system.process_events(&services, &mut resources).await;
 
-        // Check registry updated
-        let registry = resources.get::<TerritoryRegistry>().await.unwrap();
-        let territory = registry.get(&"nova".into()).unwrap();
-        assert_eq!(territory.development_level, 2);
+        // Check state updated
+        let state = resources.get::<TerritoryState>().await.unwrap();
+        let dev_level = state.get_development(&"nova".into()).unwrap();
+        assert_eq!(dev_level, 2);
 
         // Dispatch to make events visible
         {
@@ -310,7 +329,8 @@ mod tests {
     #[tokio::test]
     async fn test_territory_system_not_found() {
         let mut resources = ResourceContext::new();
-        resources.insert(TerritoryRegistry::new());
+        resources.insert(Territories::new());
+        resources.insert(TerritoryState::new());
         resources.insert(EventBus::new());
 
         let services = ServiceContext::new();
