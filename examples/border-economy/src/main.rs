@@ -9,13 +9,13 @@ mod models;
 mod plugins;
 pub mod ui;
 
-use hooks::{BorderEconomyTerritoryHook, GameLogHook, PrototypeResearchHook};
+use hooks::{BorderEconomyAccountingHook, BorderEconomyTerritoryHook, GameLogHook, PrototypeResearchHook};
 use issun::engine::GameRunner;
 use issun::event::EventBus;
 use issun::plugin::action::{ActionConfig, ActionPlugin};
-use issun::plugin::policy::{Policy, PolicyPlugin, PolicyRegistry};
+use issun::plugin::policy::{Policies, Policy, PolicyPlugin};
 use issun::plugin::research::ResearchPlugin;
-use issun::plugin::territory::{Territory, TerritoryPlugin, TerritoryRegistry};
+use issun::plugin::territory::{Territories, Territory, TerritoryPlugin};
 use issun::prelude::*;
 use models::{handle_scene_input, GameContext, GameScene, DAILY_ACTION_POINTS};
 use plugins::{
@@ -48,7 +48,10 @@ async fn main() -> std::io::Result<()> {
         .map_err(as_io)?
         .with_plugin(PolicyPlugin::new())
         .map_err(as_io)?
-        .with_plugin(issun::plugin::BuiltInEconomyPlugin::default())
+        .with_plugin(
+            issun::plugin::AccountingPlugin::new()
+                .with_hook(BorderEconomyAccountingHook),
+        )
         .map_err(as_io)?
         .with_plugin(
             ResearchPlugin::new()
@@ -94,23 +97,22 @@ async fn main() -> std::io::Result<()> {
         resources.insert(PrototypeBacklog::default());
     }
 
-    // Initialize TerritoryRegistry from GameContext territories
+    // Initialize Territories from GameContext territories
     {
         let ctx = resources.get::<GameContext>().await.unwrap();
-        let mut registry = resources.get_mut::<TerritoryRegistry>().await.unwrap();
+        let mut territories = resources.get_mut::<Territories>().await.unwrap();
 
         for intel in &ctx.territories {
-            let territory = Territory::new(intel.id.as_str(), intel.id.as_str())
-                .with_control(intel.control)
-                .with_development(intel.development_level as u32);
-            registry.add(territory);
+            let mut territory = Territory::new(intel.id.as_str(), intel.id.as_str());
+            // Note: Territory API changed - control and development set via TerritoryState
+            territories.add(territory);
         }
     }
 
-    // Initialize PolicyRegistry from GameContext policies
+    // Initialize Policies from GameContext policies
     {
         let ctx = resources.get::<GameContext>().await.unwrap();
-        let mut registry = resources.get_mut::<PolicyRegistry>().await.unwrap();
+        let mut policies = resources.get_mut::<Policies>().await.unwrap();
 
         // Convert PolicyCard to Policy
         for card in &ctx.policies {
@@ -122,13 +124,18 @@ async fn main() -> std::io::Result<()> {
                 .with_metadata(serde_json::json!({
                     "available_actions": card.available_actions,
                 }));
-            registry.add(policy);
+            policies.add(policy);
         }
+    }
 
-        // Activate the initial policy (first one)
+    // Activate initial policy via PolicyState
+    {
+        let ctx = resources.get::<GameContext>().await.unwrap();
         if !ctx.policies.is_empty() {
-            let initial_policy_id = issun::plugin::policy::PolicyId::new(&ctx.policies[0].id);
-            let _ = registry.activate(&initial_policy_id);
+            if let Some(mut state) = resources.get_mut::<issun::plugin::PolicyState>().await {
+                let initial_policy_id = issun::plugin::policy::PolicyId::new(&ctx.policies[0].id);
+                let _ = state.activate(&initial_policy_id);
+            }
         }
     }
 

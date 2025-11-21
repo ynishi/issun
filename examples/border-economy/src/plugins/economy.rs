@@ -70,6 +70,11 @@ impl LedgerForecastService {
 pub struct EconomySystem;
 
 impl EconomySystem {
+    /// Process game-specific economy events
+    ///
+    /// Note: Settlement logic is now handled by issun::plugin::AccountingPlugin
+    /// with BorderEconomyAccountingHook. This system only handles game-specific
+    /// event tracking (missions, research, vault reports) for UI display.
     pub async fn process_events(
         &mut self,
         _services: &ServiceContext,
@@ -154,10 +159,12 @@ impl EconomySystem {
             }
         }
 
-        self.run_settlement(resources).await;
+        // Settlement logic is now handled by AccountingPlugin + BorderEconomyAccountingHook
     }
 
-    async fn run_settlement(&mut self, resources: &mut ResourceContext) {
+    // Settlement method removed - now handled by BorderEconomyAccountingHook
+    #[allow(dead_code)]
+    async fn _old_run_settlement(&mut self, resources: &mut ResourceContext) {
         use crate::models::context::SETTLEMENT_PERIOD_DAYS;
         use crate::models::GameContext;
 

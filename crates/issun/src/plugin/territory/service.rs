@@ -218,7 +218,7 @@ impl TerritoryService {
     /// ```
     pub async fn get_control(territory_id: &TerritoryId, resources: &ResourceContext) -> f32 {
         if let Some(state) = resources.get::<TerritoryState>().await {
-            state.get_control(territory_id)
+            state.get_control(territory_id).unwrap_or(0.0)
         } else {
             0.0
         }
@@ -234,12 +234,9 @@ impl TerritoryService {
     /// # Returns
     ///
     /// Development level or 0 if not found
-    pub async fn get_development_level(
-        territory_id: &TerritoryId,
-        resources: &ResourceContext,
-    ) -> u32 {
+    pub async fn get_development(territory_id: &TerritoryId, resources: &ResourceContext) -> u32 {
         if let Some(state) = resources.get::<TerritoryState>().await {
-            state.get_development_level(territory_id)
+            state.get_development(territory_id).unwrap_or(0)
         } else {
             0
         }
