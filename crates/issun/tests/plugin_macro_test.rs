@@ -1,5 +1,5 @@
 use issun::builder::RuntimeResourceEntry;
-use issun::plugin::{Plugin as PluginTrait, PluginBuilder, PluginBuilderExt}; // Rename trait to avoid confusion, though not strictly necessary
+use issun::plugin::Plugin as PluginTrait; // Rename trait to avoid confusion, though not strictly necessary
 use issun::prelude::*;
 use issun::resources::{Resource, Resources};
 use issun::Plugin; // Import derive macro
@@ -14,6 +14,7 @@ impl Resource for TestConfig {}
 
 #[derive(Debug, Clone, Default)]
 struct TestState {
+    #[allow(dead_code)]
     count: i32,
 }
 
