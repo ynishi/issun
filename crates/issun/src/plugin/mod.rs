@@ -202,9 +202,11 @@ pub use reputation::{
     ReputationEntry,
     ReputationThreshold,
     ReputationError,
-    // Resource
-    ReputationRegistry,
+    // Resources
     ReputationConfig,
+    ReputationState,
+    // Service
+    ReputationService,
     // System
     ReputationSystem,
     // Events

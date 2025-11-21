@@ -3,8 +3,9 @@
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use async_trait::async_trait;
 
+use super::config::ReputationConfig;
 use super::hook::{DefaultReputationHook, ReputationHook};
-use super::registry::{ReputationConfig, ReputationRegistry};
+use super::state::ReputationState;
 use super::types::ReputationThreshold;
 
 /// Plugin for reputation/score/rating management
@@ -87,12 +88,15 @@ impl<H: ReputationHook + Send + Sync + 'static> Plugin for ReputationPlugin<H> {
     }
 
     fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register registry with config and thresholds
-        let mut registry = ReputationRegistry::new().with_config(self.config.clone());
+        // Register config (ReadOnly)
+        let mut config = self.config.clone();
         for threshold in &self.thresholds {
-            registry.add_threshold(threshold.clone());
+            config.add_threshold(threshold.clone());
         }
-        builder.register_runtime_state(registry);
+        builder.register_resource(config);
+
+        // Register state (Mutable)
+        builder.register_runtime_state(ReputationState::new());
 
         // Note: System registration would happen here, but issun's plugin system
         // currently doesn't have a direct system registration API.
@@ -119,6 +123,7 @@ mod tests {
             auto_clamp: true,
             enable_decay: false,
             decay_rate: 0.0,
+            thresholds: Vec::new(),
         };
 
         let plugin = ReputationPlugin::new().with_config(config.clone());

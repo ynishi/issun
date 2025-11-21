@@ -3,9 +3,10 @@
 use crate::context::ResourceContext;
 use crate::event::EventBus;
 
+use super::config::ReputationConfig;
 use super::events::*;
 use super::hook::ReputationHook;
-use super::registry::ReputationRegistry;
+use super::state::ReputationState;
 
 /// System for processing reputation events
 ///
@@ -13,7 +14,7 @@ use super::registry::ReputationRegistry;
 /// 1. Listens for `ReputationChangeRequested` and `ReputationSetRequested` events
 /// 2. Validates changes via hook
 /// 3. Calculates effective delta via hook
-/// 4. Updates `ReputationRegistry`
+/// 4. Updates `ReputationState`
 /// 5. Calls hook callbacks (`on_reputation_changed`, `on_threshold_crossed`)
 /// 6. Publishes state events (`ReputationChangedEvent`, `ReputationThresholdCrossedEvent`)
 pub struct ReputationSystem<H: ReputationHook> {
@@ -87,38 +88,58 @@ impl<H: ReputationHook> ReputationSystem<H> {
 
         // 3. Get old score and threshold
         let (old_score, old_threshold_name) = {
-            let mut registry = match resources.get_mut::<ReputationRegistry>().await {
-                Some(r) => r,
+            let config = match resources.get::<ReputationConfig>().await {
+                Some(c) => c,
+                None => return,
+            };
+            let state = match resources.get::<ReputationState>().await {
+                Some(s) => s,
                 None => return,
             };
 
-            let entry = match category {
-                Some(cat) => registry.get_or_create_category(subject_id.clone(), cat.to_string()),
-                None => registry.get_or_create(subject_id.clone()),
+            let old_score = match category {
+                Some(cat) => state.get_category(&subject_id, cat).unwrap_or(config.default_score),
+                None => state.get(&subject_id).unwrap_or(config.default_score),
             };
 
-            let old_score = entry.score;
-            let old_threshold = registry.get_threshold(old_score).map(|t| t.name.clone());
+            let old_threshold = config.get_threshold(old_score).map(|t| t.name.clone());
 
             (old_score, old_threshold)
         };
 
-        // 4. Update registry
+        // 4. Update state
         let new_score = {
-            let mut registry = resources.get_mut::<ReputationRegistry>().await.unwrap();
+            let config = resources.get::<ReputationConfig>().await.unwrap();
+            let mut state = resources.get_mut::<ReputationState>().await.unwrap();
 
+            let (_, new_score) = match category {
+                Some(cat) => state.adjust_category(
+                    &subject_id,
+                    cat.to_string(),
+                    effective_delta,
+                    config.default_score,
+                ),
+                None => state.adjust(&subject_id, effective_delta, config.default_score),
+            };
+
+            // Apply auto-clamping if enabled
+            if config.auto_clamp {
+                if let Some((min, max)) = config.score_range {
+                    match category {
+                        Some(cat) => {
+                            state.clamp_score_category(&subject_id, cat, min, max);
+                        }
+                        None => {
+                            state.clamp_score(&subject_id, min, max);
+                        }
+                    }
+                }
+            }
+
+            // Get final score after clamping
             match category {
-                Some(cat) => {
-                    registry.adjust_category(subject_id.clone(), cat.to_string(), effective_delta);
-                    registry
-                        .get_category(&subject_id, cat)
-                        .map(|e| e.score)
-                        .unwrap_or(old_score)
-                }
-                None => {
-                    registry.adjust(subject_id.clone(), effective_delta);
-                    registry.get(&subject_id).map(|e| e.score).unwrap_or(old_score)
-                }
+                Some(cat) => state.get_category(&subject_id, cat).unwrap_or(new_score),
+                None => state.get(&subject_id).unwrap_or(new_score),
             }
         };
 
@@ -136,21 +157,18 @@ impl<H: ReputationHook> ReputationSystem<H> {
 
         // 6. Check for threshold crossing
         let new_threshold_name = {
-            let registry = resources.get::<ReputationRegistry>().await.unwrap();
-            registry.get_threshold(new_score).map(|t| t.name.clone())
+            let config = resources.get::<ReputationConfig>().await.unwrap();
+            config.get_threshold(new_score).map(|t| t.name.clone())
         };
 
         if old_threshold_name != new_threshold_name {
             if let Some(new_threshold_name) = &new_threshold_name {
                 // Call hook: on_threshold_crossed
-                let registry = resources.get::<ReputationRegistry>().await.unwrap();
+                let config = resources.get::<ReputationConfig>().await.unwrap();
                 let old_threshold = old_threshold_name
                     .as_ref()
-                    .and_then(|name| registry.thresholds().iter().find(|t| &t.name == name));
-                let new_threshold = registry
-                    .thresholds()
-                    .iter()
-                    .find(|t| &t.name == new_threshold_name);
+                    .and_then(|name| config.thresholds.iter().find(|t| &t.name == name));
+                let new_threshold = config.thresholds.iter().find(|t| &t.name == new_threshold_name);
 
                 if let Some(new_threshold) = new_threshold {
                     self.hook
@@ -193,20 +211,18 @@ impl<H: ReputationHook> ReputationSystem<H> {
 
         // Calculate delta for validation
         let old_score = {
-            let registry = match resources.get::<ReputationRegistry>().await {
-                Some(r) => r,
+            let config = match resources.get::<ReputationConfig>().await {
+                Some(c) => c,
+                None => return,
+            };
+            let state = match resources.get::<ReputationState>().await {
+                Some(s) => s,
                 None => return,
             };
 
             match category {
-                Some(cat) => registry
-                    .get_category(&subject_id, cat)
-                    .map(|e| e.score)
-                    .unwrap_or(registry.config().default_score),
-                None => registry
-                    .get(&subject_id)
-                    .map(|e| e.score)
-                    .unwrap_or(registry.config().default_score),
+                Some(cat) => state.get_category(&subject_id, cat).unwrap_or(config.default_score),
+                None => state.get(&subject_id).unwrap_or(config.default_score),
             }
         };
 
@@ -224,20 +240,35 @@ impl<H: ReputationHook> ReputationSystem<H> {
 
         // 2. Get old threshold
         let old_threshold_name = {
-            let registry = resources.get::<ReputationRegistry>().await.unwrap();
-            registry.get_threshold(old_score).map(|t| t.name.clone())
+            let config = resources.get::<ReputationConfig>().await.unwrap();
+            config.get_threshold(old_score).map(|t| t.name.clone())
         };
 
-        // 3. Update registry
+        // 3. Update state
         {
-            let mut registry = resources.get_mut::<ReputationRegistry>().await.unwrap();
+            let mut state = resources.get_mut::<ReputationState>().await.unwrap();
 
             match category {
                 Some(cat) => {
-                    registry.set_category(subject_id.clone(), cat.to_string(), request.score);
+                    state.set_category(&subject_id, cat.to_string(), request.score);
                 }
                 None => {
-                    registry.set(subject_id.clone(), request.score);
+                    state.set(&subject_id, request.score);
+                }
+            }
+
+            // Apply auto-clamping if enabled
+            let config = resources.get::<ReputationConfig>().await.unwrap();
+            if config.auto_clamp {
+                if let Some((min, max)) = config.score_range {
+                    match category {
+                        Some(cat) => {
+                            state.clamp_score_category(&subject_id, cat, min, max);
+                        }
+                        None => {
+                            state.clamp_score(&subject_id, min, max);
+                        }
+                    }
                 }
             }
         };
@@ -251,21 +282,18 @@ impl<H: ReputationHook> ReputationSystem<H> {
 
         // 5. Check for threshold crossing
         let new_threshold_name = {
-            let registry = resources.get::<ReputationRegistry>().await.unwrap();
-            registry.get_threshold(new_score).map(|t| t.name.clone())
+            let config = resources.get::<ReputationConfig>().await.unwrap();
+            config.get_threshold(new_score).map(|t| t.name.clone())
         };
 
         if old_threshold_name != new_threshold_name {
             if let Some(new_threshold_name) = &new_threshold_name {
                 // Call hook: on_threshold_crossed
-                let registry = resources.get::<ReputationRegistry>().await.unwrap();
+                let config = resources.get::<ReputationConfig>().await.unwrap();
                 let old_threshold = old_threshold_name
                     .as_ref()
-                    .and_then(|name| registry.thresholds().iter().find(|t| &t.name == name));
-                let new_threshold = registry
-                    .thresholds()
-                    .iter()
-                    .find(|t| &t.name == new_threshold_name);
+                    .and_then(|name| config.thresholds.iter().find(|t| &t.name == name));
+                let new_threshold = config.thresholds.iter().find(|t| &t.name == new_threshold_name);
 
                 if let Some(new_threshold) = new_threshold {
                     self.hook
@@ -308,7 +336,8 @@ mod tests {
     async fn test_system_process_change_request() {
         let mut resources = ResourceContext::new();
         resources.insert(EventBus::new());
-        resources.insert(ReputationRegistry::new());
+        resources.insert(ReputationConfig::default());
+        resources.insert(ReputationState::new());
 
         let mut system = ReputationSystem::new(DefaultReputationHook);
 
@@ -321,15 +350,22 @@ mod tests {
                 category: None,
                 reason: Some("Completed quest".into()),
             });
+            bus.dispatch();
         }
 
         // Process events
         system.process_events(&mut resources).await;
 
-        // Check registry
-        let registry = resources.get::<ReputationRegistry>().await.unwrap();
-        let entry = registry.get(&SubjectId::new("player", "kingdom")).unwrap();
-        assert_eq!(entry.score, 15.0);
+        // Check state
+        let state = resources.get::<ReputationState>().await.unwrap();
+        let score = state.get(&SubjectId::new("player", "kingdom")).unwrap();
+        assert_eq!(score, 15.0);
+
+        // Dispatch to make events visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
+        }
 
         // Check event was published
         let mut bus = resources.get_mut::<EventBus>().await.unwrap();
@@ -344,7 +380,8 @@ mod tests {
     async fn test_system_process_set_request() {
         let mut resources = ResourceContext::new();
         resources.insert(EventBus::new());
-        resources.insert(ReputationRegistry::new());
+        resources.insert(ReputationConfig::default());
+        resources.insert(ReputationState::new());
 
         let mut system = ReputationSystem::new(DefaultReputationHook);
 
@@ -356,15 +393,16 @@ mod tests {
                 score: 75.0,
                 category: None,
             });
+            bus.dispatch();
         }
 
         // Process events
         system.process_events(&mut resources).await;
 
-        // Check registry
-        let registry = resources.get::<ReputationRegistry>().await.unwrap();
-        let entry = registry.get(&SubjectId::new("player", "kingdom")).unwrap();
-        assert_eq!(entry.score, 75.0);
+        // Check state
+        let state = resources.get::<ReputationState>().await.unwrap();
+        let score = state.get(&SubjectId::new("player", "kingdom")).unwrap();
+        assert_eq!(score, 75.0);
     }
 
     #[tokio::test]
@@ -372,11 +410,12 @@ mod tests {
         let mut resources = ResourceContext::new();
         resources.insert(EventBus::new());
 
-        // Setup registry with thresholds
-        let mut registry = ReputationRegistry::new();
-        registry.add_threshold(ReputationThreshold::new("Neutral", -10.0, 10.0));
-        registry.add_threshold(ReputationThreshold::new("Friendly", 10.0, 50.0));
-        resources.insert(registry);
+        // Setup config with thresholds
+        let mut config = ReputationConfig::default();
+        config.add_threshold(ReputationThreshold::new("Neutral", -10.0, 10.0));
+        config.add_threshold(ReputationThreshold::new("Friendly", 10.0, 50.0));
+        resources.insert(config);
+        resources.insert(ReputationState::new());
 
         let mut system = ReputationSystem::new(DefaultReputationHook);
 
@@ -389,10 +428,17 @@ mod tests {
                 category: None,
                 reason: None,
             });
+            bus.dispatch();
         }
 
         // Process events
         system.process_events(&mut resources).await;
+
+        // Dispatch to make events visible
+        {
+            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
+            bus.dispatch();
+        }
 
         // Check threshold crossed event was published
         let mut bus = resources.get_mut::<EventBus>().await.unwrap();

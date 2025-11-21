@@ -64,22 +64,24 @@
 //! - **Card games**: Player rankings, ELO scores
 //! - **Business sims**: Corporate reputation, brand loyalty
 
+mod config;
 mod events;
 mod hook;
 mod plugin;
-mod registry;
 mod service;
+mod state;
 mod system;
 mod types;
 
 // Public exports
+pub use config::ReputationConfig;
 pub use events::{
     ReputationChangeRequested, ReputationChangedEvent, ReputationSetRequested,
     ReputationThresholdCrossedEvent,
 };
 pub use hook::{DefaultReputationHook, ReputationHook};
 pub use plugin::ReputationPlugin;
-pub use registry::{ReputationConfig, ReputationRegistry};
 pub use service::ReputationService;
+pub use state::ReputationState;
 pub use system::ReputationSystem;
 pub use types::{ReputationEntry, ReputationError, ReputationThreshold, SubjectId};
