@@ -147,8 +147,8 @@ impl FactionBridgeSystem {
         for resolution in resolutions {
             // Find operation ID by matching faction + target in metadata
             let operation_id = {
-                if let Some(registry) = resources.get::<FactionRegistry>().await {
-                    registry
+                if let Some(state) = resources.get::<issun::plugin::FactionState>().await {
+                    state
                         .operations()
                         .find(|op| {
                             op.metadata["faction"].as_str() == Some(resolution.faction.as_str())

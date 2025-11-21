@@ -121,13 +121,11 @@ impl StrategySceneData {
         &mut self,
         resources: &mut ResourceContext,
     ) -> SceneTransition<GameScene> {
-        let ops_multiplier = {
-            if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
-                registry.get_effect("ops_cost_multiplier")
-            } else {
-                1.0
-            }
-        };
+        let ops_multiplier = issun::plugin::policy::PolicyService::get_active_effect(
+            "ops_cost_multiplier",
+            resources,
+        )
+        .await;
 
         let deployment_cost = Currency::new(((150.0 * ops_multiplier).round() as i64).max(80));
 
@@ -326,16 +324,16 @@ impl StrategySceneData {
 
             drop(ctx);
 
-            let ops_multiplier = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
-                registry.get_effect("ops_cost_multiplier")
-            } else {
-                1.0
-            };
+            let ops_multiplier = issun::plugin::policy::PolicyService::get_active_effect(
+                "ops_cost_multiplier",
+                resources,
+            )
+            .await;
 
             (front_index, ops_multiplier)
         };
 
-        let cost = Currency::new(((120.0 * ops_multiplier).round() as i64).max(60));
+        let cost = Currency::new(((120.0_f32 * ops_multiplier).round() as i64).max(60));
 
         // Spend from issun BudgetLedger
         let spend_ok = if let Some(mut ledger) = resources.get_mut::<issun::plugin::BudgetLedger>().await {
@@ -421,11 +419,11 @@ impl StrategySceneData {
             return;
         }
 
-        let investment_bonus = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
-            registry.get_effect("investment_bonus")
-        } else {
-            1.0
-        };
+        let investment_bonus = issun::plugin::policy::PolicyService::get_active_effect(
+            "investment_bonus",
+            resources,
+        )
+        .await;
 
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,
@@ -462,9 +460,13 @@ impl StrategySceneData {
         }
 
         // Get the newly activated policy name for display
-        if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
-            if let Some(policy) = registry.active_policy() {
-                self.status_line = format!("政策を「{}」に切替", policy.name);
+        if let Some(state) = resources.get::<issun::plugin::PolicyState>().await {
+            if let Some(active_id) = state.active_policy_id() {
+                if let Some(policies) = resources.get::<issun::plugin::Policies>().await {
+                    if let Some(policy) = policies.get(active_id) {
+                        self.status_line = format!("政策を「{}」に切替", policy.name);
+                    }
+                }
             }
         }
     }
@@ -484,11 +486,11 @@ impl StrategySceneData {
             return;
         }
 
-        let diplomacy_bonus = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
-            registry.get_effect("diplomacy_bonus")
-        } else {
-            1.0
-        };
+        let diplomacy_bonus = issun::plugin::policy::PolicyService::get_active_effect(
+            "diplomacy_bonus",
+            resources,
+        )
+        .await;
 
         let mut ctx = match resources.get_mut::<GameContext>().await {
             Some(ctx) => ctx,

@@ -217,11 +217,11 @@ impl EconomicSceneData {
             return;
         }
 
-        let diplomacy_bonus = if let Some(registry) = resources.get::<issun::plugin::PolicyRegistry>().await {
-            registry.get_effect("diplomacy_bonus")
-        } else {
-            1.0
-        };
+        let diplomacy_bonus = issun::plugin::policy::PolicyService::get_active_effect(
+            "diplomacy_bonus",
+            resources,
+        )
+        .await;
 
         if let Some(mut ctx) = resources.get_mut::<GameContext>().await {
             if let Some(front) = ctx.territories.iter().find(|t| t.battlefront) {

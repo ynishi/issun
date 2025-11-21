@@ -134,7 +134,7 @@ async fn main() -> std::io::Result<()> {
         if !ctx.policies.is_empty() {
             if let Some(mut state) = resources.get_mut::<issun::plugin::PolicyState>().await {
                 let initial_policy_id = issun::plugin::policy::PolicyId::new(&ctx.policies[0].id);
-                let _ = state.activate(&initial_policy_id);
+                let _ = state.activate(initial_policy_id);
             }
         }
     }
@@ -175,7 +175,8 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let market_guard = resources.try_get::<MarketPulse>();
     let reputation_guard = resources.try_get::<ReputationLedger>();
     let vault_guard = resources.try_get::<VaultState>();
-    let policy_guard = resources.try_get::<PolicyRegistry>();
+    let policy_state_guard = resources.try_get::<issun::plugin::PolicyState>();
+    let policies_guard = resources.try_get::<issun::plugin::Policies>();
 
     let ctx = ctx_guard.as_deref();
     let clock = clock_guard.as_deref();
@@ -188,19 +189,20 @@ fn render_scene(frame: &mut ratatui::Frame, scene: &GameScene, resources: &Resou
     let market = market_guard.as_deref();
     let reputation = reputation_guard.as_deref();
     let vault = vault_guard.as_deref();
-    let policy_registry = policy_guard.as_deref();
+    let policy_state = policy_state_guard.as_deref();
+    let policies = policies_guard.as_deref();
 
     match scene {
         GameScene::Title(data) => ui::render_title(frame, data),
         GameScene::Strategy(data) => {
-            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, points, policy_registry, data)
+            ui::render_strategy(frame, ctx, clock, ledger, ops, territory, reputation, points, policy_state, policies, data)
         }
         GameScene::Tactical(data) => ui::render_tactical(frame, ctx, data),
         GameScene::Economic(data) => {
-            ui::render_economic(frame, ctx, clock, ledger, econ, proto, market, policy_registry, data)
+            ui::render_economic(frame, ctx, clock, ledger, econ, proto, market, policy_state, policies, data)
         }
         GameScene::IntelReport(data) => {
-            ui::render_report(frame, ctx, clock, ledger, territory, proto, reputation, policy_registry, data)
+            ui::render_report(frame, ctx, clock, ledger, territory, proto, reputation, policy_state, policies, data)
         }
         GameScene::Vault(data) => ui::render_vault(frame, ctx, clock, ledger, vault, data),
     }

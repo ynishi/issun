@@ -51,7 +51,8 @@ pub fn render_strategy(
     territory: Option<&TerritoryStateCache>,
     reputation: Option<&ReputationLedger>,
     points: Option<&issun::plugin::ActionPoints>,
-    policy_registry: Option<&issun::plugin::PolicyRegistry>,
+    policy_state: Option<&issun::plugin::PolicyState>,
+    policies: Option<&issun::plugin::Policies>,
     data: &StrategySceneData,
 ) {
     let chunks = Layout::default()
@@ -95,7 +96,7 @@ pub fn render_strategy(
     let inner = command_block.inner(chunks[0]);
     frame.render_widget(List::new(list_items), inner);
 
-    render_hq_feed(frame, chunks[1], ctx, clock, ledger, ops, territory, reputation, points, policy_registry);
+    render_hq_feed(frame, chunks[1], ctx, clock, ledger, ops, territory, reputation, points, policy_state, policies);
 
     let mut status_lines = vec![Line::from(data.status_line.clone())];
     if let Some(points) = points {
@@ -127,7 +128,8 @@ fn render_hq_feed(
     territory: Option<&TerritoryStateCache>,
     reputation: Option<&ReputationLedger>,
     points: Option<&issun::plugin::ActionPoints>,
-    policy_registry: Option<&issun::plugin::PolicyRegistry>,
+    policy_state: Option<&issun::plugin::PolicyState>,
+    policies: Option<&issun::plugin::Policies>,
 ) {
     let block = Block::default().title("HQ Feed").borders(Borders::ALL);
     frame.render_widget(block.clone(), area);
@@ -155,10 +157,10 @@ fn render_hq_feed(
                 ledger.innovation_fund, ledger.security_fund
             )));
         }
-        let policy_name = policy_registry
-            .and_then(|reg| reg.active_policy())
-            .map(|p| p.name.as_str())
-            .unwrap_or("なし");
+        let active_policy = policy_state
+            .and_then(|state| state.active_policy_id())
+            .and_then(|id| policies.and_then(|p| p.get(id)));
+        let policy_name = active_policy.map(|p| p.name.as_str()).unwrap_or("なし");
         lines.push(Line::from(format!("政策: {}", policy_name)));
         if let Some(next_op) = ctx.enemy_operations.iter().min_by_key(|op| op.eta) {
             let faction = ctx
@@ -320,7 +322,8 @@ pub fn render_economic(
     economy: Option<&EconomyState>,
     prototypes: Option<&PrototypeBacklog>,
     market: Option<&MarketPulse>,
-    policy_registry: Option<&issun::plugin::PolicyRegistry>,
+    policy_state: Option<&issun::plugin::PolicyState>,
+    policies: Option<&issun::plugin::Policies>,
     data: &EconomicSceneData,
 ) {
     let layout = Layout::default()
@@ -375,7 +378,7 @@ pub fn render_economic(
     );
     frame.render_widget(info, left_chunks[1]);
 
-    render_econ_sidebar(frame, layout[1], ctx, clock, ledger, economy, prototypes, market, policy_registry, data);
+    render_econ_sidebar(frame, layout[1], ctx, clock, ledger, economy, prototypes, market, policy_state, policies, data);
 }
 
 fn render_econ_sidebar(
@@ -387,7 +390,8 @@ fn render_econ_sidebar(
     economy: Option<&EconomyState>,
     prototypes: Option<&PrototypeBacklog>,
     market: Option<&MarketPulse>,
-    policy_registry: Option<&issun::plugin::PolicyRegistry>,
+    policy_state: Option<&issun::plugin::PolicyState>,
+    policies: Option<&issun::plugin::Policies>,
     data: &EconomicSceneData,
 ) {
     let block = Block::default()
@@ -429,7 +433,11 @@ fn render_econ_sidebar(
                 territory.pending_investment * 100.0
             )));
         }
-        if let Some(policy) = policy_registry.and_then(|reg| reg.active_policy()) {
+        let active_policy = policy_state
+            .and_then(|state| state.active_policy_id())
+            .and_then(|id| policies.and_then(|p| p.get(id)));
+
+        if let Some(policy) = active_policy {
             lines.push(Line::from(format!(
                 "政策: {} ({})",
                 policy.name,
@@ -774,7 +782,8 @@ pub fn render_report(
     territory: Option<&TerritoryStateCache>,
     prototypes: Option<&PrototypeBacklog>,
     reputation: Option<&ReputationLedger>,
-    policy_registry: Option<&issun::plugin::PolicyRegistry>,
+    policy_state: Option<&issun::plugin::PolicyState>,
+    policies: Option<&issun::plugin::Policies>,
     data: &IntelReportSceneData,
 ) {
     let layout = Layout::default()
