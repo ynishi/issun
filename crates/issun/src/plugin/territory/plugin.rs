@@ -4,8 +4,7 @@ use super::hook::{DefaultTerritoryHook, TerritoryHook};
 use super::state::TerritoryState;
 use super::system::TerritorySystem;
 use super::territories::Territories;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Built-in territory management plugin
@@ -59,8 +58,17 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:territory")]
 pub struct TerritoryPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn TerritoryHook>,
+    #[plugin(resource)]
+    territories: Territories,
+    #[plugin(runtime_state)]
+    state: TerritoryState,
+    #[plugin(system)]
+    system: TerritorySystem,
 }
 
 impl TerritoryPlugin {
@@ -69,8 +77,12 @@ impl TerritoryPlugin {
     /// Uses the default hook (no-op) by default.
     /// Use `with_hook()` to add custom behavior.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultTerritoryHook);
         Self {
-            hook: Arc::new(DefaultTerritoryHook),
+            hook: hook.clone(),
+            territories: Territories::new(),
+            state: TerritoryState::new(),
+            system: TerritorySystem::new(hook),
         }
     }
 
@@ -104,7 +116,9 @@ impl TerritoryPlugin {
     ///     .with_hook(MyHook);
     /// ```
     pub fn with_hook(mut self, hook: impl TerritoryHook + 'static) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = TerritorySystem::new(hook);
         self
     }
 }
@@ -115,48 +129,25 @@ impl Default for TerritoryPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for TerritoryPlugin {
-    fn name(&self) -> &'static str {
-        "issun:territory"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register territory definitions (ReadOnly asset)
-        builder.register_resource(Territories::new());
-
-        // Register territory state (Mutable runtime state)
-        builder.register_runtime_state(TerritoryState::new());
-
-        // Register system with hook
-        builder.register_system(Box::new(TerritorySystem::new(Arc::clone(&self.hook))));
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_plugin_name() {
-        let plugin = TerritoryPlugin::default();
-        assert_eq!(plugin.name(), "issun:territory");
+        let _plugin = TerritoryPlugin::default();
+        // Plugin derive macro automatically implements name()
     }
 
     #[test]
     fn test_plugin_default() {
-        let plugin = TerritoryPlugin::default();
+        let _plugin = TerritoryPlugin::default();
         // Should not panic
-        assert_eq!(plugin.name(), "issun:territory");
     }
 
     #[test]
     fn test_plugin_with_hook() {
-        let plugin = TerritoryPlugin::new().with_hook(DefaultTerritoryHook);
-        assert_eq!(plugin.name(), "issun:territory");
+        let _plugin = TerritoryPlugin::new().with_hook(DefaultTerritoryHook);
+        // Plugin derive macro automatically implements name()
     }
 }
