@@ -1,5 +1,6 @@
 [package]
 name = "issun-server"
+description = "issun server"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
