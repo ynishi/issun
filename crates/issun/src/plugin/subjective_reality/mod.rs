@@ -27,20 +27,20 @@
 
 // Module declarations
 pub mod config;
+pub mod hook;
+pub mod plugin;
 pub mod service;
 pub mod state;
+pub mod system;
 pub mod types;
-// pub mod hook;
-// pub mod plugin;
-// pub mod system;
 
 // Public re-exports
 pub use config::PerceptionConfig;
+pub use hook::{DefaultPerceptionHook, PerceptionHook};
+pub use plugin::SubjectiveRealityPlugin;
 pub use service::PerceptionService;
 pub use state::{KnowledgeBoard, KnowledgeBoardRegistry};
+pub use system::PerceptionSystem;
 pub use types::{
     FactId, FactType, FactionId, GroundTruthFact, ItemType, LocationId, PerceivedFact, Timestamp,
 };
-// pub use hook::{DefaultPerceptionHook, PerceptionHook};
-// pub use plugin::SubjectiveRealityPlugin;
-// pub use system::PerceptionSystem;
