@@ -38,6 +38,7 @@ pub mod reputation;
 pub mod research;
 pub mod room_buff;
 pub mod save_load;
+pub mod subjective_reality;
 pub mod territory;
 pub mod time;
 
