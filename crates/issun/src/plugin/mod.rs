@@ -515,6 +515,42 @@ pub use chain_of_command::{
     ChainOfCommandPlugin,
 };
 
+// MarketPlugin exports (Phase 1-8 complete ✅)
+pub use market::{
+    // Types (Phase 1) ✅
+    // Note: ItemId not exported to avoid conflict with inventory::ItemId
+    // Use market::ItemId instead
+    MarketData,
+    MarketEvent,
+    MarketEventType,
+    MarketTrend,
+    PriceChange,
+    // Resources (Phase 2) ✅
+    MarketConfig,
+    // State (Phase 3) ✅
+    MarketState,
+    // Service (Phase 4) ✅
+    MarketService,
+    // Hook (Phase 5) ✅
+    MarketHook,
+    DefaultMarketHook,
+    // Events (Phase 6) ✅
+    PriceUpdateRequested,
+    MarketEventApplyRequested,
+    ItemRegisterRequested,
+    DemandSupplySetRequested,
+    PricesUpdatedEvent,
+    PriceChangedEvent,
+    MarketTrendChangedEvent,
+    MarketEventAppliedEvent,
+    ItemRegisteredEvent,
+    DemandSupplySetEvent,
+    // System (Phase 7) ✅
+    MarketSystem,
+    // Plugin (Phase 8) ✅
+    MarketPlugin,
+};
+
 use crate::builder::RuntimeResourceEntry;
 use std::any::TypeId;
 
