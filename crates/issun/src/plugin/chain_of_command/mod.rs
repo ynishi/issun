@@ -37,22 +37,24 @@
 
 // Module declarations
 pub mod config;
-// pub mod hook;           // Phase 5
+pub mod events;         // Phase 4 ✅
+pub mod hook;           // Phase 4 ✅ (minimal for system)
 // pub mod plugin;         // Phase 5
 pub mod rank_definitions;
 pub mod service;        // Phase 3 ✅
 pub mod state;          // Phase 2 ✅
-// pub mod system;         // Phase 4
+pub mod system;         // Phase 4 ✅
 pub mod types;
 
 // Public re-exports
 pub use config::ChainOfCommandConfig;
-// pub use hook::{ChainOfCommandHook, DefaultChainOfCommandHook};
+pub use events::*;
+pub use hook::{ChainOfCommandHook, DefaultChainOfCommandHook};
 // pub use plugin::ChainOfCommandPlugin;
 pub use rank_definitions::{AuthorityLevel, RankDefinition, RankDefinitions};
 pub use service::HierarchyService;
 pub use state::{HierarchyState, OrganizationHierarchy};
-// pub use system::HierarchySystem;
+pub use system::HierarchySystem;
 pub use types::{
     FactionId, Member, MemberId, Order, OrderError, OrderOutcome, OrderType, Priority,
     PromotionError, RankId,

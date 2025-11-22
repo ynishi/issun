@@ -470,7 +470,7 @@ pub use economy::{
     Wallet,
 };
 
-// ChainOfCommandPlugin exports (Phase 1 complete - types, ranks, config only)
+// ChainOfCommandPlugin exports (Phase 1-4 complete)
 pub use chain_of_command::{
     // Types
     Member,
@@ -492,14 +492,27 @@ pub use chain_of_command::{
     OrganizationHierarchy,
     // Service (Phase 3) ✅
     HierarchyService,
-    // TODO: Phase 4-5 exports
-    // Hook (Phase 5)
-    // ChainOfCommandHook,
-    // DefaultChainOfCommandHook,
+    // Hook (Phase 4) ✅
+    ChainOfCommandHook,
+    DefaultChainOfCommandHook,
+    // System (Phase 4) ✅
+    HierarchySystem,
+    // Events (Phase 4) ✅
+    MemberPromoteRequested,
+    MemberPromotedEvent,
+    PromotionFailedEvent,
+    OrderIssueRequested,
+    OrderExecutedEvent,
+    OrderRefusedEvent,
+    LoyaltyDecayRequested,
+    LoyaltyDecayProcessedEvent,
+    MemberAddRequested,
+    MemberAddedEvent,
+    MemberRemoveRequested,
+    MemberRemovedEvent,
+    // TODO: Phase 5 exports
     // Plugin (Phase 5)
     // ChainOfCommandPlugin,
-    // System (Phase 4)
-    // HierarchySystem,
 };
 
 use crate::builder::RuntimeResourceEntry;
