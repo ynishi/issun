@@ -181,6 +181,58 @@ Reputation management with multiple factions and relationship tracking.
 
 ---
 
+## 🧠 Cognition & Perception Plugins
+
+### SubjectiveRealityPlugin (`issun:subjective_reality`)
+**Status**: ✅ Production Ready
+
+Fog of War / Subjective Reality system that separates "God's View" from "Faction's View".
+
+**Components**:
+- `PerceptionService` - Pure perception filtering and confidence decay
+- `PerceptionSystem` - Orchestrates perception updates and decay
+- `KnowledgeBoardRegistry` (Runtime State) - Per-faction knowledge boards
+- `PerceptionConfig` (Resource) - Decay rate, min confidence
+
+**Features**:
+- **Ground Truth → Perceived Facts**: Accuracy-based noise generation (±0-30% noise)
+- **Blackboard Pattern**: Per-faction knowledge boards
+- **Confidence Decay**: Exponential decay over time
+- **Hook Customization**: Calculate faction-specific accuracy
+- **Extensible Fact Types**: Military, infection, market, financial, custom
+
+**Hook**: `PerceptionHook` - Faction accuracy calculation, misinformation, fact priority
+
+**Noise Algorithm**:
+- Accuracy 1.0 → ±0% noise (perfect information)
+- Accuracy 0.0 → ±30% noise (highly unreliable)
+- Delay proportional to inaccuracy
+
+**Confidence Decay**: `confidence × (1 - decay_rate)^elapsed_turns`
+
+**Use Cases**:
+- **Strategy Games**: Fog of war, spy networks, intelligence gathering
+- **Simulation**: Market information asymmetry, rumor propagation
+- **Social Games**: Reputation systems, gossip mechanics
+- **Plague/Pandemic Games**: Disease spread perception vs reality
+
+**80/20 Split**:
+- 80% Framework: Blackboard, filtering, noise generation, decay
+- 20% Game: Faction accuracy rules (spy networks, tech levels, distance)
+
+**Example**:
+```rust
+SubjectiveRealityPlugin::new()
+    .with_config(
+        PerceptionConfig::default()
+            .with_decay_rate(0.05) // 5% decay per turn
+    )
+    .with_hook(SpyNetworkHook) // Custom accuracy logic
+    .register_factions(vec!["player", "enemy_a", "enemy_b"])
+```
+
+---
+
 ## 🎒 Item & Resource Management Plugins
 
 ### InventoryPlugin (`issun:inventory`)
@@ -389,11 +441,17 @@ Plugins that need `dependencies()` or async `initialize()` use manual implementa
 
 **Dungeon Crawlers**: DungeonPlugin, RoomBuffPlugin, CombatPlugin, InventoryPlugin
 
-**Strategy Games**: PolicyPlugin, FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin
+**Strategy Games**: PolicyPlugin, FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin, **SubjectiveRealityPlugin**
+
+**4X Strategy Games**: FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin, **SubjectiveRealityPlugin** (Fog of War)
 
 **RPGs**: CombatPlugin, InventoryPlugin, LootPlugin, ReputationPlugin, SaveLoadPlugin
 
 **Business Sims**: EconomyPlugin, PolicyPlugin, AccountingPlugin, SaveLoadPlugin
+
+**Plague/Pandemic Games**: **SubjectiveRealityPlugin** (Disease spread perception), FactionPlugin, EconomyPlugin
+
+**Social Deduction Games**: **SubjectiveRealityPlugin** (Rumor/gossip mechanics), ReputationPlugin, FactionPlugin
 
 ---
 
