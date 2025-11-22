@@ -174,7 +174,7 @@ pub enum MarketEventType {
 }
 
 /// Price change information
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PriceChange {
     pub item_id: ItemId,
     pub old_price: f32,
