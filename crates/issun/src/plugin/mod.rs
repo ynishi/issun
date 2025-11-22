@@ -490,14 +490,14 @@ pub use chain_of_command::{
     // State (Phase 2) ✅
     HierarchyState,
     OrganizationHierarchy,
-    // TODO: Phase 3-5 exports
+    // Service (Phase 3) ✅
+    HierarchyService,
+    // TODO: Phase 4-5 exports
     // Hook (Phase 5)
     // ChainOfCommandHook,
     // DefaultChainOfCommandHook,
     // Plugin (Phase 5)
     // ChainOfCommandPlugin,
-    // Service (Phase 3)
-    // HierarchyService,
     // System (Phase 4)
     // HierarchySystem,
 };
