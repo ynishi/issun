@@ -40,6 +40,7 @@ pub mod room_buff;
 pub mod save_load;
 pub mod subjective_reality;
 pub mod contagion;
+pub mod chain_of_command;
 pub mod territory;
 pub mod time;
 
@@ -467,6 +468,38 @@ pub use economy::{
     ResourceInventory,
     ResourceType,
     Wallet,
+};
+
+// ChainOfCommandPlugin exports (Phase 1 complete - types, ranks, config only)
+pub use chain_of_command::{
+    // Types
+    Member,
+    MemberId,
+    Order,
+    OrderType,
+    OrderOutcome,
+    OrderError,
+    Priority,
+    PromotionError,
+    RankId,
+    // Resources
+    ChainOfCommandConfig,
+    RankDefinitions,
+    RankDefinition,
+    AuthorityLevel,
+    // TODO: Phase 2-5 exports
+    // Hook (Phase 5)
+    // ChainOfCommandHook,
+    // DefaultChainOfCommandHook,
+    // Plugin (Phase 5)
+    // ChainOfCommandPlugin,
+    // Service (Phase 3)
+    // HierarchyService,
+    // State (Phase 2)
+    // HierarchyState,
+    // OrganizationHierarchy,
+    // System (Phase 4)
+    // HierarchySystem,
 };
 
 use crate::builder::RuntimeResourceEntry;
