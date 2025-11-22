@@ -41,7 +41,7 @@ pub mod config;
 // pub mod plugin;         // Phase 5
 pub mod rank_definitions;
 // pub mod service;        // Phase 3
-// pub mod state;          // Phase 2
+pub mod state;          // Phase 2 ✅
 // pub mod system;         // Phase 4
 pub mod types;
 
@@ -51,7 +51,7 @@ pub use config::ChainOfCommandConfig;
 // pub use plugin::ChainOfCommandPlugin;
 pub use rank_definitions::{AuthorityLevel, RankDefinition, RankDefinitions};
 // pub use service::HierarchyService;
-// pub use state::{HierarchyState, OrganizationHierarchy};
+pub use state::{HierarchyState, OrganizationHierarchy};
 // pub use system::HierarchySystem;
 pub use types::{
     FactionId, Member, MemberId, Order, OrderError, OrderOutcome, OrderType, Priority,

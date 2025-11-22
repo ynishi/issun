@@ -487,7 +487,10 @@ pub use chain_of_command::{
     RankDefinitions,
     RankDefinition,
     AuthorityLevel,
-    // TODO: Phase 2-5 exports
+    // State (Phase 2) ✅
+    HierarchyState,
+    OrganizationHierarchy,
+    // TODO: Phase 3-5 exports
     // Hook (Phase 5)
     // ChainOfCommandHook,
     // DefaultChainOfCommandHook,
@@ -495,9 +498,6 @@ pub use chain_of_command::{
     // ChainOfCommandPlugin,
     // Service (Phase 3)
     // HierarchyService,
-    // State (Phase 2)
-    // HierarchyState,
-    // OrganizationHierarchy,
     // System (Phase 4)
     // HierarchySystem,
 };
