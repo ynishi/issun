@@ -41,6 +41,7 @@ pub mod save_load;
 pub mod subjective_reality;
 pub mod contagion;
 pub mod chain_of_command;
+pub mod market;
 pub mod territory;
 pub mod time;
 
