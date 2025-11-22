@@ -39,6 +39,7 @@ pub mod research;
 pub mod room_buff;
 pub mod save_load;
 pub mod subjective_reality;
+pub mod contagion;
 pub mod territory;
 pub mod time;
 
