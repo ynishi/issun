@@ -233,6 +233,69 @@ SubjectiveRealityPlugin::new()
 
 ---
 
+### ContagionPlugin (`issun:contagion`)
+**Status**: 🚧 In Development
+
+Graph-based propagation system for diseases, rumors, trends, and influence spreading through contact networks.
+
+**Components**:
+- `ContagionService` - Pure propagation logic, mutation, decay calculations
+- `ContagionSystem` - Graph traversal, spread orchestration
+- `GraphTopology` (Resource) - Static node/edge network
+- `ContagionState` (Runtime State) - Active contagions and spread tracking
+
+**Features**:
+- **Contact-based Spreading**: Propagates through graph edges (cities, trade routes, social networks)
+- **Mutation System**: Content changes during transmission (telephone game effect)
+- **Credibility Decay**: Information becomes less trustworthy over time
+- **Probabilistic Transmission**: Edge-based transmission rates with resistance
+- **Closed Path Support**: Handles cycles in graph topology
+
+**Hook**: `ContagionHook` - Custom transmission rates, mutation logic, spread events
+
+**Propagation Formula**:
+```
+P(spread) = edge_rate × global_rate × credibility × (1 - node_resistance)
+```
+
+**Content Types**:
+- Disease (severity levels with mutation)
+- Product Reputation (sentiment polarization)
+- Political Rumors (claim exaggeration)
+- Market Trends (bullish/bearish)
+- Custom extensible types
+
+**Use Cases**:
+- **Plague/Pandemic Games**: Disease spread through cities (Plague Inc. style)
+- **Social Games**: Rumor propagation, viral trends, gossip mechanics
+- **Strategy Games**: Political propaganda, intelligence spread
+- **Business Sims**: Market trends, product reputation, fashion contagion
+- **Environment Sims**: Pollution spread, corruption diffusion
+
+**80/20 Split**:
+- 80% Framework: Graph propagation, mutation algorithms, decay mechanics
+- 20% Game: Content types, transmission rules, node/edge definitions
+
+**Example**:
+```rust
+ContagionPlugin::new()
+    .with_topology(world_graph)  // Cities + trade routes
+    .with_config(
+        ContagionConfig::default()
+            .with_mutation_rate(0.2)
+            .with_lifetime_turns(15)
+    )
+    .with_hook(CustomSpreadHook)
+```
+
+**Graph Topology**:
+- Nodes: Cities, villages, trading posts (with population and resistance)
+- Edges: Trade routes, social connections (with transmission rate and noise)
+- Supports directed and undirected graphs
+- Closed paths (cycles) fully supported
+
+---
+
 ## 🎒 Item & Resource Management Plugins
 
 ### InventoryPlugin (`issun:inventory`)
@@ -449,9 +512,11 @@ Plugins that need `dependencies()` or async `initialize()` use manual implementa
 
 **Business Sims**: EconomyPlugin, PolicyPlugin, AccountingPlugin, SaveLoadPlugin
 
-**Plague/Pandemic Games**: **SubjectiveRealityPlugin** (Disease spread perception), FactionPlugin, EconomyPlugin
+**Plague/Pandemic Games**: **ContagionPlugin** (Disease spread), **SubjectiveRealityPlugin** (Perception), FactionPlugin, EconomyPlugin
 
-**Social Deduction Games**: **SubjectiveRealityPlugin** (Rumor/gossip mechanics), ReputationPlugin, FactionPlugin
+**Social Deduction Games**: **ContagionPlugin** (Rumor spread), **SubjectiveRealityPlugin** (Gossip), ReputationPlugin, FactionPlugin
+
+**Viral Marketing Sims**: **ContagionPlugin** (Trend propagation), EconomyPlugin, ReputationPlugin
 
 ---
 
