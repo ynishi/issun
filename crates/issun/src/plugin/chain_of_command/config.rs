@@ -28,6 +28,8 @@ pub struct ChainOfCommandConfig {
     pub min_loyalty_for_promotion: f32,
 }
 
+impl crate::resources::Resource for ChainOfCommandConfig {}
+
 impl Default for ChainOfCommandConfig {
     fn default() -> Self {
         Self {

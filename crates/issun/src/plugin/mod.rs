@@ -470,7 +470,7 @@ pub use economy::{
     Wallet,
 };
 
-// ChainOfCommandPlugin exports (Phase 1-4 complete)
+// ChainOfCommandPlugin exports (Phase 1-5 complete ✅)
 pub use chain_of_command::{
     // Types
     Member,
@@ -510,9 +510,8 @@ pub use chain_of_command::{
     MemberAddedEvent,
     MemberRemoveRequested,
     MemberRemovedEvent,
-    // TODO: Phase 5 exports
-    // Plugin (Phase 5)
-    // ChainOfCommandPlugin,
+    // Plugin (Phase 5) ✅
+    ChainOfCommandPlugin,
 };
 
 use crate::builder::RuntimeResourceEntry;

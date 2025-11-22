@@ -98,6 +98,8 @@ pub struct RankDefinitions {
     ranks: HashMap<RankId, RankDefinition>,
 }
 
+impl crate::resources::Resource for RankDefinitions {}
+
 impl RankDefinitions {
     /// Create a new empty rank definitions collection
     pub fn new() -> Self {
