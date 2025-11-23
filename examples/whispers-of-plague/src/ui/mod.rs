@@ -125,14 +125,24 @@ fn render_game(
                     Style::default()
                 };
 
+                // Map district ID to emoji
+                let emoji = match d.id.as_str() {
+                    "downtown" => "🏙️",
+                    "industrial" => "🏭",
+                    "residential" => "🏘️",
+                    "suburbs" => "🏡",
+                    "harbor" => "⚓",
+                    _ => "📍",
+                };
+
                 // Generate panic bar
                 let panic_pct = (d.panic_level * 100.0) as u32;
                 let panic_bars = (d.panic_level * 10.0) as usize;
                 let panic_bar = "█".repeat(panic_bars) + &"░".repeat(10 - panic_bars);
 
                 let text = format!(
-                    "{}: {} infected, {} dead | Panic: {} {}%",
-                    d.name, d.infected, d.dead, panic_bar, panic_pct
+                    "{} {}: {} infected, {} dead | Panic: {} {}%",
+                    emoji, d.name, d.infected, d.dead, panic_bar, panic_pct
                 );
                 ListItem::new(text).style(style)
             })
