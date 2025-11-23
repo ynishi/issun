@@ -1,5 +1,5 @@
 use crate::hooks::PlagueContagionHook;
-use crate::models::{CityMap, GameScene};
+use crate::models::{CityMap, GameMode, GameScene, PlagueGameContext};
 use crate::plugins::WinConditionPlugin;
 use issun::auto_pump;
 use issun::event::EventBus;
@@ -179,8 +179,13 @@ impl GameSceneData {
             }
 
             InputEvent::Char('r') | InputEvent::Char('R') => {
-                // === Spread Rumor (spawn new contagion) ===
-                {
+                // === Spread Rumor (Plague mode only) ===
+                let ctx = resources
+                    .get::<PlagueGameContext>()
+                    .await
+                    .expect("PlagueGameContext not found");
+
+                if ctx.mode == GameMode::Plague {
                     let mut contagion_state = resources
                         .get_mut::<ContagionState>()
                         .await
@@ -199,6 +204,63 @@ impl GameSceneData {
 
                     self.log_messages.insert(0, "📢 Rumor spreading...".into());
                     self.log_messages.truncate(10);
+                }
+
+                SceneTransition::Stay
+            }
+
+            InputEvent::Char('t') | InputEvent::Char('T') => {
+                // === Treat (Savior mode only) ===
+                let ctx = resources
+                    .get::<PlagueGameContext>()
+                    .await
+                    .expect("PlagueGameContext not found");
+
+                if ctx.mode == GameMode::Savior {
+                    if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
+                        if self.selected_district < city_map.districts.len() {
+                            let district = &mut city_map.districts[self.selected_district];
+                            let treated = district.infected.min(200);
+                            district.infected = district.infected.saturating_sub(200);
+
+                            self.log_messages.insert(
+                                0,
+                                format!("💊 Treated {} people in {}", treated, district.name),
+                            );
+                            self.log_messages.truncate(10);
+                        }
+                    }
+                }
+
+                SceneTransition::Stay
+            }
+
+            InputEvent::Char('c') | InputEvent::Char('C') => {
+                // === Calm (Savior mode only) ===
+                let ctx = resources
+                    .get::<PlagueGameContext>()
+                    .await
+                    .expect("PlagueGameContext not found");
+
+                if ctx.mode == GameMode::Savior {
+                    if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
+                        if self.selected_district < city_map.districts.len() {
+                            let district = &mut city_map.districts[self.selected_district];
+                            let old_panic = district.panic_level;
+                            district.panic_level = (district.panic_level - 0.3).max(0.0);
+
+                            self.log_messages.insert(
+                                0,
+                                format!(
+                                    "🕊️  Calmed panic in {} ({}% → {}%)",
+                                    district.name,
+                                    (old_panic * 100.0) as u32,
+                                    (district.panic_level * 100.0) as u32
+                                ),
+                            );
+                            self.log_messages.truncate(10);
+                        }
+                    }
                 }
 
                 SceneTransition::Stay

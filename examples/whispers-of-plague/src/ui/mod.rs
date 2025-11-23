@@ -1,6 +1,6 @@
 use crate::models::{
-    CityMap, GameScene, GameSceneData, PlagueGameContext, ResultSceneData, TitleSceneData,
-    VictoryResult,
+    CityMap, GameMode, GameScene, GameSceneData, PlagueGameContext, ResultSceneData,
+    TitleSceneData, VictoryResult,
 };
 use issun::plugin::contagion::ContagionState;
 use issun::prelude::ResourceContext;
@@ -43,7 +43,7 @@ fn render_title(frame: &mut Frame, data: &TitleSceneData) {
         Line::from("Select Mode:"),
         Line::from(""),
         Line::from(
-            if data.selected_mode == Some(crate::models::GameMode::Plague) {
+            if data.selected_mode == Some(GameMode::Plague) {
                 Span::styled(
                     "[1] Plague Mode (Spread infection)",
                     Style::default()
@@ -55,7 +55,7 @@ fn render_title(frame: &mut Frame, data: &TitleSceneData) {
             },
         ),
         Line::from(
-            if data.selected_mode == Some(crate::models::GameMode::Savior) {
+            if data.selected_mode == Some(GameMode::Savior) {
                 Span::styled(
                     "[2] Savior Mode (Save the city)",
                     Style::default()
@@ -179,10 +179,24 @@ fn render_game(
         .map(|msg| ListItem::new(msg.as_str()))
         .collect();
 
+    // Build control help text based on game mode
+    let controls = if let Some(ctx) = ctx {
+        match ctx.mode {
+            GameMode::Plague => {
+                "Log | [N] Next Turn | [R] Rumor | [Q] Quit"
+            }
+            GameMode::Savior => {
+                "Log | [N] Next Turn | [T] Treat | [C] Calm | [Q] Quit"
+            }
+        }
+    } else {
+        "Log | [N] Next Turn | [Q] Quit"
+    };
+
     let log_list = List::new(log_items).block(
         Block::default()
             .borders(Borders::ALL)
-            .title("Log | [N] Next Turn | [R] Rumor | [Q] Quit"),
+            .title(controls),
     );
     frame.render_widget(log_list, chunks[2]);
 }
