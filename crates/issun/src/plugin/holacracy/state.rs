@@ -5,7 +5,7 @@
 use super::config::HolacracyConfig;
 use super::types::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 
 /// Member in a holacracy organization
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

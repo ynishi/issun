@@ -17,3 +17,7 @@ pub use config::{BiddingConfig, HolacracyConfig, TaskAssignmentMode};
 // Phase 2: State
 mod state;
 pub use state::{HolacracyMember, HolacracyState, TaskPool};
+
+// Phase 3: Service
+mod service;
+pub use service::TaskAssignmentService;
