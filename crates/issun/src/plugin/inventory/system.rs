@@ -26,6 +26,7 @@ use super::state::InventoryState;
 /// ```text
 /// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
+#[derive(Clone)]
 pub struct InventorySystem {
     hook: Arc<dyn InventoryHook>,
 }

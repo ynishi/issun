@@ -4,8 +4,7 @@ use super::config::LootConfig;
 use super::hook::{DefaultLootHook, LootHook};
 use super::service::LootService;
 use super::system::LootSystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Loot system plugin
@@ -61,9 +60,20 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:loot")]
 pub struct LootPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn LootHook>,
+
+    #[resource]
     config: LootConfig,
+
+    #[service]
+    service: LootService,
+
+    #[system]
+    system: LootSystem,
 }
 
 impl LootPlugin {
@@ -72,9 +82,12 @@ impl LootPlugin {
     /// Uses the default hook (no loot generation) and default config by default.
     /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultLootHook);
         Self {
-            hook: Arc::new(DefaultLootHook),
+            hook: hook.clone(),
             config: LootConfig::default(),
+            service: LootService::new(),
+            system: LootSystem::new(hook),
         }
     }
 
@@ -112,7 +125,9 @@ impl LootPlugin {
     /// let plugin = LootPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: LootHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = LootSystem::new(hook);
         self
     }
 
@@ -145,35 +160,10 @@ impl Default for LootPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for LootPlugin {
-    fn name(&self) -> &'static str {
-        "issun:loot"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register loot config (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register loot service (Domain Service - pure logic)
-        builder.register_service(Box::new(LootService::new()));
-
-        // Register loot system with hook
-        builder.register_system(Box::new(LootSystem::new(self.hook.clone())));
-    }
-
-    fn dependencies(&self) -> Vec<&'static str> {
-        vec![]
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plugin::Plugin;
 
     #[test]
     fn test_plugin_creation() {

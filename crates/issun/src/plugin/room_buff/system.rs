@@ -25,6 +25,7 @@ use super::types::{ActiveBuff, ActiveBuffs, RoomBuffDatabase};
 /// ```text
 /// Command Event → Database Lookup → State Update → Hook Call → State Event
 /// ```
+#[derive(Clone)]
 pub struct BuffSystem {
     hook: Arc<dyn RoomBuffHook>,
 }

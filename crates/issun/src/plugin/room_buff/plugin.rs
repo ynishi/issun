@@ -4,8 +4,7 @@ use super::hook::{DefaultRoomBuffHook, RoomBuffHook};
 use super::service::BuffService;
 use super::system::BuffSystem;
 use super::types::{ActiveBuffs, RoomBuffDatabase};
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Room buff plugin
@@ -62,9 +61,23 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:room_buff")]
 pub struct RoomBuffPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn RoomBuffHook>,
+
+    #[resource]
     database: RoomBuffDatabase,
+
+    #[state]
+    active_buffs: ActiveBuffs,
+
+    #[service]
+    service: BuffService,
+
+    #[system]
+    system: BuffSystem,
 }
 
 impl RoomBuffPlugin {
@@ -73,9 +86,13 @@ impl RoomBuffPlugin {
     /// Uses the default hook (no-op) and empty database by default.
     /// Use `with_hook()` to add custom behavior and `with_database()` to add buff definitions.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultRoomBuffHook);
         Self {
-            hook: Arc::new(DefaultRoomBuffHook),
+            hook: hook.clone(),
             database: RoomBuffDatabase::default(),
+            active_buffs: ActiveBuffs::default(),
+            service: BuffService::new(),
+            system: BuffSystem::new(hook),
         }
     }
 
@@ -112,7 +129,9 @@ impl RoomBuffPlugin {
     /// let plugin = RoomBuffPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: RoomBuffHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = BuffSystem::new(hook);
         self
     }
 
@@ -149,38 +168,10 @@ impl Default for RoomBuffPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for RoomBuffPlugin {
-    fn name(&self) -> &'static str {
-        "issun:room_buff"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register buff database (ReadOnly)
-        builder.register_resource(self.database.clone());
-
-        // Register active buffs state (Mutable)
-        builder.register_runtime_state(ActiveBuffs::default());
-
-        // Register buff service (Domain Service - pure logic)
-        builder.register_service(Box::new(BuffService::new()));
-
-        // Register buff system with hook
-        builder.register_system(Box::new(BuffSystem::new(self.hook.clone())));
-    }
-
-    fn dependencies(&self) -> Vec<&'static str> {
-        vec![]
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plugin::Plugin;
 
     #[test]
     fn test_plugin_creation() {

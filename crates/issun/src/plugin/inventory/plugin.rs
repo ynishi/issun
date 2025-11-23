@@ -5,8 +5,7 @@ use super::hook::{DefaultInventoryHook, InventoryHook};
 use super::service::InventoryService;
 use super::state::InventoryState;
 use super::system::InventorySystem;
-use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
+use crate::Plugin;
 use std::sync::Arc;
 
 /// Inventory management plugin
@@ -60,9 +59,23 @@ use std::sync::Arc;
 ///     .build()
 ///     .await?;
 /// ```
+#[derive(Plugin)]
+#[plugin(name = "issun:inventory")]
 pub struct InventoryPlugin {
+    #[plugin(skip)]
     hook: Arc<dyn InventoryHook>,
+
+    #[resource]
     config: InventoryConfig,
+
+    #[state]
+    state: InventoryState,
+
+    #[service]
+    service: InventoryService,
+
+    #[system]
+    system: InventorySystem,
 }
 
 impl InventoryPlugin {
@@ -71,9 +84,13 @@ impl InventoryPlugin {
     /// Uses the default hook (no-op) and default config by default.
     /// Use `with_hook()` to add custom behavior and `with_config()` to customize configuration.
     pub fn new() -> Self {
+        let hook = Arc::new(DefaultInventoryHook);
         Self {
-            hook: Arc::new(DefaultInventoryHook),
+            hook: hook.clone(),
             config: InventoryConfig::default(),
+            state: InventoryState::new(),
+            service: InventoryService::new(),
+            system: InventorySystem::new(hook),
         }
     }
 
@@ -114,7 +131,9 @@ impl InventoryPlugin {
     /// let plugin = InventoryPlugin::new().with_hook(MyHook);
     /// ```
     pub fn with_hook<H: InventoryHook + 'static>(mut self, hook: H) -> Self {
-        self.hook = Arc::new(hook);
+        let hook = Arc::new(hook);
+        self.hook = hook.clone();
+        self.system = InventorySystem::new(hook);
         self
     }
 
@@ -149,38 +168,10 @@ impl Default for InventoryPlugin {
     }
 }
 
-#[async_trait]
-impl Plugin for InventoryPlugin {
-    fn name(&self) -> &'static str {
-        "issun:inventory"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register inventory config (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register inventory state (Mutable)
-        builder.register_runtime_state(InventoryState::new());
-
-        // Register inventory service (Domain Service - pure logic)
-        builder.register_service(Box::new(InventoryService::new()));
-
-        // Register inventory system with hook
-        builder.register_system(Box::new(InventorySystem::new(self.hook.clone())));
-    }
-
-    fn dependencies(&self) -> Vec<&'static str> {
-        vec![]
-    }
-
-    async fn initialize(&mut self) {
-        // No initialization needed
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plugin::Plugin;
 
     #[test]
     fn test_plugin_creation() {

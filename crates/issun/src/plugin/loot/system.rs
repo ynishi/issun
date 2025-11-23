@@ -25,6 +25,7 @@ use super::service::LootService;
 /// ```text
 /// Command Event → Drop Roll (Service) → Hook (Generate Items) → Loot Event
 /// ```
+#[derive(Clone)]
 pub struct LootSystem {
     hook: Arc<dyn LootHook>,
 }
