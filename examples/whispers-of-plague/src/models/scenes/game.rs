@@ -76,13 +76,32 @@ impl GameSceneData {
 
                     // Count infections per district
                     let mut infection_counts: HashMap<String, u32> = HashMap::new();
+                    let mut disease_count = 0;
                     for (_id, contagion) in contagion_state.all_contagions() {
                         // Only count disease contagions
                         if matches!(contagion.content, ContagionContent::Disease { .. }) {
+                            disease_count += 1;
                             for node_id in &contagion.spread {
                                 *infection_counts.entry(node_id.clone()).or_insert(0) += 1;
                             }
                         }
+                    }
+
+                    // Debug: Log infection statistics
+                    if disease_count > 0 {
+                        let details: Vec<String> = infection_counts
+                            .iter()
+                            .map(|(loc, count)| format!("{}: {}", loc, count))
+                            .collect();
+                        self.log_messages.insert(
+                            0,
+                            format!(
+                                "📊 {} diseases in {} locations [{}]",
+                                disease_count,
+                                infection_counts.len(),
+                                details.join(", ")
+                            ),
+                        );
                     }
 
                     // Update CityMap districts
