@@ -518,6 +518,46 @@ pub use chain_of_command::{
     ChainOfCommandPlugin,
 };
 
+// CulturePlugin exports (Phase 0-5 complete ✅)
+pub use culture::{
+    // Types (Phase 0) ✅
+    // Note: MemberId, FactionId conflict with chain_of_command
+    // Use culture::{MemberId, FactionId} when needed
+    CultureTag,
+    PersonalityTrait,
+    Alignment,
+    CultureEffect,
+    CultureError,
+    // Member type is from types.rs in culture module
+    // Config (Phase 1) ✅
+    CultureConfig,
+    // State (Phase 2) ✅
+    CultureState,
+    OrganizationCulture,
+    // Service (Phase 3) ✅
+    CultureService,
+    // Hook (Phase 4b) ✅
+    CultureHook,
+    DefaultCultureHook,
+    // System (Phase 4c) ✅
+    CultureSystem,
+    // Events (Phase 4a) ✅
+    AlignmentCheckRequested,
+    AlignmentCheckedEvent,
+    StressAccumulatedEvent,
+    FervorIncreasedEvent,
+    MemberBreakdownEvent,
+    MemberFanaticizedEvent,
+    CultureTagAddRequested,
+    CultureTagAddedEvent,
+    CultureTagRemoveRequested,
+    CultureTagRemovedEvent,
+    // Note: MemberAddRequested, MemberAddedEvent, MemberRemoveRequested, MemberRemovedEvent
+    // conflict with chain_of_command. Use culture:: prefix when needed
+    // Plugin (Phase 5) ✅
+    CulturePlugin,
+};
+
 // MarketPlugin exports (Phase 1-8 complete ✅)
 pub use market::{
     // Types (Phase 1) ✅
