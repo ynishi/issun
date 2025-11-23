@@ -18,8 +18,9 @@ pub use config::{CentralityWeights, SocialConfig};
 mod state;
 pub use state::{SocialMember, SocialNetwork, SocialState};
 
-// Phase 3: Service (TODO)
-// mod service;
+// Phase 3: Service
+mod service;
+pub use service::NetworkAnalysisService;
 
 // Phase 4a: Events (TODO)
 // mod events;
