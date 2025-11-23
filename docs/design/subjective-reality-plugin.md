@@ -4,7 +4,7 @@
 **Created**: 2025-11-22
 **Implemented**: 2025-11-22
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Cognition Layer
+**v0.4 Fundamental Plugin**: Cognition Layer
 
 ---
 
@@ -565,7 +565,7 @@ async fn test_perception_flow() {
 
 ## 🔮 Future Extensions
 
-### Phase 1 (v0.3)
+### Phase 1 (v0.4)
 - [x] Core blackboard system
 - [x] Perception filtering with accuracy
 - [x] Confidence decay

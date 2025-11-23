@@ -3,7 +3,7 @@
 **Status**: Implemented ✅
 **Created**: 2025-11-23
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Social Dynamics - Task-Based Self-Organization
+**v0.4 Fundamental Plugin**: Social Dynamics - Task-Based Self-Organization
 
 ---
 

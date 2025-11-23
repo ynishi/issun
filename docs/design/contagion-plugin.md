@@ -3,7 +3,7 @@
 **Status**: Draft
 **Created**: 2025-11-22
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Cognition Layer - Information Propagation
+**v0.4 Fundamental Plugin**: Cognition Layer - Information Propagation
 
 ---
 

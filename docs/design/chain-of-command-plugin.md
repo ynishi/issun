@@ -1,1138 +1,631 @@
 # ChainOfCommandPlugin Design Document
 
-**Status**: Draft
+**Status**: Phase 1-5 Complete ✅
 **Created**: 2025-11-23
+**Updated**: 2025-11-23
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Social Dynamics - Organizational Hierarchy
+**v0.4 Fundamental Plugin**: Social Dynamics - Organizational Hierarchy
 
 ---
 
-## 🎯 Overview
+## 🎯 Vision
 
-ChainOfCommandPlugin provides dynamic organizational hierarchy management with rank-based authority, promotion/demotion mechanics, and order compliance systems based on loyalty and morale.
+> "Authority flows downward, loyalty flows upward, and both determine organizational stability."
 
-**Core Concept**: Organizations have formal command structures where orders flow down and loyalty/morale affect compliance. Members can be promoted/demoted, and their willingness to follow orders depends on their relationship with superiors.
+ChainOfCommandPlugin provides a framework for hierarchical organizational structures with rank-based authority, promotion/demotion mechanics, and order compliance systems. It models how formal command structures operate when influenced by human factors like loyalty and morale.
 
-**Use Cases**:
-- **Strategy Games**: Military command structures, officer promotions, order execution
-- **Management Sims**: Corporate hierarchies, employee motivation, organizational charts
-- **RPG Games**: Guild ranks, party leadership, faction membership
-- **Political Sims**: Government bureaucracy, political appointments, loyalty systems
+**Key Principle**: This is an **80% framework, 20% game logic** plugin. The framework provides hierarchy mechanics; games provide rank definitions and promotion criteria.
 
 ---
 
-## 🏗️ Architecture
+## 🧩 Problem Statement
 
-### Core Concepts
+Strategy games, management sims, and RPGs often need hierarchical organizations, but implementing them requires:
 
-1. **Hierarchy Structure**: Tree-like organization with superior-subordinate relationships
-2. **Rank System**: Defined levels with authority and subordinate capacity
-3. **Promotion/Demotion**: Dynamic rank changes based on tenure, loyalty, and custom conditions
-4. **Order System**: Commands issued through chain-of-command with compliance checks
-5. **Loyalty & Morale**: Dynamic values affecting order compliance and organizational stability
+**What's Missing**:
+- Formal superior-subordinate relationship management
+- Rank-based authority systems with capacity limits
+- Promotion/demotion mechanics with customizable criteria
+- Order compliance influenced by loyalty and morale
+- Loyalty decay over time
+- Event-driven architecture for organizational changes
 
-### Key Design Principles
-
-✅ **80/20 Split**: 80% framework (hierarchy, promotion logic, order flow) / 20% game (rank definitions, custom conditions)
-✅ **Hook-based Customization**: ChainOfCommandHook for game-specific promotion criteria and order execution
-✅ **Pure Logic Separation**: Service (stateless calculations) vs System (orchestration)
-✅ **Resource/State Separation**: RankDefinitions (ReadOnly) vs HierarchyState (Mutable)
-✅ **Extensible Order Types**: OrderType enum supports game-specific commands
+**Core Challenge**: How to model hierarchical organizations where **authority is structural** but **compliance is behavioral**?
 
 ---
 
-## 📦 Component Structure
+## 🏗 Core Design
 
-```
-crates/issun/src/plugin/chain_of_command/
-├── mod.rs              # Public exports
-├── types.rs            # MemberId, RankId, Order, OrderType, Member
-├── config.rs           # ChainOfCommandConfig (Resource)
-├── rank_definitions.rs # RankDefinitions, RankDefinition, AuthorityLevel (Resource)
-├── state.rs            # HierarchyState, OrganizationHierarchy (RuntimeState)
-├── service.rs          # HierarchyService (Pure Logic)
-├── system.rs           # HierarchySystem (Orchestration)
-├── hook.rs             # ChainOfCommandHook trait + DefaultChainOfCommandHook
-└── plugin.rs           # ChainOfCommandPlugin implementation
-```
+### 1. Member & Hierarchy Structure
 
----
-
-## 🧩 Core Types
-
-### types.rs
+The foundation of the plugin is a **tree-like hierarchy** with members at nodes.
 
 ```rust
-pub type MemberId = String;
-pub type RankId = String;
-pub type FactionId = String;
-
-/// Member of an organization
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Member of an organization (simplified for design doc)
 pub struct Member {
     pub id: MemberId,
-    pub name: String,
-
-    /// Current rank
     pub rank: RankId,
+    pub superior: Option<MemberId>,  // None for supreme commander
 
-    /// Direct superior (None for supreme commander)
-    pub superior: Option<MemberId>,
+    // Behavioral attributes
+    pub loyalty: f32,    // 0.0-1.0, affects order compliance
+    pub morale: f32,     // 0.0-1.0, affects performance
+    pub tenure: u32,     // Turns in organization
+}
+```
 
-    /// Loyalty to organization (0.0-1.0)
-    pub loyalty: f32,
+**Design Notes**:
+- Tree structure: Each member has at most one superior
+- Root node: Supreme commander has `superior: None`
+- Loyalty and morale are **dynamic** values that decay over time
+- Tenure tracks organizational experience
 
-    /// Current morale (0.0-1.0)
-    pub morale: f32,
+### 2. Rank System
 
-    /// Total tenure in organization (turns)
-    pub tenure: u32,
+Ranks define **authority levels** and **capacity constraints**.
 
-    /// Turns since last promotion
-    pub turns_since_promotion: u32,
+```rust
+pub struct RankDefinition {
+    pub id: RankId,
+    pub level: u32,  // Higher = more senior
+    pub authority_level: AuthorityLevel,
+    pub max_direct_subordinates: usize,
 }
 
-/// Order issued through chain of command
-#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum AuthorityLevel {
+    Private,           // No command authority
+    SquadLeader,       // 5-10 members
+    Captain,           // 20-50 members
+    Commander,         // 100+ members
+    SupremeCommander,  // Entire organization
+}
+```
+
+**Design Notes**:
+- Ranks are **static configuration** (Resource)
+- Authority level determines order issuance rights
+- Capacity limits prevent over-centralization
+- Games define custom rank sets
+
+### 3. Order System
+
+Orders flow down the hierarchy with compliance checks.
+
+```rust
 pub struct Order {
     pub order_type: OrderType,
     pub priority: Priority,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum OrderType {
-    /// Attack target
-    Attack { target: String },
-
-    /// Defend location
-    Defend { location: String },
-
-    /// Move to destination
-    Move { destination: String },
-
-    /// Gather resource
-    Gather { resource: String },
-
-    /// Custom order (game-specific)
-    Custom {
-        key: String,
-        data: serde_json::Value,
-    },
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum Priority {
-    Low,
-    Normal,
-    High,
-    Critical,
-}
-
-/// Order execution result
-#[derive(Clone, Debug)]
 pub enum OrderOutcome {
     Executed,
     Refused { reason: String },
 }
-
-#[derive(Debug)]
-pub enum OrderError {
-    FactionNotFound,
-    MemberNotFound,
-    NotDirectSubordinate,
-}
-
-#[derive(Debug)]
-pub enum PromotionError {
-    FactionNotFound,
-    MemberNotFound,
-    RankNotFound,
-    NotEligible,
-    CustomConditionFailed,
-}
 ```
 
----
-
-## 🎖️ Rank System
-
-### rank_definitions.rs
-
-```rust
-/// Authority levels for ranks
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum AuthorityLevel {
-    /// No command authority
-    Private,
-
-    /// Can command small units (5-10 members)
-    SquadLeader,
-
-    /// Can command multiple squads (20-50 members)
-    Captain,
-
-    /// Strategic command (100+ members)
-    Commander,
-
-    /// Supreme command (entire organization)
-    SupremeCommander,
-}
-
-/// Rank definition (static configuration)
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RankDefinition {
-    pub id: RankId,
-    pub name: String,
-
-    /// Rank level (0 = lowest, higher = more senior)
-    pub level: u32,
-
-    /// Authority level
-    pub authority_level: AuthorityLevel,
-
-    /// Maximum direct subordinates
-    pub max_direct_subordinates: usize,
-}
-
-/// Collection of rank definitions
-#[derive(Clone, Debug, Serialize, Deserialize, Resource)]
-pub struct RankDefinitions {
-    ranks: HashMap<RankId, RankDefinition>,
-}
-
-impl RankDefinitions {
-    pub fn new() -> Self {
-        Self {
-            ranks: HashMap::new(),
-        }
-    }
-
-    pub fn add(&mut self, rank: RankDefinition) {
-        self.ranks.insert(rank.id.clone(), rank);
-    }
-
-    pub fn get(&self, rank_id: &RankId) -> Option<&RankDefinition> {
-        self.ranks.get(rank_id)
-    }
-
-    pub fn get_next_rank(&self, current_rank: &RankId) -> Option<&RankDefinition> {
-        let current = self.get(current_rank)?;
-        self.ranks.values()
-            .find(|r| r.level == current.level + 1)
-    }
-}
+**Order Flow**:
+```
+1. Superior issues order to direct subordinate
+2. System checks authority (can this rank issue orders?)
+3. System calculates compliance probability (based on loyalty/morale)
+4. If compliant: Execute order → emit OrderExecutedEvent
+5. If refused: Refuse order → emit OrderRefusedEvent
 ```
 
----
-
-## 🔧 Configuration
-
-### config.rs
-
-```rust
-#[derive(Clone, Debug, Serialize, Deserialize, Resource)]
-pub struct ChainOfCommandConfig {
-    /// Minimum tenure required for promotion (turns)
-    pub min_tenure_for_promotion: u32,
-
-    /// Loyalty decay rate per turn (0.0-1.0)
-    pub loyalty_decay_rate: f32,
-
-    /// Base order compliance rate (0.0-1.0)
-    pub base_order_compliance_rate: f32,
-
-    /// Loyalty threshold for promotion eligibility
-    pub min_loyalty_for_promotion: f32,
-}
-
-impl Default for ChainOfCommandConfig {
-    fn default() -> Self {
-        Self {
-            min_tenure_for_promotion: 5,
-            loyalty_decay_rate: 0.02,  // 2% per turn
-            base_order_compliance_rate: 0.8,  // 80% base compliance
-            min_loyalty_for_promotion: 0.5,  // 50% minimum
-        }
-    }
-}
-
-impl ChainOfCommandConfig {
-    pub fn with_min_tenure(mut self, tenure: u32) -> Self {
-        self.min_tenure_for_promotion = tenure;
-        self
-    }
-
-    pub fn with_loyalty_decay(mut self, rate: f32) -> Self {
-        self.loyalty_decay_rate = rate;
-        self
-    }
-
-    pub fn with_base_compliance(mut self, rate: f32) -> Self {
-        self.base_order_compliance_rate = rate;
-        self
-    }
-}
+**Compliance Formula** (default):
+```
+base_compliance = loyalty * 0.6 + morale * 0.4
+priority_bonus = priority_weight
+final_probability = clamp(base_compliance + priority_bonus, 0.0, 1.0)
 ```
 
----
+Games can override via `ChainOfCommandHook::calculate_compliance_probability()`.
 
-## 💾 Runtime State
+### 4. Promotion & Demotion
 
-### state.rs
-
-```rust
-/// Global hierarchy state for all factions
-#[derive(Clone, Debug, Serialize, Deserialize, Resource)]
-pub struct HierarchyState {
-    faction_hierarchies: HashMap<FactionId, OrganizationHierarchy>,
-}
-
-/// Hierarchy structure for a single organization
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OrganizationHierarchy {
-    /// All members in the organization
-    members: HashMap<MemberId, Member>,
-
-    /// Superior -> List of direct subordinates
-    reporting_lines: HashMap<MemberId, Vec<MemberId>>,
-
-    /// Top of the hierarchy
-    supreme_commander: Option<MemberId>,
-}
-
-impl OrganizationHierarchy {
-    pub fn new() -> Self {
-        Self {
-            members: HashMap::new(),
-            reporting_lines: HashMap::new(),
-            supreme_commander: None,
-        }
-    }
-
-    pub fn add_member(&mut self, member: Member) {
-        let id = member.id.clone();
-        let superior = member.superior.clone();
-
-        self.members.insert(id.clone(), member);
-
-        // Update reporting lines
-        if let Some(superior_id) = superior {
-            self.reporting_lines
-                .entry(superior_id)
-                .or_default()
-                .push(id);
-        } else {
-            // No superior = supreme commander
-            self.supreme_commander = Some(id);
-        }
-    }
-
-    pub fn get_member(&self, member_id: &MemberId) -> Option<&Member> {
-        self.members.get(member_id)
-    }
-
-    pub fn get_member_mut(&mut self, member_id: &MemberId) -> Option<&mut Member> {
-        self.members.get_mut(member_id)
-    }
-
-    pub fn get_subordinates(&self, member_id: &MemberId) -> Vec<&Member> {
-        self.reporting_lines
-            .get(member_id)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| self.members.get(id))
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn is_direct_subordinate(&self, subordinate_id: &MemberId, superior_id: &MemberId) -> bool {
-        self.members
-            .get(subordinate_id)
-            .and_then(|m| m.superior.as_ref())
-            .map(|sup| sup == superior_id)
-            .unwrap_or(false)
-    }
-}
-
-impl HierarchyState {
-    pub fn new() -> Self {
-        Self {
-            faction_hierarchies: HashMap::new(),
-        }
-    }
-
-    pub fn register_faction(&mut self, faction_id: FactionId) {
-        self.faction_hierarchies
-            .entry(faction_id)
-            .or_insert_with(OrganizationHierarchy::new);
-    }
-
-    pub fn get_hierarchy(&self, faction_id: &FactionId) -> Option<&OrganizationHierarchy> {
-        self.faction_hierarchies.get(faction_id)
-    }
-
-    pub fn get_hierarchy_mut(&mut self, faction_id: &FactionId) -> Option<&mut OrganizationHierarchy> {
-        self.faction_hierarchies.get_mut(faction_id)
-    }
-}
-```
-
----
-
-## 🧮 Service Layer (Pure Logic)
-
-### service.rs
+Dynamic rank changes based on tenure, loyalty, and custom conditions.
 
 ```rust
-pub struct HierarchyService;
-
-impl HierarchyService {
-    /// Check if member is eligible for promotion
-    pub fn can_promote(
+pub trait ChainOfCommandHook {
+    async fn check_promotion_eligibility(
+        &self,
         member: &Member,
-        current_rank_def: &RankDefinition,
-        next_rank_def: &RankDefinition,
-        config: &ChainOfCommandConfig,
+        current_rank: &RankDefinition,
+        target_rank: &RankDefinition,
+    ) -> bool;
+
+    async fn on_promotion_occurred(&self, event: &MemberPromotedEvent);
+    async fn on_order_executed(&self, event: &OrderExecutedEvent);
+    async fn on_order_refused(&self, event: &OrderRefusedEvent);
+}
+```
+
+**Default Promotion Criteria**:
+- Minimum tenure requirement
+- Loyalty threshold
+- Superior must have capacity for higher-level subordinates
+
+Games customize via hook to add performance metrics, achievements, etc.
+
+### 5. Loyalty Decay
+
+Loyalty naturally decays over time without positive reinforcement.
+
+**Decay Model**:
+```
+new_loyalty = current_loyalty * (1.0 - decay_rate)
+```
+
+Games can:
+- Adjust decay rate via config
+- Prevent decay for specific members (via hook)
+- Implement loyalty restoration mechanics (not in this plugin)
+
+---
+
+## 📋 Event Model
+
+Event-driven architecture for organizational changes.
+
+### Command Events (Requests)
+
+```rust
+/// Request to add a new member
+pub struct MemberAddRequested {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub initial_rank: RankId,
+    pub superior: Option<MemberId>,
+}
+
+/// Request to promote a member
+pub struct MemberPromoteRequested {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub target_rank: RankId,
+}
+
+/// Request to issue an order
+pub struct OrderIssueRequested {
+    pub faction_id: FactionId,
+    pub superior_id: MemberId,
+    pub subordinate_id: MemberId,
+    pub order: Order,
+}
+
+/// Request to process loyalty decay
+pub struct LoyaltyDecayRequested {
+    pub faction_id: FactionId,
+}
+```
+
+### State Events (Results)
+
+```rust
+/// Member successfully added
+pub struct MemberAddedEvent {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub rank: RankId,
+}
+
+/// Promotion succeeded
+pub struct MemberPromotedEvent {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub from_rank: RankId,
+    pub to_rank: RankId,
+}
+
+/// Promotion failed
+pub struct PromotionFailedEvent {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub reason: String,
+}
+
+/// Order executed
+pub struct OrderExecutedEvent {
+    pub faction_id: FactionId,
+    pub superior_id: MemberId,
+    pub subordinate_id: MemberId,
+    pub order: Order,
+}
+
+/// Order refused
+pub struct OrderRefusedEvent {
+    pub faction_id: FactionId,
+    pub superior_id: MemberId,
+    pub subordinate_id: MemberId,
+    pub order: Order,
+    pub reason: String,
+}
+
+/// Loyalty decay processed
+pub struct LoyaltyDecayProcessedEvent {
+    pub faction_id: FactionId,
+    pub affected_members: usize,
+}
+```
+
+**Event Flow**:
+```
+1. Game emits MemberPromoteRequested
+2. HierarchySystem validates eligibility
+3. System calls hook.check_promotion_eligibility()
+4. If eligible:
+   - Update member rank in HierarchyState
+   - Emit MemberPromotedEvent
+   - Hook responds via on_promotion_occurred()
+5. If not eligible:
+   - Emit PromotionFailedEvent
+```
+
+---
+
+## 🔌 Customization Points
+
+### 1. Custom Rank Definitions
+
+Games define their own rank hierarchies.
+
+```rust
+// Military hierarchy
+RankDefinitions::new()
+    .add_rank("private", 0, AuthorityLevel::Private, 0)
+    .add_rank("corporal", 1, AuthorityLevel::SquadLeader, 5)
+    .add_rank("sergeant", 2, AuthorityLevel::SquadLeader, 10)
+    .add_rank("lieutenant", 3, AuthorityLevel::Captain, 20)
+    .add_rank("captain", 4, AuthorityLevel::Captain, 50)
+    .add_rank("major", 5, AuthorityLevel::Commander, 100)
+    .add_rank("general", 6, AuthorityLevel::SupremeCommander, 500)
+
+// Corporate hierarchy
+RankDefinitions::new()
+    .add_rank("intern", 0, AuthorityLevel::Private, 0)
+    .add_rank("junior", 1, AuthorityLevel::Private, 0)
+    .add_rank("senior", 2, AuthorityLevel::SquadLeader, 3)
+    .add_rank("team_lead", 3, AuthorityLevel::SquadLeader, 8)
+    .add_rank("manager", 4, AuthorityLevel::Captain, 30)
+    .add_rank("director", 5, AuthorityLevel::Commander, 100)
+    .add_rank("vp", 6, AuthorityLevel::Commander, 200)
+    .add_rank("ceo", 7, AuthorityLevel::SupremeCommander, 1000)
+```
+
+### 2. Custom Promotion Criteria
+
+Games implement domain-specific eligibility checks.
+
+```rust
+struct MilitaryPromotionHook;
+
+impl ChainOfCommandHook for MilitaryPromotionHook {
+    async fn check_promotion_eligibility(
+        &self,
+        member: &Member,
+        current: &RankDefinition,
+        target: &RankDefinition,
     ) -> bool {
-        // Tenure check
-        if member.tenure < config.min_tenure_for_promotion {
-            return false;
-        }
+        // Military-specific criteria
+        let has_combat_experience = check_combat_history(member.id);
+        let has_commendations = check_awards(member.id);
+        let loyalty_ok = member.loyalty >= 0.7;
+        let tenure_ok = member.tenure >= target.level * 10;
 
-        // Loyalty check
-        if member.loyalty < config.min_loyalty_for_promotion {
-            return false;
-        }
-
-        // Rank level must be consecutive
-        if next_rank_def.level != current_rank_def.level + 1 {
-            return false;
-        }
-
-        true
+        has_combat_experience
+            && has_commendations
+            && loyalty_ok
+            && tenure_ok
     }
+}
+```
 
-    /// Calculate order compliance probability
-    pub fn calculate_order_compliance(
-        subordinate: &Member,
-        superior: &Member,
-        base_rate: f32,
-    ) -> f32 {
-        // Factors: loyalty and morale
-        let loyalty_factor = subordinate.loyalty;
-        let morale_factor = subordinate.morale;
+### 3. Custom Order Types
 
-        // Compliance = base * loyalty * morale
-        base_rate * loyalty_factor * morale_factor
-    }
+Games extend OrderType for domain-specific commands.
 
-    /// Decay loyalty over time
-    pub fn decay_loyalty(
-        current_loyalty: f32,
-        decay_rate: f32,
-        delta_turns: u32,
-    ) -> f32 {
-        (current_loyalty - decay_rate * delta_turns as f32).max(0.0)
-    }
+```rust
+pub enum OrderType {
+    // Built-in
+    Attack { target: String },
+    Defend { location: String },
+    Move { destination: String },
 
-    /// Calculate loyalty modifier from superior's morale
-    pub fn calculate_loyalty_modifier(
-        subordinate: &Member,
-        superior: &Member,
-    ) -> f32 {
-        // Good leader boosts subordinate loyalty
-        superior.morale * 0.3
-    }
+    // Custom (game-specific)
+    Custom { key: String, data: Value },
+}
 
-    /// Calculate chain depth (distance from supreme commander)
-    pub fn calculate_chain_depth(
-        member_id: MemberId,
-        hierarchy: &OrganizationHierarchy,
-    ) -> u32 {
-        let mut depth = 0;
-        let mut current = member_id;
+// Game usage
+OrderType::Custom {
+    key: "research_tech".into(),
+    data: json!({"tech_id": "laser_rifles"}),
+}
+```
 
-        while let Some(member) = hierarchy.get_member(&current) {
-            if let Some(superior_id) = &member.superior {
-                depth += 1;
-                current = superior_id.clone();
-            } else {
-                break;
-            }
-        }
+---
 
-        depth
-    }
+## 🎮 Usage Examples
 
-    /// Calculate effective authority (rank authority modified by loyalty)
-    pub fn calculate_effective_authority(
-        member: &Member,
-        rank_def: &RankDefinition,
-    ) -> f32 {
-        let base_authority = match rank_def.authority_level {
-            AuthorityLevel::Private => 0.0,
-            AuthorityLevel::SquadLeader => 0.25,
-            AuthorityLevel::Captain => 0.5,
-            AuthorityLevel::Commander => 0.75,
-            AuthorityLevel::SupremeCommander => 1.0,
-        };
+### Example 1: Military Command Structure
 
-        // Authority diminishes with low loyalty
-        base_authority * member.loyalty
+```rust
+use issun::plugin::chain_of_command::*;
+
+// Setup
+let config = ChainOfCommandConfig {
+    loyalty_decay_rate: 0.01,
+    enable_auto_decay: true,
+};
+
+let ranks = RankDefinitions::new()
+    .add_rank("private", 0, AuthorityLevel::Private, 0)
+    .add_rank("sergeant", 1, AuthorityLevel::SquadLeader, 10)
+    .add_rank("general", 2, AuthorityLevel::SupremeCommander, 500);
+
+// Create faction
+game.emit(MemberAddRequested {
+    faction_id: "army_alpha",
+    member_id: "general_smith",
+    initial_rank: "general",
+    superior: None,  // Supreme commander
+});
+
+// Add subordinate
+game.emit(MemberAddRequested {
+    faction_id: "army_alpha",
+    member_id: "sgt_jones",
+    initial_rank: "sergeant",
+    superior: Some("general_smith"),
+});
+
+// Issue order
+game.emit(OrderIssueRequested {
+    faction_id: "army_alpha",
+    superior_id: "general_smith",
+    subordinate_id: "sgt_jones",
+    order: Order {
+        order_type: OrderType::Attack { target: "enemy_base" },
+        priority: Priority::High,
+    },
+});
+
+// System processes:
+// 1. Checks authority (general can issue orders ✓)
+// 2. Checks relationship (sgt_jones is direct subordinate ✓)
+// 3. Calculates compliance (loyalty=0.8, morale=0.9 → 85% ✓)
+// 4. Emits OrderExecutedEvent
+```
+
+### Example 2: Corporate Promotion
+
+```rust
+// Annual promotion cycle
+game.emit(MemberPromoteRequested {
+    faction_id: "megacorp",
+    member_id: "employee_123",
+    target_rank: "senior",
+});
+
+// System validates:
+// 1. Member exists in faction ✓
+// 2. Target rank exists ✓
+// 3. Member has enough tenure (2 years) ✓
+// 4. Hook checks performance reviews ✓
+// 5. Emits MemberPromotedEvent
+
+// Hook responds
+impl ChainOfCommandHook for CorporateHook {
+    async fn on_promotion_occurred(&self, event: &MemberPromotedEvent) {
+        // Update salary
+        // Unlock executive parking
+        // Send congratulations email
     }
 }
 ```
 
 ---
 
-## 🎮 System Layer (Orchestration)
+## 🔄 System Flow
 
-### system.rs
+### Promotion Flow
 
-```rust
-pub struct HierarchySystem {
-    hook: Arc<dyn ChainOfCommandHook>,
-    service: HierarchyService,
-}
+```
+┌─────────────────────────┐
+│ MemberPromoteRequested  │
+└───────────┬─────────────┘
+            │
+            ▼
+    ┌───────────────┐
+    │ Validate      │
+    │ - Exists?     │
+    │ - Rank valid? │
+    └───────┬───────┘
+            │
+            ▼
+    ┌────────────────────┐
+    │ Check Eligibility  │
+    │ - Tenure           │
+    │ - Loyalty          │
+    │ - Hook custom      │
+    └────────┬───────────┘
+            │
+      ┌─────┴─────┐
+      │           │
+  Eligible?    Not Eligible
+      │           │
+      ▼           ▼
+┌────────────┐ ┌─────────────────┐
+│ Update     │ │ PromotionFailed │
+│ State      │ │ Event           │
+└─────┬──────┘ └─────────────────┘
+      │
+      ▼
+┌────────────────┐
+│ MemberPromoted │
+│ Event          │
+└────────────────┘
+```
 
-impl HierarchySystem {
-    pub fn new(hook: Arc<dyn ChainOfCommandHook>) -> Self {
-        Self {
-            hook,
-            service: HierarchyService,
-        }
-    }
+### Order Execution Flow
 
-    /// Promote a member to next rank
-    pub async fn promote_member(
-        &mut self,
-        faction_id: FactionId,
-        member_id: MemberId,
-        new_rank: RankId,
-        state: &mut HierarchyState,
-        rank_defs: &RankDefinitions,
-        config: &ChainOfCommandConfig,
-    ) -> Result<(), PromotionError> {
-        let hierarchy = state.get_hierarchy_mut(&faction_id)
-            .ok_or(PromotionError::FactionNotFound)?;
+```
+┌──────────────────┐
+│ OrderIssueReq    │
+└────────┬─────────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Check       │
+   │ Authority   │
+   └─────┬───────┘
+         │
+         ▼
+   ┌──────────────┐
+   │ Calculate    │
+   │ Compliance   │
+   │ Probability  │
+   └──────┬───────┘
+         │
+    ┌────┴────┐
+    │  Roll   │
+    └────┬────┘
+         │
+   ┌─────┴─────┐
+   │           │
+Execute?    Refuse?
+   │           │
+   ▼           ▼
+┌─────────┐ ┌──────────┐
+│ Executed│ │ Refused  │
+│ Event   │ │ Event    │
+└─────────┘ └──────────┘
+```
 
-        let member = hierarchy.get_member_mut(&member_id)
-            .ok_or(PromotionError::MemberNotFound)?;
+### Loyalty Decay Flow
 
-        let current_rank_def = rank_defs.get(&member.rank)
-            .ok_or(PromotionError::RankNotFound)?;
-        let new_rank_def = rank_defs.get(&new_rank)
-            .ok_or(PromotionError::RankNotFound)?;
-
-        // Service: Check eligibility
-        if !HierarchyService::can_promote(
-            member,
-            current_rank_def,
-            new_rank_def,
-            config,
-        ) {
-            return Err(PromotionError::NotEligible);
-        }
-
-        // Hook: Game-specific conditions
-        if !self.hook.can_promote_custom(member, new_rank_def).await {
-            return Err(PromotionError::CustomConditionFailed);
-        }
-
-        // Execute promotion
-        member.rank = new_rank.clone();
-        member.turns_since_promotion = 0;
-        member.morale = (member.morale + 0.2).min(1.0);
-        member.loyalty = (member.loyalty + 0.1).min(1.0);
-
-        // Hook: Notify
-        self.hook.on_member_promoted(faction_id, member_id, new_rank).await;
-
-        Ok(())
-    }
-
-    /// Issue order through chain of command
-    pub async fn issue_order(
-        &self,
-        faction_id: FactionId,
-        superior_id: MemberId,
-        subordinate_id: MemberId,
-        order: Order,
-        state: &HierarchyState,
-        config: &ChainOfCommandConfig,
-    ) -> Result<OrderOutcome, OrderError> {
-        let hierarchy = state.get_hierarchy(&faction_id)
-            .ok_or(OrderError::FactionNotFound)?;
-
-        let superior = hierarchy.get_member(&superior_id)
-            .ok_or(OrderError::MemberNotFound)?;
-        let subordinate = hierarchy.get_member(&subordinate_id)
-            .ok_or(OrderError::MemberNotFound)?;
-
-        // Verify reporting relationship
-        if !hierarchy.is_direct_subordinate(&subordinate_id, &superior_id) {
-            return Err(OrderError::NotDirectSubordinate);
-        }
-
-        // Calculate compliance
-        let compliance_rate = HierarchyService::calculate_order_compliance(
-            subordinate,
-            superior,
-            config.base_order_compliance_rate,
-        );
-
-        let mut rng = rand::thread_rng();
-        let executed = rng.gen::<f32>() < compliance_rate;
-
-        if executed {
-            // Hook: Execute order
-            self.hook.execute_order(faction_id.clone(), subordinate_id.clone(), &order).await;
-            Ok(OrderOutcome::Executed)
-        } else {
-            // Hook: Order refused
-            self.hook.on_order_refused(faction_id.clone(), subordinate_id.clone(), &order).await;
-            Ok(OrderOutcome::Refused {
-                reason: format!("Low loyalty ({:.0}%) or morale ({:.0}%)",
-                    subordinate.loyalty * 100.0,
-                    subordinate.morale * 100.0)
-            })
-        }
-    }
-
-    /// Update loyalty and morale for all members
-    pub fn update_morale_and_loyalty(
-        &self,
-        state: &mut HierarchyState,
-        config: &ChainOfCommandConfig,
-        delta_turns: u32,
-    ) {
-        for hierarchy in state.faction_hierarchies.values_mut() {
-            for (member_id, member) in &mut hierarchy.members {
-                // Natural loyalty decay
-                member.loyalty = HierarchyService::decay_loyalty(
-                    member.loyalty,
-                    config.loyalty_decay_rate,
-                    delta_turns,
-                );
-
-                // Superior relationship bonus
-                if let Some(superior_id) = &member.superior {
-                    if let Some(superior) = hierarchy.members.get(superior_id) {
-                        let modifier = HierarchyService::calculate_loyalty_modifier(
-                            member,
-                            superior,
-                        );
-                        member.loyalty = (member.loyalty + modifier).min(1.0);
-                    }
-                }
-
-                // Update tenure
-                member.tenure += delta_turns;
-                member.turns_since_promotion += delta_turns;
-            }
-        }
-    }
-}
+```
+┌───────────────────┐
+│ LoyaltyDecayReq   │
+└─────────┬─────────┘
+          │
+          ▼
+    ┌─────────────┐
+    │ For Each    │
+    │ Member      │
+    └──────┬──────┘
+           │
+           ▼
+    ┌──────────────┐
+    │ Check Hook   │
+    │ should_decay?│
+    └──────┬───────┘
+           │
+       Yes │ No
+           │
+           ▼
+    ┌──────────────┐
+    │ Apply Decay  │
+    │ loyalty *= α │
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────────┐
+    │ LoyaltyDecayed   │
+    │ Event            │
+    └──────────────────┘
 ```
 
 ---
 
-## 🪝 Hook Pattern (20% Game-Specific)
+## 🧪 Implementation Strategy
 
-### hook.rs
+### Phase 0: Core Types ✅ (Complete)
+- Define Member, Order, OrderType
+- Define AuthorityLevel, RankDefinition
+- Define error types
 
-```rust
-#[async_trait]
-pub trait ChainOfCommandHook: Send + Sync {
-    /// Check game-specific promotion conditions
-    ///
-    /// **Examples**:
-    /// - Combat victories
-    /// - Quest completions
-    /// - Peer approval rating
-    /// - Skill level requirements
-    async fn can_promote_custom(
-        &self,
-        member: &Member,
-        new_rank: &RankDefinition,
-    ) -> bool {
-        // Default: always allow
-        true
-    }
+### Phase 1: Configuration & State ✅ (Complete)
+- Implement RankDefinitions (Resource)
+- Implement ChainOfCommandConfig (Resource)
+- Implement HierarchyState (RuntimeState)
 
-    /// Notification when member is promoted
-    async fn on_member_promoted(
-        &self,
-        faction_id: FactionId,
-        member_id: MemberId,
-        new_rank: RankId,
-    ) {
-        // Default: no-op
-    }
+### Phase 2: Service Logic ✅ (Complete)
+- Implement HierarchyService (pure functions)
+- Promotion eligibility checks
+- Order compliance calculation
+- Loyalty decay logic
 
-    /// Execute order (game-specific logic)
-    ///
-    /// **Examples**:
-    /// - Move unit on map
-    /// - Start crafting
-    /// - Engage in combat
-    async fn execute_order(
-        &self,
-        faction_id: FactionId,
-        member_id: MemberId,
-        order: &Order,
-    ) {
-        // Default: no-op
-    }
+### Phase 3: Events ✅ (Complete)
+- Define all command events
+- Define all state events
 
-    /// Notification when order is refused
-    async fn on_order_refused(
-        &self,
-        faction_id: FactionId,
-        member_id: MemberId,
-        order: &Order,
-    ) {
-        // Default: no-op
-    }
+### Phase 4: Hook & System ✅ (Complete)
+- Implement ChainOfCommandHook trait
+- Implement DefaultChainOfCommandHook
+- Implement HierarchySystem orchestration
 
-    /// Calculate morale modifier based on recent events
-    ///
-    /// **Examples**:
-    /// - Recent victory: +0.2 morale
-    /// - Defeat: -0.3 morale
-    /// - Pay raise: +0.1 morale
-    async fn calculate_morale_modifier(
-        &self,
-        faction_id: &FactionId,
-        member_id: &MemberId,
-    ) -> f32 {
-        // Default: no change
-        0.0
-    }
-}
-
-pub struct DefaultChainOfCommandHook;
-
-#[async_trait]
-impl ChainOfCommandHook for DefaultChainOfCommandHook {}
-```
+### Phase 5: Plugin ✅ (Complete)
+- Implement ChainOfCommandPlugin
+- Integration tests
 
 ---
 
-## 🔌 Plugin Definition
+## ✅ Success Criteria
 
-### plugin.rs
-
-```rust
-#[derive(Plugin)]
-#[plugin(name = "issun:chain_of_command")]
-pub struct ChainOfCommandPlugin {
-    #[plugin(skip)]
-    hook: Arc<dyn ChainOfCommandHook>,
-
-    #[plugin(resource)]
-    config: ChainOfCommandConfig,
-
-    #[plugin(resource)]
-    rank_definitions: RankDefinitions,
-
-    #[plugin(runtime_state)]
-    hierarchy_state: HierarchyState,
-
-    #[plugin(service)]
-    hierarchy_service: HierarchyService,
-
-    #[plugin(system)]
-    hierarchy_system: HierarchySystem,
-}
-
-impl ChainOfCommandPlugin {
-    pub fn new() -> Self {
-        let hook = Arc::new(DefaultChainOfCommandHook);
-        Self {
-            hook: hook.clone(),
-            config: ChainOfCommandConfig::default(),
-            rank_definitions: RankDefinitions::new(),
-            hierarchy_state: HierarchyState::new(),
-            hierarchy_service: HierarchyService,
-            hierarchy_system: HierarchySystem::new(hook),
-        }
-    }
-
-    pub fn with_hook<H: ChainOfCommandHook + 'static>(mut self, hook: H) -> Self {
-        let hook_arc = Arc::new(hook);
-        self.hook = hook_arc.clone();
-        self.hierarchy_system = HierarchySystem::new(hook_arc);
-        self
-    }
-
-    pub fn with_config(mut self, config: ChainOfCommandConfig) -> Self {
-        self.config = config;
-        self
-    }
-
-    pub fn with_ranks(mut self, ranks: RankDefinitions) -> Self {
-        self.rank_definitions = ranks;
-        self
-    }
-
-    pub fn register_faction(mut self, faction_id: impl Into<String>) -> Self {
-        self.hierarchy_state.register_faction(faction_id.into());
-        self
-    }
-}
-
-impl Default for ChainOfCommandPlugin {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-```
-
----
-
-## 📖 Usage Examples
-
-### Example 1: Military Hierarchy
-
-```rust
-// Define ranks
-let mut ranks = RankDefinitions::new();
-ranks.add(RankDefinition {
-    id: "private".to_string(),
-    name: "Private".to_string(),
-    level: 0,
-    authority_level: AuthorityLevel::Private,
-    max_direct_subordinates: 0,
-});
-ranks.add(RankDefinition {
-    id: "sergeant".to_string(),
-    name: "Sergeant".to_string(),
-    level: 1,
-    authority_level: AuthorityLevel::SquadLeader,
-    max_direct_subordinates: 5,
-});
-ranks.add(RankDefinition {
-    id: "captain".to_string(),
-    name: "Captain".to_string(),
-    level: 2,
-    authority_level: AuthorityLevel::Captain,
-    max_direct_subordinates: 20,
-});
-
-// Custom hook
-struct MilitaryHook {
-    combat_records: Arc<Mutex<HashMap<MemberId, u32>>>,
-}
-
-#[async_trait]
-impl ChainOfCommandHook for MilitaryHook {
-    async fn can_promote_custom(
-        &self,
-        member: &Member,
-        new_rank: &RankDefinition,
-    ) -> bool {
-        // Require 10 victories for sergeant
-        if new_rank.id == "sergeant" {
-            let records = self.combat_records.lock().await;
-            records.get(&member.id).copied().unwrap_or(0) >= 10
-        } else {
-            true
-        }
-    }
-
-    async fn execute_order(
-        &self,
-        faction_id: FactionId,
-        member_id: MemberId,
-        order: &Order,
-    ) {
-        match &order.order_type {
-            OrderType::Attack { target } => {
-                println!("{} attacking {}!", member_id, target);
-            }
-            _ => {}
-        }
-    }
-}
-
-// Create plugin
-let game = GameBuilder::new()
-    .with_plugin(
-        ChainOfCommandPlugin::new()
-            .with_ranks(ranks)
-            .with_hook(MilitaryHook { combat_records })
-            .register_faction("crimson_legion")
-    )
-    .build()
-    .await?;
-```
-
-### Example 2: Corporate Hierarchy
-
-```rust
-let mut ranks = RankDefinitions::new();
-ranks.add(RankDefinition {
-    id: "intern".to_string(),
-    name: "Intern".to_string(),
-    level: 0,
-    authority_level: AuthorityLevel::Private,
-    max_direct_subordinates: 0,
-});
-ranks.add(RankDefinition {
-    id: "manager".to_string(),
-    name: "Manager".to_string(),
-    level: 1,
-    authority_level: AuthorityLevel::SquadLeader,
-    max_direct_subordinates: 8,
-});
-ranks.add(RankDefinition {
-    id: "director".to_string(),
-    name: "Director".to_string(),
-    level: 2,
-    authority_level: AuthorityLevel::Captain,
-    max_direct_subordinates: 5,
-});
-
-let game = GameBuilder::new()
-    .with_plugin(
-        ChainOfCommandPlugin::new()
-            .with_ranks(ranks)
-            .with_config(
-                ChainOfCommandConfig::default()
-                    .with_min_tenure(10)  // 10 quarters for promotion
-                    .with_loyalty_decay(0.01)  // 1% per quarter
-            )
-            .register_faction("megacorp")
-    )
-    .build()
-    .await?;
-```
-
----
-
-## 🧪 Testing Strategy
-
-### Unit Tests (Service Layer)
-
-```rust
-#[test]
-fn test_can_promote_with_sufficient_tenure() {
-    let member = create_test_member(10, 0.8);
-    let current = create_rank(0);
-    let next = create_rank(1);
-    let config = ChainOfCommandConfig::default();
-
-    assert!(HierarchyService::can_promote(&member, &current, &next, &config));
-}
-
-#[test]
-fn test_cannot_promote_with_low_loyalty() {
-    let member = create_test_member(10, 0.3);  // Low loyalty
-    let current = create_rank(0);
-    let next = create_rank(1);
-    let config = ChainOfCommandConfig::default();
-
-    assert!(!HierarchyService::can_promote(&member, &current, &next, &config));
-}
-
-#[test]
-fn test_order_compliance_calculation() {
-    let subordinate = Member { loyalty: 0.8, morale: 0.7, ..default() };
-    let superior = Member { morale: 0.9, ..default() };
-
-    let compliance = HierarchyService::calculate_order_compliance(
-        &subordinate,
-        &superior,
-        0.8,
-    );
-
-    // 0.8 * 0.8 * 0.7 = 0.448
-    assert_float_eq!(compliance, 0.448, 0.001);
-}
-```
-
-### Integration Tests
-
-```rust
-#[tokio::test]
-async fn test_promotion_flow() {
-    let mut game = setup_game_with_plugin().await;
-
-    // Add member with high tenure and loyalty
-    let member = create_member("soldier_1", "private", 10, 0.9);
-    hierarchy_state.add_member(member);
-
-    // Attempt promotion
-    let result = hierarchy_system.promote_member(
-        "faction_a".into(),
-        "soldier_1".into(),
-        "sergeant".into(),
-        &mut hierarchy_state,
-        &rank_defs,
-        &config,
-    ).await;
-
-    assert!(result.is_ok());
-
-    // Verify new rank
-    let promoted = hierarchy_state.get_member("soldier_1");
-    assert_eq!(promoted.rank, "sergeant");
-    assert!(promoted.morale > 0.9);  // Morale boost
-}
-
-#[tokio::test]
-async fn test_order_refusal_with_low_loyalty() {
-    let mut game = setup_game_with_plugin().await;
-
-    // Add members: superior and disloyal subordinate
-    let superior = create_member("captain", "captain", 20, 0.9);
-    let subordinate = create_member("soldier", "private", 5, 0.2);  // Low loyalty
-
-    // Issue order
-    let result = hierarchy_system.issue_order(
-        "faction_a".into(),
-        "captain".into(),
-        "soldier".into(),
-        Order { order_type: OrderType::Attack { target: "enemy".into() }, priority: Priority::High },
-        &hierarchy_state,
-        &config,
-    ).await;
-
-    // Expect refusal with low loyalty
-    match result {
-        Ok(OrderOutcome::Refused { reason }) => {
-            assert!(reason.contains("Low loyalty"));
-        }
-        _ => panic!("Expected order refusal"),
-    }
-}
-```
-
----
-
-## 🔮 Future Extensions
-
-### Phase 1 (v0.3)
-- [x] Design document
-- [ ] Core hierarchy structure
-- [ ] Promotion/demotion mechanics
-- [ ] Order system with compliance checks
-- [ ] Loyalty & morale dynamics
-
-### Phase 2 (v0.4+)
-- [ ] Multi-level order propagation (cascade orders down hierarchy)
-- [ ] Rebellion system (members can mutiny if loyalty too low)
-- [ ] Faction mergers (combine two hierarchies)
-- [ ] Performance reviews (periodic evaluation system)
-- [ ] Rank insignia/decorations
-
-### Phase 3 (Advanced)
-- [ ] Political factions within hierarchy (power struggles)
-- [ ] Nepotism/favoritism mechanics
-- [ ] Training programs (accelerate promotion)
-- [ ] Retirement/succession planning
-- [ ] Cross-faction transfers
+1. **Hierarchy Management**: Create tree structures with capacity constraints
+2. **Rank-Based Authority**: Orders respect authority levels
+3. **Dynamic Compliance**: Loyalty/morale affect order execution
+4. **Promotion System**: Customizable eligibility via hooks
+5. **Loyalty Decay**: Automatic decay with hook override
+6. **Event-Driven**: All changes emit events
+7. **Extensibility**: Games can customize ranks, orders, and criteria
 
 ---
 
 ## 📚 Related Plugins
 
-- **FactionPlugin**: Provides faction definitions and operations
-- **SubjectiveRealityPlugin**: Information asymmetry in hierarchies
-- **ContagionPlugin**: Rumor/morale spread through organization
-- **PolicyPlugin**: Organizational policies affecting promotions
-- **MetricsPlugin**: Track promotion rates, loyalty trends
+**Organizational Archetypes** (v0.4 Suite):
+- [culture-plugin.md](./culture-plugin.md) - Culture (🌫) archetype
+- [social-plugin.md](./social-plugin.md) - Social (🕸) archetype
+- [holacracy-plugin.md](./holacracy-plugin.md) - Holacracy (⭕) archetype
+- [organization-suite-plugin.md](./organization-suite-plugin.md) - Transition framework
+
+**Complementary Systems**:
+- [reputation-plugin.md](./reputation-plugin.md) - Social standing
+- [policy-plugin.md](./policy-plugin.md) - Organizational policies
 
 ---
 
-## 🎓 Academic References
+## 🎯 Design Philosophy
 
-**Organizational Theory**:
-- Weber, M. (1947). "The Theory of Social and Economic Organization"
-- Hierarchy and bureaucracy models
+**80% Framework, 20% Game**:
 
-**Game Design**:
-- Crusader Kings series (feudal hierarchy)
-- Total War series (military rank systems)
-- RimWorld (social roles and leadership)
+**Framework Provides**:
+- Hierarchy structure management
+- Rank-based authority system
+- Order compliance mechanics
+- Loyalty decay system
+- Event architecture
+- Default promotion criteria
 
-**Motivation Theory**:
-- Maslow's Hierarchy of Needs
-- Herzberg's Two-Factor Theory (hygiene factors and motivators)
+**Games Provide**:
+- Specific rank definitions
+- Custom promotion criteria
+- Order execution effects
+- Loyalty restoration mechanics
+- Domain-specific order types
 
----
-
-## ✅ Implementation Checklist
-
-### Phase 0: Setup
-- [ ] Create `crates/issun/src/plugin/chain_of_command/` directory
-- [ ] Create `mod.rs` with module structure
-- [ ] Add to `crates/issun/src/plugin/mod.rs`
-
-### Phase 1: Core Types & Config
-- [ ] Implement `types.rs` (Member, Order, OrderType, errors)
-- [ ] Implement `rank_definitions.rs` (RankDefinition, AuthorityLevel)
-- [ ] Implement `config.rs` (ChainOfCommandConfig)
-- [ ] Write unit tests for types (10+ tests)
-
-### Phase 2: State Management
-- [ ] Implement `state.rs` (HierarchyState, OrganizationHierarchy)
-- [ ] Add member management methods
-- [ ] Add hierarchy traversal methods
-- [ ] Write unit tests for state (15+ tests)
-
-### Phase 3: Service Layer
-- [ ] Implement `service.rs` (HierarchyService)
-- [ ] Promotion eligibility logic
-- [ ] Order compliance calculations
-- [ ] Loyalty decay calculations
-- [ ] Write unit tests for service (20+ tests)
-
-### Phase 4: System Layer
-- [ ] Implement `system.rs` (HierarchySystem)
-- [ ] Promotion system
-- [ ] Order execution system
-- [ ] Morale/loyalty update system
-- [ ] Write unit tests for system (15+ tests)
-
-### Phase 5: Hook & Plugin
-- [ ] Implement `hook.rs` (ChainOfCommandHook trait)
-- [ ] Implement `plugin.rs` (derive macro integration)
-- [ ] Builder pattern methods
-- [ ] Write integration tests (10+ tests)
-
-### Phase 6: Documentation & Examples
-- [ ] Add comprehensive rustdoc comments
-- [ ] Create usage examples
-- [ ] Update `PLUGIN_LIST.md`
-- [ ] Create example game (military command sim)
-
-### Quality Checks
-- [ ] All tests passing (target: 70+ tests)
-- [ ] Clippy clean (0 warnings)
-- [ ] Cargo check passing
-- [ ] Documentation complete
+This separation ensures the plugin is flexible enough for military, corporate, political, and fantasy hierarchies while providing robust default mechanics.
 
 ---
 
-## 📊 Estimated Implementation Size
+## 🔮 Future Extensions
 
-- **Total Lines**: ~3,500 lines (including tests and docs)
-- **Core Logic**: ~1,200 lines
-- **Tests**: ~1,500 lines
-- **Documentation**: ~800 lines
-- **Development Time**: 2-3 days (experienced Rust developer)
+**Potential Enhancements** (not in v0.4 scope):
+- **Merit Systems**: Track achievements for promotion
+- **Coup Mechanics**: Low loyalty → rebellion
+- **Span of Control**: Dynamic subordinate limits based on management skill
+- **Organizational Restructuring**: Bulk rank changes
+- **Cross-Faction Transfers**: Member movement between organizations
 
----
-
-## 🎯 Success Criteria
-
-1. ✅ Members can be promoted through ranks with configurable conditions
-2. ✅ Orders flow through chain of command with compliance checks
-3. ✅ Loyalty and morale affect organizational stability
-4. ✅ Hook pattern allows game-specific customization
-5. ✅ Full test coverage with 70+ passing tests
-6. ✅ Clean clippy with 0 warnings
-7. ✅ Comprehensive documentation and examples
+Games can implement these via hooks or separate plugins.

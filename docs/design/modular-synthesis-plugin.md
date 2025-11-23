@@ -3,7 +3,7 @@
 **Status**: Draft
 **Created**: 2025-11-23
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Chaos Layer - Modular Creation System
+**v0.4 Fundamental Plugin**: Chaos Layer - Modular Creation System
 
 ---
 
@@ -1486,7 +1486,7 @@ async fn test_full_synthesis_flow() {
 
 ## 🔮 Future Extensions
 
-### Phase 1 (v0.3)
+### Phase 1 (v0.4)
 - [x] Design document
 - [ ] Core types and errors
 - [ ] Recipe registry with dependency graph

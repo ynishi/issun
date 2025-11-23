@@ -1,1001 +1,711 @@
 # CulturePlugin Design Document
 
-**Status**: Implemented ✅
+**Status**: Phase 0-5 Complete ✅
 **Created**: 2025-11-23
+**Updated**: 2025-11-23
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Social Dynamics - Organizational Culture
+**v0.4 Fundamental Plugin**: Social Dynamics - Cultural & Memetic Organizations
 
 ---
 
-## 🎯 Overview
+## 🎯 Vision
 
-CulturePlugin provides organizational culture simulation where member behavior is driven by "atmosphere" and implicit rules (memetic tags) rather than explicit commands. Members experience stress or fervor based on their personality-culture alignment.
+> "Culture is not what you mandate—it's the **atmosphere members breathe**, and misalignment creates suffering."
 
-**Core Concept**: Organizations have cultural DNA (Culture Tags) that create implicit behavioral norms. Members thrive or suffer based on how their personality traits align with the organizational culture, leading to natural selection and cultural drift.
+CulturePlugin provides a framework for **cultural and memetic organizations** where shared beliefs (dogmas/slogans) influence behavior, and personality-culture misalignment causes psychological stress or fanatical devotion.
 
-**Use Cases**:
-- **Strategy Games**: Cult simulation, corporate cultures, ideological factions
-- **Management Sims**: Black companies (overwork culture), psychological safety initiatives
-- **RPG Games**: Religious orders, guild atmospheres, faction identity
-- **Political Sims**: Extremist organizations, bureaucratic institutions, revolutionary movements
+**Key Principle**: This is an **80% framework, 20% game logic** plugin. The framework provides culture mechanics; games provide tags, effects, and narrative responses.
 
 ---
 
-## 🏗️ Architecture
+## 🧩 Problem Statement
 
-### Core Concepts
+Organizations in games often model **structure** (hierarchies, roles) but rarely model the **cultural atmosphere** that shapes member behavior.
 
-1. **Culture Tags**: Memetic DNA defining organizational atmosphere (RiskTaking, Fanatic, PsychologicalSafety, etc.)
-2. **Personality Traits**: Individual member temperament (Cautious, Bold, Zealous, etc.)
-3. **Alignment System**: Automatic calculation of culture-personality fit
-4. **Stress/Fervor Mechanics**: Dynamic psychological state based on alignment
-5. **Breakdown/Fanaticism**: Threshold-based events when stress/fervor reaches extremes
-6. **Culture Strength**: Multiplier for how strongly culture affects members
+**What's Missing**:
+- Shared belief systems (dogmas, slogans) that propagate like memes
+- Personality-culture alignment checks
+- Stress accumulation from cultural mismatch
+- Fervor accumulation from alignment
+- Breakdown and fanaticism mechanics
+- Event-driven architecture for cultural changes
 
-### Key Design Principles
-
-✅ **80/20 Split**: 80% framework (alignment, stress/fervor mechanics) / 20% game (hook responses, custom tags)
-✅ **Hook-based Customization**: CultureHook for game-specific breakdown handling and fanaticism effects
-✅ **Pure Logic Separation**: Service (stateless alignment checks) vs System (orchestration)
-✅ **Resource/State Separation**: CultureConfig (ReadOnly) vs CultureState (Mutable)
-✅ **Memetic Theory**: Based on Dawkins' meme concept - culture persists beyond individual members
+**Core Challenge**: How to model organizations where **culture is behavioral**, not structural, and where **fit matters more than competence**?
 
 ---
 
-## 📦 Component Structure
+## 🏗 Core Design
 
-```
-crates/issun/src/plugin/culture/
-├── mod.rs              # Public exports
-├── types.rs            # CultureTag, PersonalityTrait, Alignment, Member (51 tests)
-├── config.rs           # CultureConfig (Resource)
-├── state.rs            # CultureState, OrganizationCulture (RuntimeState) (24 tests)
-├── service.rs          # CultureService (Pure Logic) (17 tests)
-├── events.rs           # Command/State events (7 tests)
-├── hook.rs             # CultureHook trait + DefaultCultureHook (3 tests)
-├── system.rs           # CultureSystem (Orchestration) (6 tests)
-└── plugin.rs           # CulturePlugin implementation (7 tests)
+### 1. Culture Tags
 
-tests/culture_plugin_integration.rs (6 tests)
-```
-
-**Total Test Coverage**: 85 unit tests + 6 integration tests = 91 tests ✅
-
----
-
-## 🧩 Core Types
-
-### types.rs
+The foundation of the plugin is **CultureTag**, representing shared beliefs.
 
 ```rust
-pub type MemberId = String;
-pub type FactionId = String;
-
-/// Culture tags representing organizational atmosphere
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum CultureTag {
-    /// Risk-taking culture (innovation↑, accidents↑)
-    RiskTaking,
-
-    /// Psychological safety (reporting↑, betrayal↓)
-    PsychologicalSafety,
-
-    /// Ruthless/cutthroat culture (competition↑, collaboration↓)
-    Ruthless,
-
-    /// Bureaucratic culture (stability↑, speed↓)
-    Bureaucratic,
-
-    /// Fanatic/zealot culture (fearlessness, death acceptance)
-    Fanatic,
-
-    /// Overwork culture (productivity↑, stress↑)
-    Overwork,
-
-    /// Martyrdom culture (self-sacrifice honored)
-    Martyrdom,
-
-    /// Game-specific custom culture
-    Custom(String),
+pub struct CultureTag {
+    pub key: String,        // e.g., "dogma_absolute_loyalty"
+    pub intensity: f32,     // 0.0-1.0, strength of belief
+    pub tag_type: TagType,  // Dogma vs Slogan
 }
 
-/// Personality traits of individual members
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum PersonalityTrait {
-    Cautious,        // Risk-averse
-    Bold,            // Risk-seeking
-    Competitive,     // Ambitious
-    Collaborative,   // Team-oriented
-    Zealous,         // Ideologically driven
-    Pragmatic,       // Results-oriented
-    Workaholic,      // Driven
-    Balanced,        // Moderate
-    Custom(String),  // Game-specific
+pub enum TagType {
+    Dogma,   // Core belief, rigid (e.g., "No deserters")
+    Slogan,  // Motivational phrase, flexible (e.g., "We can do it!")
+}
+```
+
+**Design Notes**:
+- Tags represent **memetic content** that spreads through the organization
+- Intensity determines how strongly the tag affects members
+- Dogmas are rigid (high stress if violated), Slogans are flexible (low stress)
+- Tags can have custom effects via hooks
+
+### 2. Personality Traits
+
+Members have **PersonalityTrait** that determines cultural fit.
+
+```rust
+pub struct PersonalityTrait {
+    pub key: String,     // e.g., "independent", "conformist", "zealot"
+    pub strength: f32,   // 0.0-1.0
 }
 
-/// Alignment between member personality and organizational culture
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum Alignment {
-    /// Perfect match - member thrives
-    Aligned {
-        fervor_bonus: f32,
-    },
-
-    /// Mismatch - member suffers stress
-    Misaligned {
-        stress_rate: f32,
-        reason: String,
-    },
-
-    /// Neutral - no strong reaction
-    Neutral,
-}
-
-/// Member of an organization with cultural alignment
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+// Member has multiple traits
 pub struct Member {
     pub id: MemberId,
-    pub name: String,
-
-    /// Member's personality traits (can have multiple)
-    pub personality_traits: HashSet<PersonalityTrait>,
-
-    /// Current stress level (0.0-1.0)
-    pub stress: f32,
-
-    /// Fervor/devotion to culture (0.0-1.0)
-    pub fervor: f32,
-
-    /// Tenure in organization (turns)
-    pub tenure: u32,
+    pub personality_traits: HashMap<String, f32>,
+    pub stress: f32,    // 0.0-1.0, accumulated from misalignment
+    pub fervor: f32,    // 0.0-1.0, accumulated from alignment
 }
 ```
 
-**Alignment Rules** (implemented in service.rs):
-- **Aligned**: Cautious+Bureaucratic, Bold+RiskTaking, Competitive+Ruthless, Collaborative+PsychologicalSafety, Zealous+Fanatic, Workaholic+Overwork
-- **Misaligned**: Cautious+RiskTaking, Bold+Bureaucratic, Collaborative+Ruthless
-- **Neutral**: All other combinations
+**Design Notes**:
+- Traits are **fixed** (personality doesn't change easily)
+- Multiple traits can exist (e.g., 0.8 independent, 0.3 conformist)
+- Games define trait catalog
+- Traits interact with CultureTags during alignment checks
 
----
+### 3. Alignment Check
 
-## ⚙️ Configuration
-
-### config.rs
+The core mechanic: Does this member **fit** the culture?
 
 ```rust
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct CultureConfig {
-    /// Base stress accumulation rate per turn for misaligned members
-    pub base_stress_rate: f32,
-
-    /// Base fervor growth rate per turn for aligned members
-    pub base_fervor_growth_rate: f32,
-
-    /// Stress threshold for breakdown (default 0.8)
-    pub stress_breakdown_threshold: f32,
-
-    /// Fervor threshold for fanaticism (default 0.9)
-    pub fervor_fanaticism_threshold: f32,
-
-    /// Culture strength multiplier (default 1.0)
-    pub culture_strength: f32,
-
-    /// Enable stress decay over time
-    pub enable_stress_decay: bool,
-
-    /// Stress decay rate (if enabled)
-    pub stress_decay_rate: f32,
-}
-
-impl Default for CultureConfig {
-    fn default() -> Self {
-        Self {
-            base_stress_rate: 0.03,
-            base_fervor_growth_rate: 0.02,
-            stress_breakdown_threshold: 0.8,
-            fervor_fanaticism_threshold: 0.9,
-            culture_strength: 1.0,
-            enable_stress_decay: true,
-            stress_decay_rate: 0.01,
-        }
-    }
+pub enum Alignment {
+    Aligned,    // Fits culture, generates fervor
+    Neutral,    // No strong reaction
+    Misaligned, // Opposes culture, generates stress
 }
 ```
 
-**Builder Methods**:
-- `with_stress_rate(f32)` - Set base stress rate
-- `with_fervor_rate(f32)` - Set base fervor growth rate
-- `with_breakdown_threshold(f32)` - Set stress breakdown point
-- `with_fanaticism_threshold(f32)` - Set fervor fanaticism point
-- `with_culture_strength(f32)` - Set culture strength multiplier
-- `with_stress_decay(bool)` - Enable/disable stress decay
-- `with_decay_rate(f32)` - Set stress decay rate
+**Alignment Calculation** (default):
+```
+For each CultureTag in organization:
+    score = 0.0
+    For each PersonalityTrait in member:
+        if tag and trait are compatible:
+            score += tag.intensity * trait.strength
+        elif tag and trait conflict:
+            score -= tag.intensity * trait.strength
 
----
-
-## 📊 State Management
-
-### state.rs
-
-```rust
-/// Culture data for a single organization
-#[derive(Clone, Debug)]
-pub struct OrganizationCulture {
-    members: HashMap<MemberId, Member>,
-    culture_tags: HashSet<CultureTag>,
-    culture_strength: Option<f32>,
-}
-
-impl OrganizationCulture {
-    // Member management
-    pub fn add_member(&mut self, member: Member)
-    pub fn remove_member(&mut self, member_id: &MemberId) -> Option<Member>
-    pub fn get_member(&self, member_id: &MemberId) -> Option<&Member>
-    pub fn get_member_mut(&mut self, member_id: &MemberId) -> Option<&mut Member>
-    pub fn all_members(&self) -> impl Iterator<Item = (&MemberId, &Member)>
-
-    // Culture management
-    pub fn add_culture_tag(&mut self, tag: CultureTag)
-    pub fn remove_culture_tag(&mut self, tag: &CultureTag) -> bool
-    pub fn has_culture_tag(&self, tag: &CultureTag) -> bool
-    pub fn culture_tags(&self) -> &HashSet<CultureTag>
-
-    // Metrics
-    pub fn member_count(&self) -> usize
-    pub fn average_stress(&self) -> f32
-    pub fn average_fervor(&self) -> f32
-}
-
-/// Global culture state for all factions
-#[derive(Debug)]
-pub struct CultureState {
-    faction_cultures: HashMap<FactionId, OrganizationCulture>,
-}
-
-impl CultureState {
-    pub fn register_faction(&mut self, faction_id: &str)
-    pub fn get_culture(&self, faction_id: &FactionId) -> Option<&OrganizationCulture>
-    pub fn get_culture_mut(&mut self, faction_id: &FactionId) -> Option<&mut OrganizationCulture>
-    pub fn all_cultures(&self) -> impl Iterator<Item = (&FactionId, &OrganizationCulture)>
-}
+    if score > threshold:
+        Aligned → fervor += delta
+    elif score < -threshold:
+        Misaligned → stress += delta
 ```
 
----
+Games can override via `CultureHook::calculate_alignment()`.
 
-## 🧮 Service Layer (Pure Logic)
+**Example**:
+```
+Organization has: {"dogma_absolute_loyalty": 0.9}
+Member has: {"independent": 0.8, "conformist": 0.2}
 
-### service.rs
-
-```rust
-pub struct CultureService;
-
-impl CultureService {
-    /// Check alignment between member personality and organization culture
-    pub fn check_alignment(
-        member: &Member,
-        culture_tags: &HashSet<CultureTag>,
-    ) -> Alignment {
-        // Returns Aligned, Misaligned, or Neutral based on personality-culture fit
-    }
-
-    /// Calculate stress change based on alignment
-    pub fn calculate_stress_change(
-        current_stress: f32,
-        alignment: &Alignment,
-        config: &CultureConfig,
-        culture_strength: f32,
-    ) -> f32 {
-        // Returns new stress value (clamped 0.0-1.0)
-    }
-
-    /// Calculate fervor change based on alignment
-    pub fn calculate_fervor_change(
-        current_fervor: f32,
-        alignment: &Alignment,
-        config: &CultureConfig,
-        culture_strength: f32,
-    ) -> f32 {
-        // Returns new fervor value (clamped 0.0-1.0)
-    }
-
-    /// Check if member should experience breakdown
-    pub fn should_breakdown(stress: f32, config: &CultureConfig) -> bool {
-        stress >= config.stress_breakdown_threshold
-    }
-
-    /// Check if member should become fanatical
-    pub fn should_fanaticize(fervor: f32, config: &CultureConfig) -> bool {
-        fervor >= config.fervor_fanaticism_threshold
-    }
-}
+"independent" conflicts with "absolute_loyalty"
+score = -0.9 * 0.8 = -0.72 → Misaligned
+stress increases
 ```
 
-**Example Alignment Logic**:
+### 4. Stress & Fervor Mechanics
+
+Two parallel systems tracking psychological impact.
+
+**Stress (Misalignment)**:
+- Accumulates when member personality conflicts with culture
+- High stress → Breakdown
+- Default threshold: 0.8
+
 ```rust
-// Cautious member in RiskTaking culture
-Alignment::Misaligned {
-    stress_rate: 0.05,
-    reason: "Cautious personality in RiskTaking culture".to_string(),
-}
-
-// Cautious member in Bureaucratic culture
-Alignment::Aligned {
-    fervor_bonus: 0.03,
-}
-```
-
----
-
-## 🎯 Events
-
-### events.rs
-
-**Command Events** (Requests):
-```rust
-/// Request alignment check for all members
-pub struct AlignmentCheckRequested {
-    pub delta_turns: u32,
-}
-
-/// Request to add member to organization
-pub struct MemberAddRequested {
-    pub faction_id: FactionId,
-    pub member: Member,
-}
-
-/// Request to remove member from organization
-pub struct MemberRemoveRequested {
+pub struct MemberBreakdownEvent {
     pub faction_id: FactionId,
     pub member_id: MemberId,
+    pub stress_level: f32,
 }
+```
 
-/// Request to add culture tag
+**Fervor (Over-Alignment)**:
+- Accumulates when member personality matches culture strongly
+- High fervor → Fanaticism
+- Default threshold: 0.9
+
+```rust
+pub struct MemberFanaticizedEvent {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub fervor_level: f32,
+}
+```
+
+**Design Notes**:
+- Both stress and fervor are **continuous values** (not binary)
+- Thresholds trigger events, but hooks decide consequences
+- Games can implement stress relief or fervor exploitation mechanics
+
+### 5. Culture Effects
+
+CultureTags can have mechanical effects on the organization.
+
+```rust
+pub struct CultureEffect {
+    pub attribute: String,  // e.g., "productivity", "loyalty"
+    pub modifier: f32,      // e.g., +0.2 (20% boost)
+}
+```
+
+**Default Mechanism**:
+- Each tag can have associated effects
+- Effects aggregate across all tags
+- Games query effects via `CultureState::get_active_effects()`
+
+**Example**:
+```
+Tag: "slogan_work_harder" (intensity: 0.7)
+Effect: productivity +0.15 (0.7 * base_multiplier)
+
+Tag: "dogma_no_questions" (intensity: 0.9)
+Effect: loyalty +0.3, innovation -0.2
+```
+
+---
+
+## 📋 Event Model
+
+Event-driven architecture for cultural dynamics.
+
+### Command Events (Requests)
+
+```rust
+/// Request to add a culture tag
 pub struct CultureTagAddRequested {
     pub faction_id: FactionId,
     pub tag: CultureTag,
 }
 
-/// Request to remove culture tag
+/// Request to remove a culture tag
 pub struct CultureTagRemoveRequested {
     pub faction_id: FactionId,
-    pub tag: CultureTag,
+    pub tag_key: String,
+}
+
+/// Request to check a member's alignment
+pub struct AlignmentCheckRequested {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+}
+
+/// Request to add a member to the culture
+pub struct MemberAddRequested {
+    pub faction_id: FactionId,
+    pub member_id: MemberId,
+    pub personality_traits: HashMap<String, f32>,
 }
 ```
 
-**State Events** (Results):
+### State Events (Results)
+
 ```rust
-/// Alignment was checked for a member
+/// Culture tag successfully added
+pub struct CultureTagAddedEvent {
+    pub faction_id: FactionId,
+    pub tag: CultureTag,
+}
+
+/// Culture tag removed
+pub struct CultureTagRemovedEvent {
+    pub faction_id: FactionId,
+    pub tag_key: String,
+}
+
+/// Alignment checked
 pub struct AlignmentCheckedEvent {
     pub faction_id: FactionId,
     pub member_id: MemberId,
     pub alignment: Alignment,
+    pub stress_delta: f32,
+    pub fervor_delta: f32,
 }
 
-/// Member accumulated stress
+/// Stress accumulated (informational)
 pub struct StressAccumulatedEvent {
     pub faction_id: FactionId,
     pub member_id: MemberId,
-    pub old_stress: f32,
     pub new_stress: f32,
-    pub reason: String,
 }
 
-/// Member gained fervor
+/// Fervor increased (informational)
 pub struct FervorIncreasedEvent {
     pub faction_id: FactionId,
     pub member_id: MemberId,
-    pub old_fervor: f32,
     pub new_fervor: f32,
 }
 
-/// Member suffered breakdown
+/// Member breakdown (threshold crossed)
 pub struct MemberBreakdownEvent {
     pub faction_id: FactionId,
     pub member_id: MemberId,
     pub stress_level: f32,
 }
 
-/// Member became fanatical
+/// Member fanaticism (threshold crossed)
 pub struct MemberFanaticizedEvent {
     pub faction_id: FactionId,
     pub member_id: MemberId,
     pub fervor_level: f32,
 }
+```
 
-/// Culture tag was added/removed
-pub struct CultureTagAddedEvent { ... }
-pub struct CultureTagRemovedEvent { ... }
+**Event Flow**:
+```
+1. Game emits AlignmentCheckRequested
+2. CultureSystem retrieves faction culture tags
+3. Service calculates alignment (or calls hook)
+4. If misaligned:
+   - Increase member stress
+   - Emit StressAccumulatedEvent
+   - If stress > threshold: Emit MemberBreakdownEvent
+5. If aligned:
+   - Increase member fervor
+   - Emit FervorIncreasedEvent
+   - If fervor > threshold: Emit MemberFanaticizedEvent
 ```
 
 ---
 
-## 🪝 Hook System
+## 🔌 Customization Points
 
-### hook.rs
+### 1. Custom Culture Tags
 
-```rust
-#[async_trait]
-pub trait CultureHook: Send + Sync {
-    /// Notification when alignment is checked
-    async fn on_alignment_checked(
-        &self,
-        faction_id: &FactionId,
-        member_id: &MemberId,
-        alignment: &Alignment,
-        resources: &mut ResourceContext,
-    ) {}
-
-    /// Notification when member accumulates stress
-    async fn on_stress_accumulated(
-        &self,
-        faction_id: &FactionId,
-        member_id: &MemberId,
-        new_stress: f32,
-        resources: &mut ResourceContext,
-    ) {}
-
-    /// Notification when member gains fervor
-    async fn on_fervor_increased(
-        &self,
-        faction_id: &FactionId,
-        member_id: &MemberId,
-        new_fervor: f32,
-        resources: &mut ResourceContext,
-    ) {}
-
-    /// Handle member breakdown (return true to remove member)
-    async fn on_member_breakdown(
-        &self,
-        faction_id: &FactionId,
-        member: &Member,
-        resources: &mut ResourceContext,
-    ) -> bool {
-        true  // Default: remove member
-    }
-
-    /// Handle member fanaticism (apply fearlessness, etc.)
-    async fn on_member_fanaticized(
-        &self,
-        faction_id: &FactionId,
-        member: &Member,
-        resources: &mut ResourceContext,
-    ) {}
-
-    /// Check if culture tag can be added
-    async fn can_add_culture_tag(
-        &self,
-        faction_id: &FactionId,
-        tag: &CultureTag,
-        resources: &mut ResourceContext,
-    ) -> bool {
-        true  // Default: always allow
-    }
-
-    /// Notification when culture tag is added
-    async fn on_culture_tag_added(
-        &self,
-        faction_id: &FactionId,
-        tag: &CultureTag,
-        resources: &mut ResourceContext,
-    ) {}
-
-    /// Notification when culture tag is removed
-    async fn on_culture_tag_removed(
-        &self,
-        faction_id: &FactionId,
-        tag: &CultureTag,
-        resources: &mut ResourceContext,
-    ) {}
-}
-
-/// Default no-op implementation
-pub struct DefaultCultureHook;
-
-#[async_trait]
-impl CultureHook for DefaultCultureHook {}
-```
-
-**Hook Use Cases**:
-- **Breakdown**: Remove member, apply debuffs, trigger mental health events
-- **Fanaticism**: Grant fearlessness buff, enable martyrdom abilities, ignore self-preservation
-- **Tag Gates**: Require specific items/events to enable certain culture tags
-- **UI Updates**: Show stress/fervor indicators, trigger narrative events
-
----
-
-## 🔧 System (Orchestration)
-
-### system.rs
+Games define domain-specific tags and their effects.
 
 ```rust
-pub struct CultureSystem<H: CultureHook> {
-    hook: H,
-    service: CultureService,
+// Cult organization
+CultureTag {
+    key: "dogma_guru_is_god",
+    intensity: 1.0,
+    tag_type: TagType::Dogma,
+}
+CultureTag {
+    key: "slogan_we_are_chosen",
+    intensity: 0.8,
+    tag_type: TagType::Slogan,
 }
 
-impl<H: CultureHook> CultureSystem<H> {
-    pub fn new(hook: H) -> Self
+// Military organization
+CultureTag {
+    key: "dogma_chain_of_command",
+    intensity: 0.9,
+    tag_type: TagType::Dogma,
+}
+CultureTag {
+    key: "slogan_semper_fi",
+    intensity: 0.7,
+    tag_type: TagType::Slogan,
+}
 
-    /// Process all pending culture events
-    pub async fn process_events(&mut self, resources: &mut ResourceContext) {
-        // 1. Collect events from EventBus
-        // 2. Process alignment check requests
-        // 3. Process member add/remove requests
-        // 4. Process culture tag add/remove requests
-    }
-
-    // Private methods
-    async fn process_alignment_check_request(...)
-    async fn check_member_alignment(...)
-    async fn process_add_member_request(...)
-    async fn process_remove_member_request(...)
-    async fn process_add_culture_tag_request(...)
-    async fn process_remove_culture_tag_request(...)
+// Tech startup
+CultureTag {
+    key: "slogan_move_fast",
+    intensity: 0.8,
+    tag_type: TagType::Slogan,
+}
+CultureTag {
+    key: "dogma_growth_at_all_costs",
+    intensity: 0.6,
+    tag_type: TagType::Dogma,
 }
 ```
 
-**Event Processing Flow**:
-1. Collect all events from EventBus
-2. For alignment checks: iterate all factions/members, calculate alignment, update stress/fervor
-3. Check for breakdown (stress ≥ threshold) → call hook → optionally remove member
-4. Check for fanaticism (fervor ≥ threshold) → call hook → apply effects
-5. Publish state events (StressAccumulatedEvent, FervorIncreasedEvent, etc.)
+### 2. Custom Alignment Logic
 
----
-
-## 🔌 Plugin Integration
-
-### plugin.rs
+Games implement domain-specific compatibility rules.
 
 ```rust
-pub struct CulturePlugin<H: CultureHook = DefaultCultureHook> {
-    config: CultureConfig,
-    registered_factions: Vec<FactionId>,
-    hook: H,
-}
+struct CultCultureHook;
 
-impl CulturePlugin<DefaultCultureHook> {
-    pub fn new() -> Self
-}
+impl CultureHook for CultCultureHook {
+    async fn calculate_alignment(
+        &self,
+        member_traits: &HashMap<String, f32>,
+        culture_tags: &HashMap<String, CultureTag>,
+    ) -> Alignment {
+        // Custom logic for cult dynamics
+        let independent = member_traits.get("independent").unwrap_or(&0.0);
+        let conformist = member_traits.get("conformist").unwrap_or(&0.0);
 
-impl<H: CultureHook> CulturePlugin<H> {
-    pub fn with_hook<NewH: CultureHook>(self, hook: NewH) -> CulturePlugin<NewH>
-    pub fn with_config(mut self, config: CultureConfig) -> Self
-    pub fn register_faction(mut self, faction_id: impl Into<String>) -> Self
-    pub fn register_factions(mut self, faction_ids: Vec<impl Into<String>>) -> Self
-}
+        let guru_dogma = culture_tags.get("dogma_guru_is_god");
 
-#[async_trait]
-impl<H: CultureHook + Send + Sync + 'static> Plugin for CulturePlugin<H> {
-    fn name(&self) -> &'static str {
-        "culture_plugin"
-    }
-
-    fn build(&self, builder: &mut dyn PluginBuilder) {
-        // Register config (ReadOnly)
-        builder.register_resource(self.config.clone());
-
-        // Register state (Mutable)
-        let mut state = CultureState::new();
-        for faction_id in &self.registered_factions {
-            state.register_faction(faction_id);
+        if let Some(dogma) = guru_dogma {
+            if *independent > 0.7 {
+                // Independent thinkers struggle in cults
+                Alignment::Misaligned
+            } else if *conformist > 0.8 {
+                // Conformists thrive in cults
+                Alignment::Aligned
+            } else {
+                Alignment::Neutral
+            }
+        } else {
+            Alignment::Neutral
         }
-        builder.register_runtime_state(state);
+    }
+}
+```
+
+### 3. Custom Breakdown/Fanaticism Responses
+
+Games decide consequences of crossing thresholds.
+
+```rust
+impl CultureHook for GameHook {
+    async fn on_member_breakdown(&self, event: &MemberBreakdownEvent) {
+        // High stress consequences
+        // - Decrease productivity
+        // - Increase likelihood of quitting
+        // - Mental health issues
+        // - Rebellion risk
+
+        if event.stress_level > 0.9 {
+            // Critical breakdown
+            emit(MemberQuitEvent { member_id: event.member_id });
+        }
+    }
+
+    async fn on_member_fanaticized(&self, event: &MemberFanaticizedEvent) {
+        // High fervor consequences
+        // - Increase productivity (short-term)
+        // - Decrease critical thinking
+        // - Willing to sacrifice for organization
+        // - Cult-like behavior
+
+        if event.fervor_level > 0.95 {
+            // Extreme fanaticism
+            // Willing to die for the cause
+            grant_kamikaze_ability(event.member_id);
+        }
     }
 }
 ```
 
 ---
 
-## 💡 Usage Example
-
-### Basic Setup
-
-```rust
-use issun::plugin::culture::*;
-
-let game = GameBuilder::new()
-    .add_plugin(
-        CulturePlugin::new()
-            .with_config(CultureConfig::default()
-                .with_stress_rate(0.05)
-                .with_breakdown_threshold(0.75))
-            .register_faction("cult_a")
-            .register_faction("corp_b")
-    )
-    .build()
-    .await?;
-```
-
-### Custom Hook Example
-
-```rust
-use issun::plugin::culture::*;
-use async_trait::async_trait;
-
-#[derive(Clone)]
-struct MyGameHook;
-
-#[async_trait]
-impl CultureHook for MyGameHook {
-    async fn on_member_breakdown(
-        &self,
-        faction_id: &FactionId,
-        member: &Member,
-        resources: &mut ResourceContext,
-    ) -> bool {
-        // Apply debuff instead of removing member
-        println!("{} suffered breakdown! Applying penalty...", member.name);
-
-        // Don't remove member
-        false
-    }
-
-    async fn on_member_fanaticized(
-        &self,
-        faction_id: &FactionId,
-        member: &Member,
-        resources: &mut ResourceContext,
-    ) {
-        // Grant fearlessness buff
-        println!("{} became fanatical! Granting fearlessness...", member.name);
-    }
-}
-
-let game = GameBuilder::new()
-    .add_plugin(CulturePlugin::new().with_hook(MyGameHook))
-    .build()
-    .await?;
-```
-
-### Runtime Usage
-
-```rust
-// Add member with personality
-let mut resources = game.resources();
-{
-    let mut state = resources.get_mut::<CultureState>().await.unwrap();
-    let culture = state.get_culture_mut(&"cult_a".to_string()).unwrap();
-
-    let member = Member::new("m1", "Alice")
-        .with_trait(PersonalityTrait::Cautious)
-        .with_stress(0.0);
-    culture.add_member(member);
-
-    // Add culture tag
-    culture.add_culture_tag(CultureTag::RiskTaking);
-}
-
-// Trigger alignment check
-{
-    let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-    bus.publish(AlignmentCheckRequested { delta_turns: 1 });
-    bus.dispatch();
-}
-
-// Process events
-let mut system = CultureSystem::new(DefaultCultureHook);
-system.process_events(&mut resources).await;
-
-// Check results
-{
-    let state = resources.get::<CultureState>().await.unwrap();
-    let culture = state.get_culture(&"cult_a".to_string()).unwrap();
-    let member = culture.get_member(&"m1".to_string()).unwrap();
-
-    // Cautious + RiskTaking = Misaligned → stress increased
-    println!("Stress: {}", member.stress);  // > 0.0
-}
-```
-
----
-
-## 🎮 Game Integration Examples
+## 🎮 Usage Examples
 
 ### Example 1: Cult Simulation
 
 ```rust
-// Create fanatical cult
-let cult_plugin = CulturePlugin::new()
-    .with_config(CultureConfig::default()
-        .with_fervor_rate(0.1)  // High fervor growth
-        .with_fanaticism_threshold(0.7))  // Lower threshold
-    .register_faction("death_cult");
-
-// Add members
-let zealot = Member::new("z1", "Zealot")
-    .with_trait(PersonalityTrait::Zealous);
-
-// Add culture tags
-culture.add_culture_tag(CultureTag::Fanatic);
-culture.add_culture_tag(CultureTag::Martyrdom);
-
-// Result: Zealots become fanatical quickly, ignore death
-```
-
-### Example 2: Black Company
-
-```rust
-// Create overwork culture
-let corp_plugin = CulturePlugin::new()
-    .with_config(CultureConfig::default()
-        .with_stress_rate(0.08)  // High stress accumulation
-        .with_breakdown_threshold(0.6))  // Lower threshold
-    .register_faction("black_corp");
-
-// Add culture tags
-culture.add_culture_tag(CultureTag::Overwork);
-culture.add_culture_tag(CultureTag::Ruthless);
-
-// Result: High turnover, frequent breakdowns
-```
-
-### Example 3: Psychological Safety Organization
-
-```rust
-// Create healthy culture
-let team_plugin = CulturePlugin::new()
-    .with_config(CultureConfig::default()
-        .with_stress_decay(true)
-        .with_decay_rate(0.05))  // Stress relief
-    .register_faction("safe_team");
-
-// Add culture tags
-culture.add_culture_tag(CultureTag::PsychologicalSafety);
-
-// Result: Low stress, high retention, honest reporting
-```
-
----
-
-## 🔗 Integration with Other Plugins
-
-### with ChainOfCommandPlugin
-
-```rust
-// Military hierarchy with cultural pressure
-game.add_plugin(ChainOfCommandPlugin::new().register_faction("army"));
-game.add_plugin(
-    CulturePlugin::new()
-        .with_config(CultureConfig::default())
-        .register_faction("army")
-);
-
-// Orders flow through hierarchy (ChainOfCommand)
-// Culture affects order compliance via stress/fervor (Culture)
-```
-
-### with ReputationPlugin
-
-```rust
-// Breakdown events affect faction reputation
-impl CultureHook for MyHook {
-    async fn on_member_breakdown(...) -> bool {
-        // Publish reputation change
-        let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-        bus.publish(ReputationChangeRequested {
-            subject_id: faction_id.clone(),
-            observer_id: "public".to_string(),
-            delta: -10.0,
-            reason: "Member breakdown (poor working conditions)".to_string(),
-        });
-        true
-    }
-}
-```
-
-### with EntropyPlugin
-
-```rust
-// High stress members cause sabotage → item degradation
-impl CultureHook for MyHook {
-    async fn on_stress_accumulated(...) {
-        if new_stress > 0.7 {
-            // Trigger entropy event
-            let mut bus = resources.get_mut::<EventBus>().await.unwrap();
-            bus.publish(EntropyIncreaseRequested {
-                entity_id: equipment_id,
-                amount: 5.0,
-                reason: "Stressed member neglect".to_string(),
-            });
-        }
-    }
-}
-```
-
----
-
-## 📊 Metrics & Observability
-
-CulturePlugin provides observable metrics through OrganizationCulture:
-
-```rust
-let culture = state.get_culture(&faction_id).unwrap();
-
-// Health indicators
-let avg_stress = culture.average_stress();      // 0.0-1.0
-let avg_fervor = culture.average_fervor();      // 0.0-1.0
-let member_count = culture.member_count();
-
-// Alert thresholds
-if avg_stress > 0.6 {
-    println!("WARNING: High organizational stress!");
-}
-
-if avg_fervor > 0.8 {
-    println!("WARNING: Extremism risk!");
-}
-```
-
----
-
-## 🧪 Testing
-
-### Test Coverage
-
-- **types.rs**: 51 tests - Culture tags, personality traits, alignment, member creation
-- **state.rs**: 24 tests - Member management, culture tags, metrics
-- **service.rs**: 17 tests - Alignment logic, stress/fervor calculation
-- **events.rs**: 7 tests - Event serialization
-- **hook.rs**: 3 tests - Default hook behavior
-- **system.rs**: 6 tests - Event processing, alignment checks
-- **plugin.rs**: 7 tests - Plugin creation, configuration, builder chain
-- **integration**: 6 tests - Full workflow, multi-faction, custom hooks
-
-**Total**: 85 unit tests + 6 integration tests = **91 tests** ✅
-
-### Key Test Scenarios
-
-```rust
-// Alignment calculation
-#[test]
-fn test_cautious_in_risk_taking_culture() {
-    let member = Member::new("m1", "Test")
-        .with_trait(PersonalityTrait::Cautious);
-    let mut tags = HashSet::new();
-    tags.insert(CultureTag::RiskTaking);
-
-    let alignment = CultureService::check_alignment(&member, &tags);
-
-    match alignment {
-        Alignment::Misaligned { stress_rate, .. } => {
-            assert!(stress_rate > 0.0);
-        }
-        _ => panic!("Expected misalignment"),
-    }
-}
-
-// Stress accumulation
-#[tokio::test]
-async fn test_stress_accumulation_workflow() {
-    // Setup resources with EventBus
-    // Add member with Cautious trait
-    // Add RiskTaking culture tag
-    // Publish AlignmentCheckRequested
-    // Process events
-    // Assert stress > 0.0
-}
-```
-
----
-
-## 🚀 Implementation Status
-
-**Phase 0-6**: ✅ **Fully Implemented** (2025-11-23)
-
-All core functionality completed with comprehensive test coverage. Ready for production use.
-
-### Future Enhancements (Phase 7+)
-
-- [ ] **Culture Propagation**: High-fervor members influence others
-- [ ] **Personality Drift**: Long-term adaptation changes personality traits
-- [ ] **Culture Mutation**: Events trigger automatic culture tag changes
-- [ ] **Organization Split**: Culture conflict causes faction splitting
-
----
-
-## 📚 Theoretical Background
-
-### Edgar Schein's Organizational Culture Model
-
-Organizations have three levels:
-1. **Artifacts**: Observable behaviors (what we implement as CultureEffect)
-2. **Espoused Values**: Stated values (CultureTag descriptions)
-3. **Basic Assumptions**: Unconscious beliefs (implicit alignment rules)
-
-CulturePlugin models all three levels through tag-personality fit.
-
-### Richard Dawkins' Memetic Theory
-
-Culture acts as "memetic DNA" that:
-- Replicates across members (culture propagation)
-- Mutates over time (culture drift)
-- Survives beyond individuals (organizational persistence)
-
-**Key Insight**: Leaders die, but memes persist. A Fanatic culture continues recruiting zealots long after the founder is gone.
-
----
-
-## ⚠️ Design Considerations
-
-### 1. Culture is "Atmosphere", Not "Command"
-
-Unlike ChainOfCommandPlugin (explicit orders), CulturePlugin drives behavior through implicit pressure. No one commands members to stress out - it happens naturally from misalignment.
-
-### 2. Mismatch Creates Suffering
-
-Realistic organizational dynamics: Cautious people in RiskTaking cultures experience real stress, leading to:
-- Natural attrition (breakdown → quit)
-- Self-selection (only aligned members stay)
-- Cultural homogeneity over time
-
-### 3. Measurable "Madness"
-
-Fervor threshold allows simulating:
-- Cults (high fervor = irrational devotion)
-- Extremist organizations (fanaticism = fearlessness)
-- Toxic positivity (forced enthusiasm)
-
-### 4. Hook-Based Extensibility
-
-20% hook system allows game-specific responses:
-- Remove member vs apply debuff
-- Grant buffs vs modify stats
-- Trigger narrative events vs silent effects
-
----
-
-## 📖 API Reference
-
-### Public Exports
-
-```rust
-pub use culture::{
-    // Types
-    CultureTag,
-    PersonalityTrait,
-    Alignment,
-    CultureEffect,
-    CultureError,
-
-    // Config
-    CultureConfig,
-
-    // State
-    CultureState,
-    OrganizationCulture,
-
-    // Service
-    CultureService,
-
-    // Hook
-    CultureHook,
-    DefaultCultureHook,
-
-    // System
-    CultureSystem,
-
-    // Events (Command)
-    AlignmentCheckRequested,
-    MemberAddRequested,
-    MemberRemoveRequested,
-    CultureTagAddRequested,
-    CultureTagRemoveRequested,
-
-    // Events (State)
-    AlignmentCheckedEvent,
-    StressAccumulatedEvent,
-    FervorIncreasedEvent,
-    MemberBreakdownEvent,
-    MemberFanaticizedEvent,
-    CultureTagAddedEvent,
-    CultureTagRemovedEvent,
-
-    // Plugin
-    CulturePlugin,
+use issun::plugin::culture::*;
+
+// Setup cult organization
+let config = CultureConfig {
+    stress_threshold: 0.8,
+    fervor_threshold: 0.9,
+    alignment_check_interval: 1, // Every turn
 };
+
+// Add cult dogmas
+game.emit(CultureTagAddRequested {
+    faction_id: "cult_of_the_void",
+    tag: CultureTag {
+        key: "dogma_guru_infallible",
+        intensity: 1.0,
+        tag_type: TagType::Dogma,
+    },
+});
+
+// Add new member with independent personality
+game.emit(MemberAddRequested {
+    faction_id: "cult_of_the_void",
+    member_id: "skeptic_alice",
+    personality_traits: hashmap! {
+        "independent" => 0.9,
+        "skeptical" => 0.8,
+    },
+});
+
+// Check alignment (automatic per config, or manual)
+game.emit(AlignmentCheckRequested {
+    faction_id: "cult_of_the_void",
+    member_id: "skeptic_alice",
+});
+
+// System processes:
+// 1. Calculate alignment: independent (0.9) vs dogma (1.0) → Misaligned
+// 2. Increase stress by delta (e.g., +0.15)
+// 3. Emit StressAccumulatedEvent
+// 4. If stress > 0.8: Emit MemberBreakdownEvent
+// 5. Hook responds: Alice quits the cult
+```
+
+### Example 2: Corporate Culture Mismatch
+
+```rust
+// Tech startup culture
+game.emit(CultureTagAddRequested {
+    faction_id: "hypergrowth_startup",
+    tag: CultureTag {
+        key: "slogan_move_fast_break_things",
+        intensity: 0.8,
+        tag_type: TagType::Slogan,
+    },
+});
+
+// Add conservative member
+game.emit(MemberAddRequested {
+    faction_id: "hypergrowth_startup",
+    member_id: "careful_bob",
+    personality_traits: hashmap! {
+        "cautious" => 0.9,
+        "detail_oriented" => 0.8,
+    },
+});
+
+// Alignment check
+// System detects: cautious (0.9) vs move_fast (0.8) → Misaligned
+// Stress accumulates over time
+// Eventually: MemberBreakdownEvent → Bob burns out
+```
+
+### Example 3: Fanaticism in Military
+
+```rust
+// Elite military unit
+game.emit(CultureTagAddRequested {
+    faction_id: "special_forces",
+    tag: CultureTag {
+        key: "dogma_never_surrender",
+        intensity: 1.0,
+        tag_type: TagType::Dogma,
+    },
+});
+
+// Add zealous soldier
+game.emit(MemberAddRequested {
+    faction_id: "special_forces",
+    member_id: "soldier_charlie",
+    personality_traits: hashmap! {
+        "loyal" => 0.95,
+        "conformist" => 0.9,
+    },
+});
+
+// Alignment check
+// System detects: loyal+conformist vs never_surrender → Aligned
+// Fervor increases
+// Eventually: MemberFanaticizedEvent → Charlie becomes kamikaze-willing
 ```
 
 ---
 
-**End of Document**
+## 🔄 System Flow
+
+### Alignment Check Flow
+
+```
+┌──────────────────────┐
+│ AlignmentCheckReq    │
+└──────────┬───────────┘
+           │
+           ▼
+   ┌───────────────┐
+   │ Get Culture   │
+   │ Tags          │
+   └───────┬───────┘
+           │
+           ▼
+   ┌────────────────────┐
+   │ Calculate          │
+   │ Alignment          │
+   │ (Service or Hook)  │
+   └────────┬───────────┘
+           │
+      ┌────┴────┐
+      │         │
+  Aligned   Misaligned
+      │         │
+      ▼         ▼
+┌──────────┐ ┌──────────┐
+│ Increase │ │ Increase │
+│ Fervor   │ │ Stress   │
+└────┬─────┘ └────┬─────┘
+     │            │
+     ▼            ▼
+┌──────────┐ ┌──────────┐
+│ Fervor   │ │ Stress   │
+│ Event    │ │ Event    │
+└────┬─────┘ └────┬─────┘
+     │            │
+ Threshold?   Threshold?
+     │            │
+     ▼            ▼
+┌──────────┐ ┌──────────┐
+│Fanaticize│ │Breakdown │
+│ Event    │ │ Event    │
+└──────────┘ └──────────┘
+```
+
+### Culture Tag Propagation
+
+```
+┌──────────────────┐
+│ TagAddRequested  │
+└────────┬─────────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Validate    │
+   │ - Unique?   │
+   │ - Valid?    │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Add to      │
+   │ CultureState│
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Calculate   │
+   │ Effects     │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ TagAdded    │
+   │ Event       │
+   └─────────────┘
+```
+
+---
+
+## 🧪 Implementation Strategy
+
+### Phase 0: Core Types ✅ (Complete)
+- Define CultureTag, PersonalityTrait
+- Define Alignment enum
+- Define error types
+
+### Phase 1: Configuration ✅ (Complete)
+- Implement CultureConfig (Resource)
+
+### Phase 2: State Management ✅ (Complete)
+- Implement CultureState (RuntimeState)
+- Track faction cultures, member traits, stress/fervor
+
+### Phase 3: Service Logic ✅ (Complete)
+- Implement CultureService (pure functions)
+- Alignment calculation
+- Stress/fervor accumulation
+
+### Phase 4: Events ✅ (Complete)
+- Define all command events
+- Define all state events
+
+### Phase 5: Hook & System ✅ (Complete)
+- Implement CultureHook trait
+- Implement DefaultCultureHook
+- Implement CultureSystem orchestration
+
+---
+
+## ✅ Success Criteria
+
+1. **Culture Tags**: Represent shared beliefs with intensity
+2. **Personality Traits**: Fixed member attributes
+3. **Alignment Checks**: Calculate fit between member and culture
+4. **Stress/Fervor**: Track psychological impact
+5. **Breakdown/Fanaticism**: Threshold-based events
+6. **Culture Effects**: Mechanical impact on organization
+7. **Event-Driven**: All changes emit events
+8. **Extensibility**: Games customize tags, traits, alignment logic
+
+---
+
+## 📚 Related Plugins
+
+**Organizational Archetypes** (v0.4 Suite):
+- [chain-of-command-plugin.md](./chain-of-command-plugin.md) - Hierarchy (▲) archetype
+- [social-plugin.md](./social-plugin.md) - Social (🕸) archetype
+- [holacracy-plugin.md](./holacracy-plugin.md) - Holacracy (⭕) archetype
+- [organization-suite-plugin.md](./organization-suite-plugin.md) - Transition framework
+
+**Complementary Systems**:
+- [reputation-plugin.md](./reputation-plugin.md) - External perception
+- [entropy-plugin.md](./entropy-plugin.md) - Chaos accumulation
+
+---
+
+## 🎯 Design Philosophy
+
+**Culture is Atmospheric, Not Structural**:
+
+Unlike ChainOfCommandPlugin (authority-based) or SocialPlugin (network-based), CulturePlugin models **intangible atmosphere**:
+
+**Framework Provides**:
+- Tag-based culture representation
+- Alignment calculation mechanics
+- Stress/fervor tracking
+- Threshold-based events
+- Effect aggregation system
+- Event architecture
+
+**Games Provide**:
+- Specific tags and their meanings
+- Personality trait catalog
+- Alignment compatibility rules
+- Breakdown/fanaticism consequences
+- Culture effects on gameplay
+
+**Key Insight**: Culture doesn't command—it **influences through fit**. A misaligned genius suffers, while an aligned mediocrity thrives.
+
+---
+
+## 🔮 Future Extensions
+
+**Potential Enhancements** (not in v0.4 scope):
+- **Culture Drift**: Tags intensity changes over time
+- **Memetic Spread**: Culture propagates between factions
+- **Subcultures**: Multiple culture sets within one faction
+- **Culture Clash**: Mergers create conflicts
+- **Deprogramming**: Reduce fervor mechanics
+
+Games can implement these via hooks or separate plugins.
+
+---
+
+## 🎓 Theoretical Background
+
+This plugin draws from:
+
+**Organizational Culture Theory** (Edgar Schein):
+- Culture as "shared basic assumptions"
+- Artifacts (visible) vs Values (stated) vs Assumptions (unconscious)
+- Our tags represent **stated values** level
+
+**Memetic Theory** (Richard Dawkins):
+- Ideas spread like genes
+- Cultural evolution through replication
+- Our CultureTag = meme unit
+
+**Psychological Safety** (Amy Edmondson):
+- Fit matters for performance
+- Misalignment creates anxiety
+- Our stress mechanic models this

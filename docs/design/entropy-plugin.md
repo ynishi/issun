@@ -3,7 +3,7 @@
 **Status**: Implemented
 **Created**: 2025-11-23
 **Author**: issun team
-**v0.3 Fundamental Plugin**: Chaos Layer - Entropy & Decay System
+**v0.4 Fundamental Plugin**: Chaos Layer - Entropy & Decay System
 
 ---
 
@@ -718,4 +718,4 @@ async fn test_parallel_performance() {
 - [ECS Integration Architecture](../architecture/ecs-integration.md)
 - [hecs Documentation](https://docs.rs/hecs/)
 - [rayon Documentation](https://docs.rs/rayon/)
-- [v0.3 Concept](../../workspace/v0.3_concept.md)
+- [v0.4 Concept](../../workspace/v0.4_concept.md)
