@@ -738,19 +738,54 @@ pub fn derive_plugin(input: TokenStream) -> TokenStream {
             let field_access = quote! { self.#field_name };
 
             for attr in &field.attrs {
-                if attr.path().is_ident("resource") {
+                // Handle both #[plugin(...)] and #[...] attribute formats
+                if attr.path().is_ident("plugin") {
+                    // Handle #[plugin(...)] format using parse_nested_meta
+                    let result: Result<()> = attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("resource") {
+                            field_registrations.push(quote! {
+                                builder.register_resource(#field_access.clone());
+                            });
+                        } else if meta.path.is_ident("state") || meta.path.is_ident("runtime_state") {
+                            field_registrations.push(quote! {
+                                builder.register_runtime_state(#field_access.clone());
+                            });
+                        } else if meta.path.is_ident("system") {
+                            field_registrations.push(quote! {
+                                builder.register_system(Box::new(#field_access.clone()));
+                            });
+                        } else if meta.path.is_ident("service") {
+                            field_registrations.push(quote! {
+                                builder.register_service(Box::new(#field_access.clone()));
+                            });
+                        } else if meta.path.is_ident("skip") {
+                            // Explicitly skip this field - no registration
+                        } else {
+                            return Err(meta.error("expected `resource`, `state`, `runtime_state`, `system`, `service`, or `skip`"));
+                        }
+                        Ok(())
+                    });
+
+                    if let Err(err) = result {
+                        return err.to_compile_error().into();
+                    }
+                } else if attr.path().is_ident("resource") {
+                    // Handle legacy #[resource] format
                     field_registrations.push(quote! {
                         builder.register_resource(#field_access.clone());
                     });
-                } else if attr.path().is_ident("state") {
+                } else if attr.path().is_ident("state") || attr.path().is_ident("runtime_state") {
+                    // Handle legacy #[state] or #[runtime_state] format
                     field_registrations.push(quote! {
                         builder.register_runtime_state(#field_access.clone());
                     });
                 } else if attr.path().is_ident("system") {
+                    // Handle legacy #[system] format
                     field_registrations.push(quote! {
                         builder.register_system(Box::new(#field_access.clone()));
                     });
                 } else if attr.path().is_ident("service") {
+                    // Handle legacy #[service] format
                     field_registrations.push(quote! {
                         builder.register_service(Box::new(#field_access.clone()));
                     });

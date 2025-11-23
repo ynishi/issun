@@ -142,3 +142,115 @@ fn test_plugin_field_registration() {
     // Verify system registration
     assert!(builder.systems.contains(&"test_system".to_string()));
 }
+
+// Test struct-level type-based registration
+#[derive(Default, Clone, Debug)]
+struct GlobalState {
+    #[allow(dead_code)]
+    value: i32,
+}
+impl Resource for GlobalState {}
+
+#[derive(Default, Clone, Debug)]
+struct GlobalConfig {
+    #[allow(dead_code)]
+    setting: String,
+}
+impl Resource for GlobalConfig {}
+
+// Plugin with struct-level attributes (type-based registration)
+#[derive(Default, Plugin)]
+#[plugin(name = "type_based_plugin")]
+#[plugin(state = GlobalState)]
+#[plugin(resource = GlobalConfig)]
+#[plugin(service = TestService)]
+#[plugin(system = TestSystem)]
+pub struct TypeBasedPlugin;
+
+#[test]
+fn test_plugin_type_based_registration() {
+    let plugin = TypeBasedPlugin;
+    let mut builder = MockBuilder::new();
+    PluginTrait::build(&plugin, &mut builder);
+
+    // Verify state registration (using ::default())
+    assert!(
+        builder.states.contains(&TypeId::of::<GlobalState>()),
+        "GlobalState should be registered"
+    );
+
+    // Verify resource registration (using ::default())
+    let _config = builder
+        .resources
+        .get::<GlobalConfig>()
+        .expect("GlobalConfig should be registered");
+
+    // Verify service registration
+    assert!(
+        builder.services.contains(&"test_service".to_string()),
+        "TestService should be registered"
+    );
+
+    // Verify system registration
+    assert!(
+        builder.systems.contains(&"test_system".to_string()),
+        "TestSystem should be registered"
+    );
+}
+
+// Plugin with field-level #[plugin(...)] attributes (new format)
+#[derive(Plugin)]
+#[plugin(name = "new_format_plugin")]
+struct NewFormatPlugin {
+    #[plugin(resource)]
+    config: GlobalConfig,
+
+    #[plugin(state)]
+    state: GlobalState,
+
+    #[plugin(service)]
+    service: TestService,
+
+    #[plugin(system)]
+    system: TestSystem,
+}
+
+#[test]
+fn test_plugin_field_new_format() {
+    let plugin = NewFormatPlugin {
+        config: GlobalConfig {
+            setting: "test".to_string(),
+        },
+        state: GlobalState { value: 99 },
+        service: TestService,
+        system: TestSystem,
+    };
+
+    let mut builder = MockBuilder::new();
+    PluginTrait::build(&plugin, &mut builder);
+
+    // Verify resource registration
+    let config = builder
+        .resources
+        .get::<GlobalConfig>()
+        .expect("GlobalConfig should be registered");
+    assert_eq!(config.setting, "test");
+
+    // Verify state registration
+    assert!(
+        builder.states.contains(&TypeId::of::<GlobalState>()),
+        "GlobalState should be registered"
+    );
+
+    // Verify service registration
+    assert!(
+        builder.services.contains(&"test_service".to_string()),
+        "TestService should be registered"
+    );
+
+    // Verify system registration
+    assert!(
+        builder.systems.contains(&"test_system".to_string()),
+        "TestSystem should be registered"
+    );
+}
