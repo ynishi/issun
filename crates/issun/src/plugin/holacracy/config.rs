@@ -56,8 +56,7 @@ impl HolacracyConfig {
     /// Validate configuration parameters
     pub fn validate(&self) -> Result<(), String> {
         // Validate weights
-        let total_weight =
-            self.skill_match_weight + self.workload_weight + self.interest_weight;
+        let total_weight = self.skill_match_weight + self.workload_weight + self.interest_weight;
         if (total_weight - 1.0).abs() > 0.01 {
             return Err(format!(
                 "Bid scoring weights must sum to 1.0, got {}",
@@ -176,20 +175,15 @@ impl Default for HolacracyConfig {
 }
 
 /// Mode for task assignment
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum TaskAssignmentMode {
     /// Fully autonomous bidding - tasks auto-assigned to best bid
     FullyAutonomous,
     /// Semi-autonomous - best bids presented, requires approval
+    #[default]
     SemiAutonomous,
     /// Manual - all assignments require explicit approval
     Manual,
-}
-
-impl Default for TaskAssignmentMode {
-    fn default() -> Self {
-        TaskAssignmentMode::SemiAutonomous
-    }
 }
 
 /// Configuration for bidding system

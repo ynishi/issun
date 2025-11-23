@@ -277,6 +277,6 @@ fn test_config_and_state_integration() {
     assert_eq!(state.current_tick(), 10);
 
     // Config should be accessible
-    assert_eq!(config.enable_auto_transition, true);
+    assert!(config.enable_auto_transition);
     assert_eq!(config.transition_check_interval, 5);
 }

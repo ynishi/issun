@@ -171,11 +171,7 @@ pub trait PerceptionHook: Send + Sync {
     ///     priority.min(1.0)
     /// }
     /// ```
-    async fn calculate_fact_priority(
-        &self,
-        fact: &PerceivedFact,
-        _faction_id: &FactionId,
-    ) -> f32 {
+    async fn calculate_fact_priority(&self, fact: &PerceivedFact, _faction_id: &FactionId) -> f32 {
         // Default: accuracy is priority
         fact.accuracy
     }

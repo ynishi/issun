@@ -51,10 +51,7 @@ impl ContagionState {
         self.active_contagions.insert(id.clone(), contagion);
 
         // Add to node index
-        self.node_contagions
-            .entry(origin)
-            .or_default()
-            .push(id);
+        self.node_contagions.entry(origin).or_default().push(id);
     }
 
     /// Get a contagion by ID

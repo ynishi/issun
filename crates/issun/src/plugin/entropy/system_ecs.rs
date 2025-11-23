@@ -15,6 +15,7 @@ use std::time::{Instant, SystemTime};
 
 /// ECS-based entropy system
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct EntropySystemECS {
     hook: Arc<dyn EntropyHookECS>,
     service: EntropyService,
@@ -60,7 +61,11 @@ impl EntropySystemECS {
         // Collect changes in parallel
         let changes: Vec<_> = state
             .world
-            .query_mut::<(&mut Durability, &EnvironmentalExposure, &mut EntityTimestamp)>()
+            .query_mut::<(
+                &mut Durability,
+                &EnvironmentalExposure,
+                &mut EntityTimestamp,
+            )>()
             .into_iter()
             .par_bridge() // ← Parallel iteration
             .map(|(entity, (durability, environment, timestamp))| {
@@ -185,8 +190,8 @@ impl EntropySystemECS {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::hook_ecs::DefaultEntropyHookECS;
+    use super::*;
 
     #[tokio::test]
     async fn test_update_decay_basic() {
@@ -285,17 +290,17 @@ mod tests {
         );
 
         // Repair
-        let repaired = system.repair_entity(entity, 30.0, &mut state).await.unwrap();
+        let repaired = system
+            .repair_entity(entity, 30.0, &mut state)
+            .await
+            .unwrap();
 
         assert_eq!(repaired, 30.0);
 
         let durability = state.world.get::<&Durability>(entity).unwrap();
         assert_eq!(durability.current, 80.0);
 
-        let maintenance = state
-            .world
-            .get::<&MaintenanceHistory>(entity)
-            .unwrap();
+        let maintenance = state.world.get::<&MaintenanceHistory>(entity).unwrap();
         assert_eq!(maintenance.maintenance_count, 1);
     }
 

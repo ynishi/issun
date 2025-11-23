@@ -104,8 +104,8 @@ impl Default for EntropyPluginECS {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::*;
+    use super::*;
 
     #[test]
     fn test_plugin_creation() {
@@ -188,7 +188,10 @@ mod tests {
         );
 
         // Repair
-        let repaired = system.repair_entity(entity, 30.0, &mut state).await.unwrap();
+        let repaired = system
+            .repair_entity(entity, 30.0, &mut state)
+            .await
+            .unwrap();
 
         assert_eq!(repaired, 30.0);
 

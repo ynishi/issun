@@ -64,8 +64,7 @@ impl<H: CultureHook> CultureSystem<H> {
         }
 
         for request in remove_requests {
-            self.process_remove_member_request(request, resources)
-                .await;
+            self.process_remove_member_request(request, resources).await;
         }
 
         for request in tag_add_requests {
@@ -188,7 +187,9 @@ impl<H: CultureHook> CultureSystem<H> {
                 None => return,
             };
 
-            culture.culture_strength().unwrap_or(config.culture_strength)
+            culture
+                .culture_strength()
+                .unwrap_or(config.culture_strength)
         };
 
         // Calculate new stress and fervor

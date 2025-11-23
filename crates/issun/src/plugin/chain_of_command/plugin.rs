@@ -68,10 +68,7 @@ impl Default for ChainOfCommandPlugin<DefaultChainOfCommandHook> {
 
 impl<H: ChainOfCommandHook> ChainOfCommandPlugin<H> {
     /// Create with a custom hook
-    pub fn with_hook<NewH: ChainOfCommandHook>(
-        self,
-        hook: NewH,
-    ) -> ChainOfCommandPlugin<NewH> {
+    pub fn with_hook<NewH: ChainOfCommandHook>(self, hook: NewH) -> ChainOfCommandPlugin<NewH> {
         ChainOfCommandPlugin {
             config: self.config,
             ranks: self.ranks,
@@ -192,8 +189,11 @@ mod tests {
 
     #[test]
     fn test_plugin_register_factions() {
-        let plugin = ChainOfCommandPlugin::new()
-            .register_factions(vec!["faction_a", "faction_b", "faction_c"]);
+        let plugin = ChainOfCommandPlugin::new().register_factions(vec![
+            "faction_a",
+            "faction_b",
+            "faction_c",
+        ]);
 
         assert_eq!(plugin.registered_factions.len(), 3);
     }

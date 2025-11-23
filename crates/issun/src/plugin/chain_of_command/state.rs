@@ -88,11 +88,7 @@ impl OrganizationHierarchy {
     pub fn get_subordinates(&self, member_id: &MemberId) -> Vec<&Member> {
         self.reporting_lines
             .get(member_id)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| self.members.get(id))
-                    .collect()
-            })
+            .map(|ids| ids.iter().filter_map(|id| self.members.get(id)).collect())
             .unwrap_or_default()
     }
 
@@ -200,7 +196,10 @@ impl HierarchyState {
     }
 
     /// Get a faction's hierarchy (mutable)
-    pub fn get_hierarchy_mut(&mut self, faction_id: &FactionId) -> Option<&mut OrganizationHierarchy> {
+    pub fn get_hierarchy_mut(
+        &mut self,
+        faction_id: &FactionId,
+    ) -> Option<&mut OrganizationHierarchy> {
         self.faction_hierarchies.get_mut(faction_id)
     }
 
@@ -215,7 +214,9 @@ impl HierarchyState {
     }
 
     /// Get all faction hierarchies (mutable)
-    pub fn all_hierarchies_mut(&mut self) -> impl Iterator<Item = (&FactionId, &mut OrganizationHierarchy)> {
+    pub fn all_hierarchies_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (&FactionId, &mut OrganizationHierarchy)> {
         self.faction_hierarchies.iter_mut()
     }
 
@@ -298,7 +299,11 @@ mod tests {
         let mut hierarchy = OrganizationHierarchy::new();
         hierarchy.add_member(create_test_member("commander", "general", None));
         hierarchy.add_member(create_test_member("captain1", "captain", Some("commander")));
-        hierarchy.add_member(create_test_member("sergeant1", "sergeant", Some("captain1")));
+        hierarchy.add_member(create_test_member(
+            "sergeant1",
+            "sergeant",
+            Some("captain1"),
+        ));
         hierarchy.add_member(create_test_member("private1", "private", Some("sergeant1")));
 
         let all_subs = hierarchy.get_all_subordinates(&"commander".to_string());
@@ -320,7 +325,11 @@ mod tests {
         let mut hierarchy = OrganizationHierarchy::new();
         hierarchy.add_member(create_test_member("commander", "general", None));
         hierarchy.add_member(create_test_member("captain1", "captain", Some("commander")));
-        hierarchy.add_member(create_test_member("sergeant1", "sergeant", Some("captain1")));
+        hierarchy.add_member(create_test_member(
+            "sergeant1",
+            "sergeant",
+            Some("captain1"),
+        ));
 
         assert_eq!(hierarchy.get_chain_depth(&"commander".to_string()), Some(0));
         assert_eq!(hierarchy.get_chain_depth(&"captain1".to_string()), Some(1));
@@ -336,7 +345,10 @@ mod tests {
         let removed = hierarchy.remove_member(&"captain1".to_string());
         assert!(removed.is_some());
         assert_eq!(hierarchy.member_count(), 1);
-        assert_eq!(hierarchy.get_subordinates(&"commander".to_string()).len(), 0);
+        assert_eq!(
+            hierarchy.get_subordinates(&"commander".to_string()).len(),
+            0
+        );
     }
 
     #[test]

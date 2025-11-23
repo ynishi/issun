@@ -1,6 +1,5 @@
 //! Pure logic service for synthesis calculations
 
-use super::config::SynthesisConfig;
 use super::recipe_registry::{Recipe, RecipeRegistry};
 use super::types::*;
 use rand::Rng;
@@ -35,11 +34,7 @@ impl SynthesisService {
     }
 
     /// Calculate final success rate
-    pub fn calculate_success_rate(
-        base_rate: f32,
-        skill_modifier: f32,
-        global_rate: f32,
-    ) -> f32 {
+    pub fn calculate_success_rate(base_rate: f32, skill_modifier: f32, global_rate: f32) -> f32 {
         (base_rate + skill_modifier).clamp(0.0, 1.0) * global_rate
     }
 
@@ -82,8 +77,7 @@ impl SynthesisService {
         let attempt_bonus = (attempt_count as f32 * 0.1).min(0.5);
         let difficulty_penalty = recipe.discovery_difficulty;
 
-        let total_chance =
-            (discovery_chance + attempt_bonus - difficulty_penalty).clamp(0.0, 1.0);
+        let total_chance = (discovery_chance + attempt_bonus - difficulty_penalty).clamp(0.0, 1.0);
 
         rng.gen::<f32>() < total_chance
     }
@@ -98,13 +92,12 @@ impl SynthesisService {
 
             for (provided_type, provided_qty) in provided {
                 // Check main ingredient or alternatives
-                if *provided_type == req.ingredient_type
-                    || req.alternatives.contains(provided_type)
+                if (*provided_type == req.ingredient_type
+                    || req.alternatives.contains(provided_type))
+                    && *provided_qty >= req.quantity
                 {
-                    if *provided_qty >= req.quantity {
-                        found = true;
-                        break;
-                    }
+                    found = true;
+                    break;
                 }
             }
 
@@ -270,7 +263,7 @@ mod tests {
         let lost = SynthesisService::calculate_failure_consumption(10, 0.5, &mut rng);
 
         // With 50% consumption rate, expect roughly 5 lost
-        assert!(lost >= 4 && lost <= 6);
+        assert!((4..=6).contains(&lost));
     }
 
     #[test]
@@ -291,22 +284,11 @@ mod tests {
         };
 
         // With 0 attempts and 0.5 difficulty
-        let discovered1 = SynthesisService::attempt_discovery(
-            &[],
-            &recipe,
-            0,
-            0.1,
-            &mut rng.clone(),
-        );
+        let discovered1 =
+            SynthesisService::attempt_discovery(&[], &recipe, 0, 0.1, &mut rng.clone());
 
         // With 10 attempts (gives +0.5 bonus, capped)
-        let discovered2 = SynthesisService::attempt_discovery(
-            &[],
-            &recipe,
-            10,
-            0.1,
-            &mut rng,
-        );
+        let discovered2 = SynthesisService::attempt_discovery(&[], &recipe, 10, 0.1, &mut rng);
 
         // More attempts should have higher success rate
         // Note: This is probabilistic, so we can't guarantee the result

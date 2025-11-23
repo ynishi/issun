@@ -3,9 +3,9 @@
 //! Shared between Simple and ECS implementations.
 //! All functions are pure (no side effects).
 
-use crate::service::Service;
-use super::types::*;
 use super::config::EnvironmentModifiers;
+use super::types::*;
+use crate::service::Service;
 use async_trait::async_trait;
 use std::any::Any;
 
@@ -112,12 +112,12 @@ impl EntropyService {
     /// Get default decay rate for material type
     pub fn default_decay_rate_for_material(material: &MaterialType) -> f32 {
         match material {
-            MaterialType::Organic => 0.01,      // 1% per tick - fastest
-            MaterialType::Electronic => 0.005,  // 0.5% per tick
-            MaterialType::Metal => 0.002,       // 0.2% per tick
-            MaterialType::Plastic => 0.001,     // 0.1% per tick
-            MaterialType::Stone => 0.0001,      // 0.01% per tick - slowest
-            MaterialType::Custom(_) => 0.01,    // Default to organic rate
+            MaterialType::Organic => 0.01,     // 1% per tick - fastest
+            MaterialType::Electronic => 0.005, // 0.5% per tick
+            MaterialType::Metal => 0.002,      // 0.2% per tick
+            MaterialType::Plastic => 0.001,    // 0.1% per tick
+            MaterialType::Stone => 0.0001,     // 0.01% per tick - slowest
+            MaterialType::Custom(_) => 0.01,   // Default to organic rate
         }
     }
 
@@ -129,8 +129,8 @@ impl EntropyService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::config::EnvironmentModifiers;
+    use super::*;
 
     #[test]
     fn test_calculate_decay_base() {
@@ -159,7 +159,7 @@ mod tests {
     fn test_calculate_decay_with_humidity() {
         let modifiers = EnvironmentModifiers::default();
         let environment = EnvironmentalExposure {
-            humidity: 1.0,  // Maximum humidity
+            humidity: 1.0, // Maximum humidity
             pollution: 0.0,
             temperature: 20.0,
             sunlight_exposure: 0.0,
@@ -188,7 +188,7 @@ mod tests {
             &MaterialType::Stone,
             &environment,
             &modifiers,
-            2.0,  // Double speed
+            2.0, // Double speed
             1.0,
         );
 
@@ -205,7 +205,7 @@ mod tests {
         assert_eq!(change.old_value, 100.0);
         assert_eq!(change.new_value, 80.0);
         assert_eq!(change.decay_amount, 20.0);
-        assert!(!change.status_changed);  // Intact -> Intact (80% is still Intact)
+        assert!(!change.status_changed); // Intact -> Intact (80% is still Intact)
         assert!(!change.destroyed);
         assert_eq!(durability.status, DurabilityStatus::Intact);
     }
@@ -219,7 +219,7 @@ mod tests {
         assert_eq!(change.old_value, 100.0);
         assert_eq!(change.new_value, 70.0);
         assert_eq!(change.decay_amount, 30.0);
-        assert!(change.status_changed);  // Intact -> Worn (70% is Worn)
+        assert!(change.status_changed); // Intact -> Worn (70% is Worn)
         assert!(!change.destroyed);
         assert_eq!(durability.status, DurabilityStatus::Worn);
     }
@@ -264,7 +264,7 @@ mod tests {
 
         let repaired = EntropyService::repair(&mut durability, 30.0);
 
-        assert_eq!(repaired, 10.0);  // Only 10 needed to reach max
+        assert_eq!(repaired, 10.0); // Only 10 needed to reach max
         assert_eq!(durability.current, 100.0);
     }
 

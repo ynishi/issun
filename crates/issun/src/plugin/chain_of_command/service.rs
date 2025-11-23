@@ -185,10 +185,7 @@ impl HierarchyService {
     /// let depth = HierarchyService::calculate_chain_depth("sergeant", &hierarchy);
     /// // depth = 2
     /// ```
-    pub fn calculate_chain_depth(
-        member_id: MemberId,
-        hierarchy: &OrganizationHierarchy,
-    ) -> u32 {
+    pub fn calculate_chain_depth(member_id: MemberId, hierarchy: &OrganizationHierarchy) -> u32 {
         let mut depth = 0;
         let mut current = member_id;
 
@@ -295,7 +292,9 @@ mod tests {
         let next = create_rank(1, AuthorityLevel::SquadLeader);
         let config = create_config();
 
-        assert!(HierarchyService::can_promote(&member, &current, &next, &config));
+        assert!(HierarchyService::can_promote(
+            &member, &current, &next, &config
+        ));
     }
 
     #[test]
@@ -305,7 +304,9 @@ mod tests {
         let next = create_rank(1, AuthorityLevel::SquadLeader);
         let config = create_config();
 
-        assert!(!HierarchyService::can_promote(&member, &current, &next, &config));
+        assert!(!HierarchyService::can_promote(
+            &member, &current, &next, &config
+        ));
     }
 
     #[test]
@@ -315,7 +316,9 @@ mod tests {
         let next = create_rank(1, AuthorityLevel::SquadLeader);
         let config = create_config();
 
-        assert!(!HierarchyService::can_promote(&member, &current, &next, &config));
+        assert!(!HierarchyService::can_promote(
+            &member, &current, &next, &config
+        ));
     }
 
     #[test]
@@ -325,7 +328,9 @@ mod tests {
         let next = create_rank(2, AuthorityLevel::Captain); // Skip level 1
         let config = create_config();
 
-        assert!(!HierarchyService::can_promote(&member, &current, &next, &config));
+        assert!(!HierarchyService::can_promote(
+            &member, &current, &next, &config
+        ));
     }
 
     #[test]
@@ -348,11 +353,7 @@ mod tests {
         let subordinate = create_test_member("sub", 0.0, 0.0, 5);
         let superior = create_test_member("sup", 1.0, 1.0, 20);
 
-        let compliance = HierarchyService::calculate_order_compliance(
-            &subordinate,
-            &superior,
-            0.8,
-        );
+        let compliance = HierarchyService::calculate_order_compliance(&subordinate, &superior, 0.8);
 
         assert_eq!(compliance, 0.0); // No loyalty or morale = no compliance
     }
@@ -362,11 +363,7 @@ mod tests {
         let subordinate = create_test_member("sub", 1.5, 1.5, 5); // Values > 1.0
         let superior = create_test_member("sup", 1.0, 1.0, 20);
 
-        let compliance = HierarchyService::calculate_order_compliance(
-            &subordinate,
-            &superior,
-            0.8,
-        );
+        let compliance = HierarchyService::calculate_order_compliance(&subordinate, &superior, 0.8);
 
         assert!(compliance <= 1.0); // Clamped to max 1.0
     }
@@ -428,9 +425,18 @@ mod tests {
         hierarchy.add_member(captain);
         hierarchy.add_member(sergeant);
 
-        assert_eq!(HierarchyService::calculate_chain_depth("commander".to_string(), &hierarchy), 0);
-        assert_eq!(HierarchyService::calculate_chain_depth("captain".to_string(), &hierarchy), 1);
-        assert_eq!(HierarchyService::calculate_chain_depth("sergeant".to_string(), &hierarchy), 2);
+        assert_eq!(
+            HierarchyService::calculate_chain_depth("commander".to_string(), &hierarchy),
+            0
+        );
+        assert_eq!(
+            HierarchyService::calculate_chain_depth("captain".to_string(), &hierarchy),
+            1
+        );
+        assert_eq!(
+            HierarchyService::calculate_chain_depth("sergeant".to_string(), &hierarchy),
+            2
+        );
     }
 
     #[test]
@@ -439,23 +445,38 @@ mod tests {
 
         // Private: 0.0 * 0.8 = 0.0
         let private_rank = create_rank(0, AuthorityLevel::Private);
-        assert_eq!(HierarchyService::calculate_effective_authority(&member, &private_rank), 0.0);
+        assert_eq!(
+            HierarchyService::calculate_effective_authority(&member, &private_rank),
+            0.0
+        );
 
         // Squad Leader: 0.25 * 0.8 = 0.2
         let squad_rank = create_rank(1, AuthorityLevel::SquadLeader);
-        assert!((HierarchyService::calculate_effective_authority(&member, &squad_rank) - 0.2).abs() < 0.001);
+        assert!(
+            (HierarchyService::calculate_effective_authority(&member, &squad_rank) - 0.2).abs()
+                < 0.001
+        );
 
         // Captain: 0.5 * 0.8 = 0.4
         let captain_rank = create_rank(2, AuthorityLevel::Captain);
-        assert!((HierarchyService::calculate_effective_authority(&member, &captain_rank) - 0.4).abs() < 0.001);
+        assert!(
+            (HierarchyService::calculate_effective_authority(&member, &captain_rank) - 0.4).abs()
+                < 0.001
+        );
 
         // Commander: 0.75 * 0.8 = 0.6
         let commander_rank = create_rank(3, AuthorityLevel::Commander);
-        assert!((HierarchyService::calculate_effective_authority(&member, &commander_rank) - 0.6).abs() < 0.001);
+        assert!(
+            (HierarchyService::calculate_effective_authority(&member, &commander_rank) - 0.6).abs()
+                < 0.001
+        );
 
         // Supreme: 1.0 * 0.8 = 0.8
         let supreme_rank = create_rank(4, AuthorityLevel::SupremeCommander);
-        assert!((HierarchyService::calculate_effective_authority(&member, &supreme_rank) - 0.8).abs() < 0.001);
+        assert!(
+            (HierarchyService::calculate_effective_authority(&member, &supreme_rank) - 0.8).abs()
+                < 0.001
+        );
     }
 
     #[test]
@@ -463,7 +484,10 @@ mod tests {
         let member = create_test_member("m1", 0.0, 0.7, 10);
         let captain_rank = create_rank(2, AuthorityLevel::Captain);
 
-        assert_eq!(HierarchyService::calculate_effective_authority(&member, &captain_rank), 0.0);
+        assert_eq!(
+            HierarchyService::calculate_effective_authority(&member, &captain_rank),
+            0.0
+        );
     }
 
     #[test]

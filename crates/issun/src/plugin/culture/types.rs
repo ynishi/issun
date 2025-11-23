@@ -206,7 +206,10 @@ pub enum CultureEffect {
     SelfSacrifice { probability: f32 },
 
     /// Custom effect (game-specific)
-    Custom { key: String, data: serde_json::Value },
+    Custom {
+        key: String,
+        data: serde_json::Value,
+    },
 }
 
 /// Errors that can occur in culture operations
@@ -274,10 +277,7 @@ mod tests {
     #[test]
     fn test_member_with_traits() {
         let member = Member::new("m1", "Charlie")
-            .with_traits(vec![
-                PersonalityTrait::Bold,
-                PersonalityTrait::Competitive,
-            ]);
+            .with_traits(vec![PersonalityTrait::Bold, PersonalityTrait::Competitive]);
 
         assert_eq!(member.personality_traits.len(), 2);
         assert!(member.has_trait(&PersonalityTrait::Bold));
@@ -286,21 +286,18 @@ mod tests {
 
     #[test]
     fn test_member_stress_clamping() {
-        let member = Member::new("m1", "Test")
-            .with_stress(1.5); // Should clamp to 1.0
+        let member = Member::new("m1", "Test").with_stress(1.5); // Should clamp to 1.0
 
         assert_eq!(member.stress, 1.0);
 
-        let member = Member::new("m2", "Test")
-            .with_stress(-0.5); // Should clamp to 0.0
+        let member = Member::new("m2", "Test").with_stress(-0.5); // Should clamp to 0.0
 
         assert_eq!(member.stress, 0.0);
     }
 
     #[test]
     fn test_member_fervor_clamping() {
-        let member = Member::new("m1", "Test")
-            .with_fervor(2.0); // Should clamp to 1.0
+        let member = Member::new("m1", "Test").with_fervor(2.0); // Should clamp to 1.0
 
         assert_eq!(member.fervor, 1.0);
     }
@@ -323,7 +320,10 @@ mod tests {
         };
 
         match alignment {
-            Alignment::Misaligned { stress_rate, reason } => {
+            Alignment::Misaligned {
+                stress_rate,
+                reason,
+            } => {
                 assert_eq!(stress_rate, 0.05);
                 assert_eq!(reason, "Cautious in RiskTaking culture");
             }

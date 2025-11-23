@@ -3,12 +3,12 @@
 //! Coordinates service logic, hooks, state management, and event emission.
 
 use super::config::OrgSuiteConfig;
-use super::events::{TransitionRequested, TransitionOccurredEvent, TransitionFailedEvent};
+use super::events::{TransitionFailedEvent, TransitionOccurredEvent, TransitionRequested};
 use super::hook::OrgSuiteHook;
 use super::service::TransitionService;
 use super::state::OrgSuiteState;
 use super::transition::ConditionContext;
-use super::types::{FactionId, OrgArchetype};
+use super::types::OrgArchetype;
 
 /// Orchestration system for organizational transitions
 ///
@@ -60,7 +60,10 @@ impl<H: OrgSuiteHook> OrgSuiteSystem<H> {
         state.tick();
 
         // Check interval
-        if state.current_tick() % config.transition_check_interval as u64 != 0 {
+        if !state
+            .current_tick()
+            .is_multiple_of(config.transition_check_interval as u64)
+        {
             return events;
         }
 
@@ -141,8 +144,14 @@ impl<H: OrgSuiteHook> OrgSuiteSystem<H> {
             reason: request.reason,
         };
 
-        self.execute_transition(state, &request.faction_id, request.from, request.to, trigger)
-            .await
+        self.execute_transition(
+            state,
+            &request.faction_id,
+            request.from,
+            request.to,
+            trigger,
+        )
+        .await
     }
 
     /// Execute a transition (internal)
@@ -291,7 +300,9 @@ mod tests {
 
         // Ticks 2-4: Should skip
         for _ in 0..3 {
-            let events = system.update(&mut state, &config, |_| ConditionContext::default()).await;
+            let events = system
+                .update(&mut state, &config, |_| ConditionContext::default())
+                .await;
             assert_eq!(events.len(), 0);
         }
 

@@ -2,9 +2,9 @@
 //!
 //! Manages task pools, member assignments, circles, and organizational state.
 
-use crate::resources::Resource;
 use super::config::HolacracyConfig;
 use super::types::*;
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -229,19 +229,29 @@ impl TaskPool {
     }
 
     /// Start bidding for a task
-    pub fn start_bidding(&mut self, task_id: &str, current_turn: u64) -> Result<(), HolacracyError> {
+    pub fn start_bidding(
+        &mut self,
+        task_id: &str,
+        current_turn: u64,
+    ) -> Result<(), HolacracyError> {
         let task = self
             .tasks
             .get_mut(task_id)
             .ok_or_else(|| HolacracyError::TaskNotFound(task_id.to_string()))?;
 
         task.status = TaskStatus::Bidding;
-        self.bidding_started.insert(task_id.to_string(), current_turn);
+        self.bidding_started
+            .insert(task_id.to_string(), current_turn);
         Ok(())
     }
 
     /// Check if bidding period has expired
-    pub fn is_bidding_expired(&self, task_id: &str, current_turn: u64, config: &HolacracyConfig) -> bool {
+    pub fn is_bidding_expired(
+        &self,
+        task_id: &str,
+        current_turn: u64,
+        config: &HolacracyConfig,
+    ) -> bool {
         if let Some(&start_turn) = self.bidding_started.get(task_id) {
             current_turn - start_turn >= config.bidding.bidding_duration
         } else {

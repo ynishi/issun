@@ -74,11 +74,7 @@ impl<H: MarketHook> MarketSystem<H> {
 
             // Record price change
             if (old_price - adjusted_price).abs() > 0.01 {
-                price_changes.push(PriceChange::new(
-                    item_id.clone(),
-                    old_price,
-                    adjusted_price,
-                ));
+                price_changes.push(PriceChange::new(item_id.clone(), old_price, adjusted_price));
             }
 
             // Note: Trend changes are tracked but not returned

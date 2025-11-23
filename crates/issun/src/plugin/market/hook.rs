@@ -221,7 +221,7 @@ impl MarketHook for DefaultMarketHook {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plugin::market::{MarketData, MarketEvent, MarketTrend, PriceChange};
+    use crate::plugin::market::{MarketData, MarketEvent, PriceChange};
 
     #[tokio::test]
     async fn test_default_hook_adjust_price() {
@@ -248,8 +248,7 @@ mod tests {
         let event = MarketEvent::demand_shock(vec!["test".to_string()], 0.5);
 
         // Should not panic
-        hook.on_event_applied(&event, &["test".to_string()])
-            .await;
+        hook.on_event_applied(&event, &["test".to_string()]).await;
     }
 
     #[tokio::test]

@@ -130,8 +130,7 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = SynthesisConfig::default()
-            .with_discovery_chance(0.15);
+        let config = SynthesisConfig::default().with_discovery_chance(0.15);
 
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: SynthesisConfig = serde_json::from_str(&json).unwrap();

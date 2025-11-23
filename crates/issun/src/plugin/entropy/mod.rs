@@ -95,6 +95,6 @@ pub use service::EntropyService;
 pub use state_ecs::{DecayEventECS, EntropyStateECS};
 pub use system_ecs::EntropySystemECS;
 pub use types::{
-    Durability, DurabilityChange, DurabilityStatus, EntityTimestamp, EnvironmentalExposure,
-    EntropyMetrics, MaintenanceHistory, MaterialType,
+    Durability, DurabilityChange, DurabilityStatus, EntityTimestamp, EntropyMetrics,
+    EnvironmentalExposure, MaintenanceHistory, MaterialType,
 };

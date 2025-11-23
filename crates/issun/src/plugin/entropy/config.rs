@@ -2,8 +2,8 @@
 //!
 //! Resource (ReadOnly) shared between Simple and ECS implementations.
 
-use crate::resources::Resource;
 use super::types::MaterialType;
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -52,18 +52,18 @@ pub struct EnvironmentModifiers {
 impl Default for EnvironmentModifiers {
     fn default() -> Self {
         let mut humidity_factors = HashMap::new();
-        humidity_factors.insert(MaterialType::Organic, 0.5);      // Organic rots faster in humidity
-        humidity_factors.insert(MaterialType::Metal, 0.3);        // Metal rusts
-        humidity_factors.insert(MaterialType::Electronic, 0.4);   // Electronics fail
-        humidity_factors.insert(MaterialType::Plastic, 0.05);     // Plastic barely affected
-        humidity_factors.insert(MaterialType::Stone, 0.01);       // Stone minimal impact
+        humidity_factors.insert(MaterialType::Organic, 0.5); // Organic rots faster in humidity
+        humidity_factors.insert(MaterialType::Metal, 0.3); // Metal rusts
+        humidity_factors.insert(MaterialType::Electronic, 0.4); // Electronics fail
+        humidity_factors.insert(MaterialType::Plastic, 0.05); // Plastic barely affected
+        humidity_factors.insert(MaterialType::Stone, 0.01); // Stone minimal impact
 
         let mut pollution_factors = HashMap::new();
-        pollution_factors.insert(MaterialType::Organic, 0.2);     // Organic degrades
-        pollution_factors.insert(MaterialType::Metal, 0.4);       // Metal corrodes
-        pollution_factors.insert(MaterialType::Electronic, 0.3);  // Electronics affected
-        pollution_factors.insert(MaterialType::Plastic, 0.1);     // Plastic degrades slowly
-        pollution_factors.insert(MaterialType::Stone, 0.05);      // Stone erodes slowly
+        pollution_factors.insert(MaterialType::Organic, 0.2); // Organic degrades
+        pollution_factors.insert(MaterialType::Metal, 0.4); // Metal corrodes
+        pollution_factors.insert(MaterialType::Electronic, 0.3); // Electronics affected
+        pollution_factors.insert(MaterialType::Plastic, 0.1); // Plastic degrades slowly
+        pollution_factors.insert(MaterialType::Stone, 0.05); // Stone erodes slowly
 
         Self {
             humidity_factors,
@@ -86,7 +86,10 @@ impl EnvironmentModifiers {
 
     /// Get temperature factor for material (default 0.0 if not found)
     pub fn temperature_factor(&self, material: &MaterialType) -> f32 {
-        self.temperature_factors.get(material).copied().unwrap_or(0.0)
+        self.temperature_factors
+            .get(material)
+            .copied()
+            .unwrap_or(0.0)
     }
 }
 

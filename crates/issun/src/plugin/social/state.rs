@@ -3,9 +3,7 @@
 //! Provides SocialNetwork and SocialMember for managing
 //! social networks, influence graphs, and factions across multiple organizations.
 
-use super::types::{
-    Faction, FactionId, MemberId, RelationType, SocialCapital, SocialError,
-};
+use super::types::{Faction, FactionId, MemberId, RelationType, SocialCapital, SocialError};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -167,7 +165,7 @@ impl SocialNetwork {
 
         self.relations
             .entry((from.clone(), to.clone()))
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(relation);
 
         self.invalidate_centrality_cache();
@@ -175,11 +173,7 @@ impl SocialNetwork {
     }
 
     /// Get all relations between two members
-    pub fn get_relations(
-        &self,
-        from: &MemberId,
-        to: &MemberId,
-    ) -> Option<&Vec<RelationType>> {
+    pub fn get_relations(&self, from: &MemberId, to: &MemberId) -> Option<&Vec<RelationType>> {
         self.relations.get(&(from.clone(), to.clone()))
     }
 
@@ -220,7 +214,7 @@ impl SocialNetwork {
     pub fn get_neighbors(&self, member_id: &MemberId) -> Vec<MemberId> {
         let mut neighbors = HashSet::new();
 
-        for ((from, to), _) in &self.relations {
+        for (from, to) in self.relations.keys() {
             if from == member_id {
                 neighbors.insert(to.clone());
             }
@@ -337,9 +331,7 @@ impl SocialState {
 
     /// Register a faction (create empty network)
     pub fn register_faction(&mut self, faction_id: FactionId) {
-        self.networks
-            .entry(faction_id)
-            .or_insert_with(SocialNetwork::new);
+        self.networks.entry(faction_id).or_default();
     }
 
     /// Unregister a faction (remove network)

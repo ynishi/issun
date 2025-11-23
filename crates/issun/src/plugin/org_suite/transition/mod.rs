@@ -3,30 +3,30 @@
 //! This module provides the core framework for converting organizational data
 //! between different archetypes and evaluating transition conditions.
 
-pub mod converter;
 pub mod condition;
-pub mod registry;
+pub mod converter;
 pub mod defaults;
+pub mod registry;
 
-pub use converter::OrgConverter;
 pub use condition::{ConditionContext, TransitionCondition};
-pub use registry::TransitionRegistry;
+pub use converter::OrgConverter;
 pub use defaults::{
+    CultureToHierarchyConverter,
+    CultureToHolacracyConverter,
+    CultureToSocialConverter,
+    DecayCondition,
+    HierarchyToCultureConverter,
+    HierarchyToHolacracyConverter,
+    HierarchyToSocialConverter,
+    HolacracyToCultureConverter,
     // Default converters (12 total covering all 16 transitions)
     HolacracyToHierarchyConverter,
     HolacracyToSocialConverter,
-    HolacracyToCultureConverter,
-    HierarchyToHolacracyConverter,
-    HierarchyToSocialConverter,
-    HierarchyToCultureConverter,
-    SocialToHolacracyConverter,
-    SocialToHierarchyConverter,
-    SocialToCultureConverter,
-    CultureToHolacracyConverter,
-    CultureToHierarchyConverter,
-    CultureToSocialConverter,
+    RadicalizationCondition,
     // Default conditions
     ScalingCondition,
-    DecayCondition,
-    RadicalizationCondition,
+    SocialToCultureConverter,
+    SocialToHierarchyConverter,
+    SocialToHolacracyConverter,
 };
+pub use registry::TransitionRegistry;

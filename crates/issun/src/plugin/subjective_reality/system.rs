@@ -80,12 +80,7 @@ impl PerceptionSystem {
 
                 // Update knowledge board
                 if let Some(board) = boards.get_board_mut(&faction_id) {
-                    board.update_fact(
-                        truth.id.clone(),
-                        perceived,
-                        accuracy,
-                        truth.timestamp,
-                    );
+                    board.update_fact(truth.id.clone(), perceived, accuracy, truth.timestamp);
                 }
             }
         }
@@ -349,7 +344,11 @@ mod tests {
         let board = boards.get_board(&"faction_a".into()).unwrap();
         let confidence = board.get_confidence(&"fact_001".into()).unwrap();
 
-        assert!((confidence - 0.5).abs() < 0.01, "confidence: {}", confidence);
+        assert!(
+            (confidence - 0.5).abs() < 0.01,
+            "confidence: {}",
+            confidence
+        );
     }
 
     #[tokio::test]

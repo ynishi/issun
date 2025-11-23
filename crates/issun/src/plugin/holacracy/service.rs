@@ -162,11 +162,7 @@ impl TaskAssignmentService {
     /// Estimate task completion time based on member skills
     ///
     /// Better skill match = faster completion
-    pub fn estimate_completion_time(
-        member: &HolacracyMember,
-        task: &Task,
-        base_cost: f32,
-    ) -> u64 {
+    pub fn estimate_completion_time(member: &HolacracyMember, task: &Task, base_cost: f32) -> u64 {
         let skill_match = Self::calculate_skill_match(member, task);
 
         // Adjust cost based on skill match
@@ -327,8 +323,7 @@ mod tests {
 
     #[test]
     fn test_can_bid_on_task_insufficient_skill() {
-        let member = HolacracyMember::new("m1", "Novice")
-            .with_skill("rust".into(), 0.2); // Below default min (0.3)
+        let member = HolacracyMember::new("m1", "Novice").with_skill("rust".into(), 0.2); // Below default min (0.3)
 
         let task = create_test_task();
         let config = HolacracyConfig::default();
@@ -365,11 +360,9 @@ mod tests {
 
     #[test]
     fn test_estimate_completion_time() {
-        let expert = HolacracyMember::new("expert", "Expert")
-            .with_skill("rust".into(), 1.0);
+        let expert = HolacracyMember::new("expert", "Expert").with_skill("rust".into(), 1.0);
 
-        let novice = HolacracyMember::new("novice", "Novice")
-            .with_skill("rust".into(), 0.0);
+        let novice = HolacracyMember::new("novice", "Novice").with_skill("rust".into(), 0.0);
 
         let task = create_test_task().with_cost(10.0);
 
@@ -392,7 +385,9 @@ mod tests {
 
         let mut visited = HashSet::new();
         assert!(TaskAssignmentService::has_circular_dependency(
-            &pool, "t1", &mut visited
+            &pool,
+            "t1",
+            &mut visited
         ));
     }
 
@@ -408,7 +403,9 @@ mod tests {
 
         let mut visited = HashSet::new();
         assert!(!TaskAssignmentService::has_circular_dependency(
-            &pool, "t2", &mut visited
+            &pool,
+            "t2",
+            &mut visited
         ));
     }
 
@@ -420,7 +417,8 @@ mod tests {
         let high_task = Task::new("t2", "High").with_priority(TaskPriority::High);
         let medium_task = Task::new("t3", "Medium").with_priority(TaskPriority::Medium);
 
-        let critical_score = TaskAssignmentService::calculate_priority_score(&critical_task, &config);
+        let critical_score =
+            TaskAssignmentService::calculate_priority_score(&critical_task, &config);
         let high_score = TaskAssignmentService::calculate_priority_score(&high_task, &config);
         let medium_score = TaskAssignmentService::calculate_priority_score(&medium_task, &config);
 

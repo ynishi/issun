@@ -65,11 +65,7 @@ impl DiscoveryState {
     }
 
     /// Get attempt count for ingredient combination
-    pub fn get_attempt_count(
-        &self,
-        entity_id: &EntityId,
-        ingredients: &[IngredientType],
-    ) -> u32 {
+    pub fn get_attempt_count(&self, entity_id: &EntityId, ingredients: &[IngredientType]) -> u32 {
         self.experimentation_history
             .get(entity_id)
             .and_then(|history| history.get(ingredients).copied())
@@ -122,10 +118,7 @@ impl SynthesisState {
         let entity_id = synthesis.entity_id.clone();
 
         self.active_syntheses.insert(id, synthesis);
-        self.synthesis_queues
-            .entry(entity_id)
-            .or_default()
-            .push(id);
+        self.synthesis_queues.entry(entity_id).or_default().push(id);
     }
 
     /// Get synthesis by ID

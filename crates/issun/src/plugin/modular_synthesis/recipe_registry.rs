@@ -77,11 +77,7 @@ impl RecipeRegistry {
     pub fn get_by_category(&self, category: &CategoryId) -> Vec<&Recipe> {
         self.categories
             .get(category)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| self.recipes.get(id))
-                    .collect()
-            })
+            .map(|ids| ids.iter().filter_map(|id| self.recipes.get(id)).collect())
             .unwrap_or_default()
     }
 
@@ -171,7 +167,10 @@ mod tests {
 
         assert_eq!(registry.recipe_count(), 1);
         assert!(registry.get(&"sword".to_string()).is_some());
-        assert_eq!(registry.get(&"sword".to_string()).unwrap().name, "Recipe sword");
+        assert_eq!(
+            registry.get(&"sword".to_string()).unwrap().name,
+            "Recipe sword"
+        );
     }
 
     #[test]

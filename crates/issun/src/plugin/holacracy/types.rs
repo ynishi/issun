@@ -49,13 +49,14 @@ impl From<String> for SkillTag {
 pub type SkillLevel = f32;
 
 /// Priority level for tasks
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum TaskPriority {
     /// Urgent and important
     Critical,
     /// Important but not urgent
     High,
     /// Normal priority
+    #[default]
     Medium,
     /// Can be delayed
     Low,
@@ -73,16 +74,11 @@ impl TaskPriority {
     }
 }
 
-impl Default for TaskPriority {
-    fn default() -> Self {
-        TaskPriority::Medium
-    }
-}
-
 /// Status of a task in the system
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum TaskStatus {
     /// Available in task pool
+    #[default]
     Available,
     /// Being bid on by members
     Bidding,
@@ -96,12 +92,6 @@ pub enum TaskStatus {
     Completed,
     /// Cancelled or abandoned
     Cancelled,
-}
-
-impl Default for TaskStatus {
-    fn default() -> Self {
-        TaskStatus::Available
-    }
 }
 
 /// Type of role in the organization
@@ -677,7 +667,10 @@ mod tests {
         assert_eq!(err1.to_string(), "Task not found: t1");
 
         let err2 = HolacracyError::InvalidSkillLevel(1.5);
-        assert_eq!(err2.to_string(), "Invalid skill level: 1.5 (must be 0.0-1.0)");
+        assert_eq!(
+            err2.to_string(),
+            "Invalid skill level: 1.5 (must be 0.0-1.0)"
+        );
 
         let err3 = HolacracyError::Custom("Custom error".to_string());
         assert_eq!(err3.to_string(), "Custom error");

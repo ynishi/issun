@@ -6,8 +6,8 @@
 // Phase 0: Types
 mod types;
 pub use types::{
-    CentralityMetrics, Faction, FactionId, MemberId, PoliticalAction, RelationType,
-    SocialCapital, SocialError,
+    CentralityMetrics, Faction, FactionId, MemberId, PoliticalAction, RelationType, SocialCapital,
+    SocialError,
 };
 
 // Phase 1: Config
@@ -25,28 +25,28 @@ pub use service::NetworkAnalysisService;
 // Phase 4a: Events
 mod events;
 pub use events::{
-    // Command Events (Requests)
-    CentralityRecalculationRequested,
-    FactionFormRequested,
-    FactionMergeRequested,
-    FactionSplitRequested,
-    MemberAddRequested,
-    MemberRemoveRequested,
-    PoliticalActionRequested,
-    RelationAddRequested,
-    RelationRemoveRequested,
     // State Events (Results)
     CentralityCalculatedEvent,
+    // Command Events (Requests)
+    CentralityRecalculationRequested,
     FactionCohesionChangedEvent,
+    FactionFormRequested,
     FactionFormedEvent,
+    FactionMergeRequested,
     FactionMergedEvent,
     FactionSplitEvent,
+    FactionSplitRequested,
     FavorExchangedEvent,
     FavorExpiredEvent,
     GossipSpreadEvent,
+    MemberAddRequested,
     MemberAddedEvent,
+    MemberRemoveRequested,
     MemberRemovedEvent,
     PoliticalActionExecutedEvent,
+    PoliticalActionRequested,
+    RelationAddRequested,
+    RelationRemoveRequested,
     RelationshipChangedEvent,
     SecretSharedEvent,
     ShadowLeaderDetectedEvent,

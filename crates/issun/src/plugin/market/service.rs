@@ -219,10 +219,7 @@ impl MarketService {
         let demand_drift = data.demand + (equilibrium - data.demand) * drift_rate;
         let supply_drift = data.supply + (equilibrium - data.supply) * drift_rate;
 
-        (
-            demand_drift.clamp(0.0, 1.0),
-            supply_drift.clamp(0.0, 1.0),
-        )
+        (demand_drift.clamp(0.0, 1.0), supply_drift.clamp(0.0, 1.0))
     }
 }
 
@@ -315,7 +312,7 @@ mod tests {
         let (demand, supply) = MarketService::apply_event(&data, &event, &config);
 
         assert_eq!(demand, 0.5); // Demand unchanged
-        // Supply should increase by 0.4 * 0.3 = 0.12
+                                 // Supply should increase by 0.4 * 0.3 = 0.12
         assert!((supply - 0.62).abs() < 0.01);
     }
 
@@ -359,7 +356,7 @@ mod tests {
         let (demand, supply) = MarketService::apply_event(&data, &event, &config);
 
         assert_eq!(demand, 0.5); // Demand unchanged
-        // Scarcity decreases supply: 0.5 - 0.4*0.3 = 0.38
+                                 // Scarcity decreases supply: 0.5 - 0.4*0.3 = 0.38
         assert!(supply < 0.5);
     }
 
@@ -392,9 +389,7 @@ mod tests {
     #[test]
     fn test_detect_trend_stable() {
         let mut data = create_test_data(100.0, 0.5, 0.5);
-        data.price_history = vec![10.0, 10.1, 9.9, 10.0, 10.1, 9.9]
-            .into_iter()
-            .collect();
+        data.price_history = vec![10.0, 10.1, 9.9, 10.0, 10.1, 9.9].into_iter().collect();
 
         let config = create_config();
         let trend = MarketService::detect_trend(&data, &config);
@@ -405,9 +400,7 @@ mod tests {
     #[test]
     fn test_detect_trend_volatile() {
         let mut data = create_test_data(100.0, 0.5, 0.5);
-        data.price_history = vec![10.0, 20.0, 5.0, 25.0, 8.0, 30.0]
-            .into_iter()
-            .collect();
+        data.price_history = vec![10.0, 20.0, 5.0, 25.0, 8.0, 30.0].into_iter().collect();
 
         let config = create_config();
         let trend = MarketService::detect_trend(&data, &config);
@@ -461,7 +454,7 @@ mod tests {
         let (demand, supply) = MarketService::calculate_equilibrium_drift(&data, drift_rate);
 
         // Should clamp to valid range
-        assert!(demand >= 0.0 && demand <= 1.0);
-        assert!(supply >= 0.0 && supply <= 1.0);
+        assert!((0.0..=1.0).contains(&demand));
+        assert!((0.0..=1.0).contains(&supply));
     }
 }

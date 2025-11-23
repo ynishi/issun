@@ -121,9 +121,7 @@ impl RankDefinitions {
     /// Get the next rank in progression
     pub fn get_next_rank(&self, current_rank: &RankId) -> Option<&RankDefinition> {
         let current = self.get(current_rank)?;
-        self.ranks
-            .values()
-            .find(|r| r.level == current.level + 1)
+        self.ranks.values().find(|r| r.level == current.level + 1)
     }
 
     /// Get all ranks sorted by level
@@ -224,8 +222,7 @@ mod tests {
     #[test]
     fn test_rank_can_promote_to() {
         let private = RankDefinition::new("private", "Private", 0, AuthorityLevel::Private);
-        let sergeant =
-            RankDefinition::new("sergeant", "Sergeant", 1, AuthorityLevel::SquadLeader);
+        let sergeant = RankDefinition::new("sergeant", "Sergeant", 1, AuthorityLevel::SquadLeader);
         let captain = RankDefinition::new("captain", "Captain", 2, AuthorityLevel::Captain);
 
         assert!(private.can_promote_to(&sergeant));

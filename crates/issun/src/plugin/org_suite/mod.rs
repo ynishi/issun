@@ -32,60 +32,54 @@
 //! state.register_faction("rebels", OrgArchetype::Holacracy);
 //! ```
 
-pub mod types;
 pub mod config;
-pub mod state;
 pub mod events;
-pub mod transition;
-pub mod service;
 pub mod hook;
+pub mod service;
+pub mod state;
 pub mod system;
+pub mod transition;
+pub mod types;
 
 // Re-exports for convenience
-pub use types::{
-    FactionId,
-    OrgArchetype,
-    OrgSuiteError,
-    TransitionHistory,
-    TransitionTrigger,
-};
+pub use types::{FactionId, OrgArchetype, OrgSuiteError, TransitionHistory, TransitionTrigger};
 
 pub use config::OrgSuiteConfig;
-pub use state::OrgSuiteState;
+pub use hook::{DefaultOrgSuiteHook, OrgSuiteHook};
 pub use service::TransitionService;
-pub use hook::{OrgSuiteHook, DefaultOrgSuiteHook};
+pub use state::OrgSuiteState;
 pub use system::OrgSuiteSystem;
 
 pub use events::{
     // Command events
     FactionRegisterRequested,
-    TransitionRequested,
     // State events
     FactionRegisteredEvent,
     TransitionFailedEvent,
     TransitionOccurredEvent,
+    TransitionRequested,
 };
 
 pub use transition::{
     ConditionContext,
-    OrgConverter,
-    TransitionCondition,
-    TransitionRegistry,
+    CultureToHierarchyConverter,
+    CultureToHolacracyConverter,
+    CultureToSocialConverter,
+    DecayCondition,
+    HierarchyToCultureConverter,
+    HierarchyToHolacracyConverter,
+    HierarchyToSocialConverter,
+    HolacracyToCultureConverter,
     // Default converter implementations (12 total covering all 16 transitions)
     HolacracyToHierarchyConverter,
     HolacracyToSocialConverter,
-    HolacracyToCultureConverter,
-    HierarchyToHolacracyConverter,
-    HierarchyToSocialConverter,
-    HierarchyToCultureConverter,
-    SocialToHolacracyConverter,
-    SocialToHierarchyConverter,
-    SocialToCultureConverter,
-    CultureToHolacracyConverter,
-    CultureToHierarchyConverter,
-    CultureToSocialConverter,
+    OrgConverter,
+    RadicalizationCondition,
     // Default condition implementations
     ScalingCondition,
-    DecayCondition,
-    RadicalizationCondition,
+    SocialToCultureConverter,
+    SocialToHierarchyConverter,
+    SocialToHolacracyConverter,
+    TransitionCondition,
+    TransitionRegistry,
 };

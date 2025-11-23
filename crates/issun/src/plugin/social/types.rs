@@ -27,10 +27,7 @@ pub enum RelationType {
     Debt { amount: f32 },
 
     /// Shared secret (mutual dependency)
-    SharedSecret {
-        secret_id: String,
-        sensitivity: f32,
-    },
+    SharedSecret { secret_id: String, sensitivity: f32 },
 
     /// Faction membership (belong to same faction)
     FactionMembership { faction_id: FactionId },

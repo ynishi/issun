@@ -75,7 +75,12 @@ impl TransitionService {
         &self,
         state: &OrgSuiteState,
         mut context_fn: F,
-    ) -> Vec<(FactionId, OrgArchetype, OrgArchetype, super::types::TransitionTrigger)>
+    ) -> Vec<(
+        FactionId,
+        OrgArchetype,
+        OrgArchetype,
+        super::types::TransitionTrigger,
+    )>
     where
         F: FnMut(&str) -> ConditionContext,
     {
@@ -87,12 +92,7 @@ impl TransitionService {
             if let Some((target, trigger)) =
                 self.evaluate_transition(faction_id, *current_archetype, &context)
             {
-                transitions.push((
-                    faction_id.clone(),
-                    *current_archetype,
-                    target,
-                    trigger,
-                ));
+                transitions.push((faction_id.clone(), *current_archetype, target, trigger));
             }
         }
 
@@ -144,11 +144,11 @@ mod tests {
     struct TestConverter;
 
     impl crate::plugin::org_suite::transition::OrgConverter for TestConverter {
-        fn from_archetype(&self) -> OrgArchetype {
+        fn source_archetype(&self) -> OrgArchetype {
             OrgArchetype::Holacracy
         }
 
-        fn to_archetype(&self) -> OrgArchetype {
+        fn target_archetype(&self) -> OrgArchetype {
             OrgArchetype::Hierarchy
         }
 

@@ -2,15 +2,15 @@
 //!
 //! Uses `hecs::World` for high-performance entity management.
 
-use crate::state::State;
 use super::types::*;
+use crate::state::State;
 use serde::{Deserialize, Serialize};
 
 /// Decay event for ECS version (uses hecs::Entity)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DecayEventECS {
     /// Entity that decayed
-    #[serde(skip)]  // hecs::Entity is not serializable
+    #[serde(skip)] // hecs::Entity is not serializable
     pub entity: Option<hecs::Entity>,
     /// Old durability value
     pub old_durability: f32,
@@ -88,12 +88,8 @@ impl EntropyStateECS {
         maintenance: MaintenanceHistory,
         timestamp: EntityTimestamp,
     ) -> hecs::Entity {
-        self.world.spawn((
-            durability,
-            environment,
-            maintenance,
-            timestamp,
-        ))
+        self.world
+            .spawn((durability, environment, maintenance, timestamp))
     }
 
     /// Despawn an entity

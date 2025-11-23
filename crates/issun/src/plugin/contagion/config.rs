@@ -171,7 +171,13 @@ mod tests {
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: ContagionConfig = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(config.global_propagation_rate, deserialized.global_propagation_rate);
-        assert_eq!(config.default_mutation_rate, deserialized.default_mutation_rate);
+        assert_eq!(
+            config.global_propagation_rate,
+            deserialized.global_propagation_rate
+        );
+        assert_eq!(
+            config.default_mutation_rate,
+            deserialized.default_mutation_rate
+        );
     }
 }

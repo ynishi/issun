@@ -37,17 +37,29 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     pub async fn process_events(&mut self, resources: &mut ResourceContext) {
         // Collect events from EventBus
         let task_add_requests = self.collect_events::<TaskAddRequested>(resources).await;
-        let bidding_start_requests = self.collect_events::<BiddingStartRequested>(resources).await;
+        let bidding_start_requests = self
+            .collect_events::<BiddingStartRequested>(resources)
+            .await;
         let bid_submit_requests = self.collect_events::<BidSubmitRequested>(resources).await;
         let task_assign_requests = self.collect_events::<TaskAssignRequested>(resources).await;
-        let task_complete_requests = self.collect_events::<TaskCompleteRequested>(resources).await;
+        let task_complete_requests = self
+            .collect_events::<TaskCompleteRequested>(resources)
+            .await;
         let task_cancel_requests = self.collect_events::<TaskCancelRequested>(resources).await;
         let member_add_requests = self.collect_events::<MemberAddRequested>(resources).await;
-        let member_remove_requests = self.collect_events::<MemberRemoveRequested>(resources).await;
+        let member_remove_requests = self
+            .collect_events::<MemberRemoveRequested>(resources)
+            .await;
         let role_assign_requests = self.collect_events::<RoleAssignRequested>(resources).await;
-        let role_unassign_requests = self.collect_events::<RoleUnassignRequested>(resources).await;
-        let circle_create_requests = self.collect_events::<CircleCreateRequested>(resources).await;
-        let bidding_process_requests = self.collect_events::<BiddingProcessRequested>(resources).await;
+        let role_unassign_requests = self
+            .collect_events::<RoleUnassignRequested>(resources)
+            .await;
+        let circle_create_requests = self
+            .collect_events::<CircleCreateRequested>(resources)
+            .await;
+        let bidding_process_requests = self
+            .collect_events::<BiddingProcessRequested>(resources)
+            .await;
 
         // Process events
         for request in task_add_requests {
@@ -113,7 +125,11 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     }
 
     /// Process task add request
-    async fn process_task_add(&mut self, request: TaskAddRequested, resources: &mut ResourceContext) {
+    async fn process_task_add(
+        &mut self,
+        request: TaskAddRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -124,18 +140,26 @@ impl<H: HolacracyHook> HolacracySystem<H> {
             return;
         }
 
-        self.publish_event(TaskAddedEvent { task_id }, resources).await;
+        self.publish_event(TaskAddedEvent { task_id }, resources)
+            .await;
     }
 
     /// Process bidding start request
-    async fn process_bidding_start(&mut self, request: BiddingStartRequested, resources: &mut ResourceContext) {
+    async fn process_bidding_start(
+        &mut self,
+        request: BiddingStartRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
         };
 
         let current_turn = state.current_turn();
-        if let Err(_e) = state.task_pool_mut().start_bidding(&request.task_id, current_turn) {
+        if let Err(_e) = state
+            .task_pool_mut()
+            .start_bidding(&request.task_id, current_turn)
+        {
             return;
         }
 
@@ -150,7 +174,11 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     }
 
     /// Process bid submit request
-    async fn process_bid_submit(&mut self, request: BidSubmitRequested, resources: &mut ResourceContext) {
+    async fn process_bid_submit(
+        &mut self,
+        request: BidSubmitRequested,
+        resources: &mut ResourceContext,
+    ) {
         let config = match resources.get::<HolacracyConfig>().await {
             Some(c) => c.clone(),
             None => return,
@@ -237,7 +265,11 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     }
 
     /// Process task assign request
-    async fn process_task_assign(&mut self, request: TaskAssignRequested, resources: &mut ResourceContext) {
+    async fn process_task_assign(
+        &mut self,
+        request: TaskAssignRequested,
+        resources: &mut ResourceContext,
+    ) {
         // Validate via hook
         let validation = self
             .hook
@@ -263,7 +295,10 @@ impl<H: HolacracyHook> HolacracySystem<H> {
         };
 
         // Assign task in pool
-        if let Err(e) = state.task_pool_mut().assign_task(&request.task_id, &request.member_id) {
+        if let Err(e) = state
+            .task_pool_mut()
+            .assign_task(&request.task_id, &request.member_id)
+        {
             self.publish_event(
                 TaskAssignmentFailedEvent {
                     task_id: request.task_id.clone(),
@@ -298,7 +333,11 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     }
 
     /// Process task complete request
-    async fn process_task_complete(&mut self, request: TaskCompleteRequested, resources: &mut ResourceContext) {
+    async fn process_task_complete(
+        &mut self,
+        request: TaskCompleteRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -340,7 +379,11 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     }
 
     /// Process task cancel request
-    async fn process_task_cancel(&mut self, request: TaskCancelRequested, resources: &mut ResourceContext) {
+    async fn process_task_cancel(
+        &mut self,
+        request: TaskCancelRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -381,7 +424,11 @@ impl<H: HolacracyHook> HolacracySystem<H> {
     }
 
     /// Process member add request
-    async fn process_member_add(&mut self, request: MemberAddRequested, resources: &mut ResourceContext) {
+    async fn process_member_add(
+        &mut self,
+        request: MemberAddRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -390,14 +437,23 @@ impl<H: HolacracyHook> HolacracySystem<H> {
         let member_id = request.member.id.clone();
         state.add_member(request.member);
 
-        self.publish_event(MemberAddedEvent { member_id: member_id.clone() }, resources)
-            .await;
+        self.publish_event(
+            MemberAddedEvent {
+                member_id: member_id.clone(),
+            },
+            resources,
+        )
+        .await;
 
         self.hook.on_member_added(&member_id, resources).await;
     }
 
     /// Process member remove request
-    async fn process_member_remove(&mut self, request: MemberRemoveRequested, resources: &mut ResourceContext) {
+    async fn process_member_remove(
+        &mut self,
+        request: MemberRemoveRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -412,12 +468,18 @@ impl<H: HolacracyHook> HolacracySystem<H> {
             )
             .await;
 
-            self.hook.on_member_removed(&request.member_id, resources).await;
+            self.hook
+                .on_member_removed(&request.member_id, resources)
+                .await;
         }
     }
 
     /// Process role assign request
-    async fn process_role_assign(&mut self, request: RoleAssignRequested, resources: &mut ResourceContext) {
+    async fn process_role_assign(
+        &mut self,
+        request: RoleAssignRequested,
+        resources: &mut ResourceContext,
+    ) {
         // Validate via hook
         let validation = self
             .hook
@@ -499,12 +561,21 @@ impl<H: HolacracyHook> HolacracySystem<H> {
 
         // Notify hook
         self.hook
-            .on_role_assigned(&request.circle_id, &request.role_id, &request.member_id, resources)
+            .on_role_assigned(
+                &request.circle_id,
+                &request.role_id,
+                &request.member_id,
+                resources,
+            )
             .await;
     }
 
     /// Process role unassign request
-    async fn process_role_unassign(&mut self, request: RoleUnassignRequested, resources: &mut ResourceContext) {
+    async fn process_role_unassign(
+        &mut self,
+        request: RoleUnassignRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -553,12 +624,21 @@ impl<H: HolacracyHook> HolacracySystem<H> {
 
         // Notify hook
         self.hook
-            .on_role_unassigned(&request.circle_id, &request.role_id, &previous_holder, resources)
+            .on_role_unassigned(
+                &request.circle_id,
+                &request.role_id,
+                &previous_holder,
+                resources,
+            )
             .await;
     }
 
     /// Process circle create request
-    async fn process_circle_create(&mut self, request: CircleCreateRequested, resources: &mut ResourceContext) {
+    async fn process_circle_create(
+        &mut self,
+        request: CircleCreateRequested,
+        resources: &mut ResourceContext,
+    ) {
         let mut state = match resources.get_mut::<HolacracyState>().await {
             Some(s) => s,
             None => return,
@@ -567,14 +647,23 @@ impl<H: HolacracyHook> HolacracySystem<H> {
         let circle_id = request.circle.id.clone();
         state.add_circle(request.circle);
 
-        self.publish_event(CircleCreatedEvent { circle_id: circle_id.clone() }, resources)
-            .await;
+        self.publish_event(
+            CircleCreatedEvent {
+                circle_id: circle_id.clone(),
+            },
+            resources,
+        )
+        .await;
 
         self.hook.on_circle_created(&circle_id, resources).await;
     }
 
     /// Process bidding period expiration
-    async fn process_bidding_period(&mut self, request: BiddingProcessRequested, resources: &mut ResourceContext) {
+    async fn process_bidding_period(
+        &mut self,
+        request: BiddingProcessRequested,
+        resources: &mut ResourceContext,
+    ) {
         let config = match resources.get::<HolacracyConfig>().await {
             Some(c) => c.clone(),
             None => return,
@@ -609,11 +698,10 @@ impl<H: HolacracyHook> HolacracySystem<H> {
             let assigned_to = if let Some(member_id) = hook_override {
                 // Hook specified assignment
                 Some(member_id)
-            } else if let Some(best_bid) = task_pool.get_best_bid(&task_id) {
-                // Auto-assign to best bid
-                Some(best_bid.member_id.clone())
             } else {
-                None
+                task_pool
+                    .get_best_bid(&task_id)
+                    .map(|best_bid| best_bid.member_id.clone())
             };
 
             // Perform assignment if we have a winner

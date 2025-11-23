@@ -133,16 +133,16 @@ impl crate::resources::Resource for SocialConfig {}
 impl Default for SocialConfig {
     fn default() -> Self {
         Self {
-            centrality_recalc_interval: 5,      // Every 5 turns
-            shadow_leader_threshold: 0.75,      // 75% influence
-            trust_decay_rate: 0.01,             // 1% per turn
-            favor_expiration_turns: 50,         // 50 turns lifetime
-            faction_cohesion_decay_rate: 0.02,  // 2% per turn
+            centrality_recalc_interval: 5,     // Every 5 turns
+            shadow_leader_threshold: 0.75,     // 75% influence
+            trust_decay_rate: 0.01,            // 1% per turn
+            favor_expiration_turns: 50,        // 50 turns lifetime
+            faction_cohesion_decay_rate: 0.02, // 2% per turn
             centrality_weights: CentralityWeights::default(),
-            gossip_spread_rate: 0.3,            // 30% spread chance
-            max_factions: 10,                   // Maximum 10 factions
-            min_faction_size: 3,                // At least 3 members
-            faction_split_threshold: 0.3,       // 30% cohesion triggers split
+            gossip_spread_rate: 0.3,      // 30% spread chance
+            max_factions: 10,             // Maximum 10 factions
+            min_faction_size: 3,          // At least 3 members
+            faction_split_threshold: 0.3, // 30% cohesion triggers split
             enable_faction_merging: true,
         }
     }

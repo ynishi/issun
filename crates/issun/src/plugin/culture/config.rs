@@ -61,11 +61,11 @@ impl crate::resources::Resource for CultureConfig {}
 impl Default for CultureConfig {
     fn default() -> Self {
         Self {
-            base_stress_rate: 0.03,          // 3% per turn
-            base_fervor_growth_rate: 0.02,   // 2% per turn
-            stress_breakdown_threshold: 0.8, // 80% stress threshold
+            base_stress_rate: 0.03,           // 3% per turn
+            base_fervor_growth_rate: 0.02,    // 2% per turn
+            stress_breakdown_threshold: 0.8,  // 80% stress threshold
             fervor_fanaticism_threshold: 0.9, // 90% fervor threshold
-            culture_strength: 1.0,           // Normal strength
+            culture_strength: 1.0,            // Normal strength
             enable_stress_decay: true,
             stress_decay_rate: 0.01, // 1% decay per turn
         }

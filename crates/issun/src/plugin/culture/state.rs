@@ -177,9 +177,7 @@ impl CultureState {
 
     /// Register a new faction (creates empty culture)
     pub fn register_faction(&mut self, faction_id: impl Into<String>) {
-        self.faction_cultures
-            .entry(faction_id.into())
-            .or_default();
+        self.faction_cultures.entry(faction_id.into()).or_default();
     }
 
     /// Get a faction's culture (immutable)
@@ -233,7 +231,11 @@ impl CultureState {
             return 0.0;
         }
 
-        let total_stress: f32 = self.faction_cultures.values().map(|c| c.average_stress()).sum();
+        let total_stress: f32 = self
+            .faction_cultures
+            .values()
+            .map(|c| c.average_stress())
+            .sum();
         total_stress / self.faction_cultures.len() as f32
     }
 
@@ -243,7 +245,11 @@ impl CultureState {
             return 0.0;
         }
 
-        let total_fervor: f32 = self.faction_cultures.values().map(|c| c.average_fervor()).sum();
+        let total_fervor: f32 = self
+            .faction_cultures
+            .values()
+            .map(|c| c.average_fervor())
+            .sum();
         total_fervor / self.faction_cultures.len() as f32
     }
 }
@@ -524,6 +530,9 @@ mod tests {
         let deserialized: OrganizationCulture = serde_json::from_str(&json).unwrap();
 
         assert_eq!(culture.member_count(), deserialized.member_count());
-        assert_eq!(culture.culture_tag_count(), deserialized.culture_tag_count());
+        assert_eq!(
+            culture.culture_tag_count(),
+            deserialized.culture_tag_count()
+        );
     }
 }

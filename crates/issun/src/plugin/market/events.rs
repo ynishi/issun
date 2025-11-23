@@ -216,7 +216,10 @@ mod tests {
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: MarketEventAppliedEvent = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(event.affected_items.len(), deserialized.affected_items.len());
+        assert_eq!(
+            event.affected_items.len(),
+            deserialized.affected_items.len()
+        );
     }
 
     #[test]

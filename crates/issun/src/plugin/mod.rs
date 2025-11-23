@@ -26,30 +26,30 @@ use async_trait::async_trait;
 // Built-in plugins
 pub mod accounting;
 pub mod action;
+pub mod chain_of_command;
 pub mod combat;
+pub mod contagion;
+pub mod culture;
 pub mod dungeon;
 pub mod economy;
 pub mod entropy;
 pub mod faction;
+pub mod holacracy;
 pub mod inventory;
 pub mod loot;
+pub mod market;
 pub mod metrics;
+pub mod modular_synthesis;
+pub mod org_suite;
 pub mod policy;
 pub mod reputation;
 pub mod research;
 pub mod room_buff;
 pub mod save_load;
-pub mod subjective_reality;
-pub mod contagion;
-pub mod chain_of_command;
-pub mod culture;
-pub mod holacracy;
-pub mod market;
-pub mod modular_synthesis;
 pub mod social;
+pub mod subjective_reality;
 pub mod territory;
 pub mod time;
-pub mod org_suite;
 
 // Re-exports for convenience
 pub use action::{
@@ -479,183 +479,183 @@ pub use economy::{
 
 // ChainOfCommandPlugin exports (Phase 1-5 complete ✅)
 pub use chain_of_command::{
-    // Types
-    Member,
-    MemberId,
-    Order,
-    OrderType,
-    OrderOutcome,
-    OrderError,
-    Priority,
-    PromotionError,
-    RankId,
+    AuthorityLevel,
     // Resources
     ChainOfCommandConfig,
-    RankDefinitions,
-    RankDefinition,
-    AuthorityLevel,
-    // State (Phase 2) ✅
-    HierarchyState,
-    OrganizationHierarchy,
-    // Service (Phase 3) ✅
-    HierarchyService,
     // Hook (Phase 4) ✅
     ChainOfCommandHook,
+    // Plugin (Phase 5) ✅
+    ChainOfCommandPlugin,
     DefaultChainOfCommandHook,
+    // Service (Phase 3) ✅
+    HierarchyService,
+    // State (Phase 2) ✅
+    HierarchyState,
     // System (Phase 4) ✅
     HierarchySystem,
+    LoyaltyDecayProcessedEvent,
+    LoyaltyDecayRequested,
+    // Types
+    Member,
+    MemberAddRequested,
+    MemberAddedEvent,
+    MemberId,
     // Events (Phase 4) ✅
     MemberPromoteRequested,
     MemberPromotedEvent,
-    PromotionFailedEvent,
-    OrderIssueRequested,
-    OrderExecutedEvent,
-    OrderRefusedEvent,
-    LoyaltyDecayRequested,
-    LoyaltyDecayProcessedEvent,
-    MemberAddRequested,
-    MemberAddedEvent,
     MemberRemoveRequested,
     MemberRemovedEvent,
-    // Plugin (Phase 5) ✅
-    ChainOfCommandPlugin,
+    Order,
+    OrderError,
+    OrderExecutedEvent,
+    OrderIssueRequested,
+    OrderOutcome,
+    OrderRefusedEvent,
+    OrderType,
+    OrganizationHierarchy,
+    Priority,
+    PromotionError,
+    PromotionFailedEvent,
+    RankDefinition,
+    RankDefinitions,
+    RankId,
 };
 
 // CulturePlugin exports (Phase 0-5 complete ✅)
 pub use culture::{
-    // Types (Phase 0) ✅
-    // Note: MemberId, FactionId conflict with chain_of_command
-    // Use culture::{MemberId, FactionId} when needed
-    CultureTag,
-    PersonalityTrait,
     Alignment,
-    CultureEffect,
-    CultureError,
-    // Member type is from types.rs in culture module
-    // Config (Phase 1) ✅
-    CultureConfig,
-    // State (Phase 2) ✅
-    CultureState,
-    OrganizationCulture,
-    // Service (Phase 3) ✅
-    CultureService,
-    // Hook (Phase 4b) ✅
-    CultureHook,
-    DefaultCultureHook,
-    // System (Phase 4c) ✅
-    CultureSystem,
     // Events (Phase 4a) ✅
     AlignmentCheckRequested,
     AlignmentCheckedEvent,
-    StressAccumulatedEvent,
-    FervorIncreasedEvent,
-    MemberBreakdownEvent,
-    MemberFanaticizedEvent,
-    CultureTagAddRequested,
-    CultureTagAddedEvent,
-    CultureTagRemoveRequested,
-    CultureTagRemovedEvent,
+    // Member type is from types.rs in culture module
+    // Config (Phase 1) ✅
+    CultureConfig,
+    CultureEffect,
+    CultureError,
+    // Hook (Phase 4b) ✅
+    CultureHook,
     // Note: MemberAddRequested, MemberAddedEvent, MemberRemoveRequested, MemberRemovedEvent
     // conflict with chain_of_command. Use culture:: prefix when needed
     // Plugin (Phase 5) ✅
     CulturePlugin,
+    // Service (Phase 3) ✅
+    CultureService,
+    // State (Phase 2) ✅
+    CultureState,
+    // System (Phase 4c) ✅
+    CultureSystem,
+    // Types (Phase 0) ✅
+    // Note: MemberId, FactionId conflict with chain_of_command
+    // Use culture::{MemberId, FactionId} when needed
+    CultureTag,
+    CultureTagAddRequested,
+    CultureTagAddedEvent,
+    CultureTagRemoveRequested,
+    CultureTagRemovedEvent,
+    DefaultCultureHook,
+    FervorIncreasedEvent,
+    MemberBreakdownEvent,
+    MemberFanaticizedEvent,
+    OrganizationCulture,
+    PersonalityTrait,
+    StressAccumulatedEvent,
 };
 
 // MarketPlugin exports (Phase 1-8 complete ✅)
 pub use market::{
+    DefaultMarketHook,
+    DemandSupplySetEvent,
+    DemandSupplySetRequested,
+    ItemRegisterRequested,
+    ItemRegisteredEvent,
+    // Resources (Phase 2) ✅
+    MarketConfig,
     // Types (Phase 1) ✅
     // Note: ItemId not exported to avoid conflict with inventory::ItemId
     // Use market::ItemId instead
     MarketData,
     MarketEvent,
+    MarketEventAppliedEvent,
+    MarketEventApplyRequested,
     MarketEventType,
-    MarketTrend,
-    PriceChange,
-    // Resources (Phase 2) ✅
-    MarketConfig,
-    // State (Phase 3) ✅
-    MarketState,
-    // Service (Phase 4) ✅
-    MarketService,
     // Hook (Phase 5) ✅
     MarketHook,
-    DefaultMarketHook,
-    // Events (Phase 6) ✅
-    PriceUpdateRequested,
-    MarketEventApplyRequested,
-    ItemRegisterRequested,
-    DemandSupplySetRequested,
-    PricesUpdatedEvent,
-    PriceChangedEvent,
-    MarketTrendChangedEvent,
-    MarketEventAppliedEvent,
-    ItemRegisteredEvent,
-    DemandSupplySetEvent,
-    // System (Phase 7) ✅
-    MarketSystem,
     // Plugin (Phase 8) ✅
     MarketPlugin,
+    // Service (Phase 4) ✅
+    MarketService,
+    // State (Phase 3) ✅
+    MarketState,
+    // System (Phase 7) ✅
+    MarketSystem,
+    MarketTrend,
+    MarketTrendChangedEvent,
+    PriceChange,
+    PriceChangedEvent,
+    // Events (Phase 6) ✅
+    PriceUpdateRequested,
+    PricesUpdatedEvent,
 };
 
 // OrganizationSuitePlugin exports (Phase 0 complete ✅)
 pub use org_suite::{
-    // Types (Phase 0) ✅
-    FactionId as OrgSuiteFactionId,
-    OrgArchetype,
-    OrgSuiteError,
-    TransitionHistory,
-    TransitionTrigger,
-    // Config (Phase 0) ✅
-    OrgSuiteConfig,
-    // State (Phase 0) ✅
-    OrgSuiteState,
-    // Events (Phase 0) ✅
-    FactionRegisterRequested as OrgSuiteFactionRegisterRequested,
-    TransitionRequested,
-    FactionRegisteredEvent as OrgSuiteFactionRegisteredEvent,
-    TransitionFailedEvent,
-    TransitionOccurredEvent,
     // Transition Framework (Phase 0) ✅
     ConditionContext,
+    // Types (Phase 0) ✅
+    FactionId as OrgSuiteFactionId,
+    // Events (Phase 0) ✅
+    FactionRegisterRequested as OrgSuiteFactionRegisterRequested,
+    FactionRegisteredEvent as OrgSuiteFactionRegisteredEvent,
+    OrgArchetype,
     OrgConverter,
+    // Config (Phase 0) ✅
+    OrgSuiteConfig,
+    OrgSuiteError,
+    // State (Phase 0) ✅
+    OrgSuiteState,
     TransitionCondition,
+    TransitionFailedEvent,
+    TransitionHistory,
+    TransitionOccurredEvent,
     TransitionRegistry,
+    TransitionRequested,
+    TransitionTrigger,
 };
 
 // ModularSynthesisPlugin exports (Phase 0-6 complete ✅)
 pub use modular_synthesis::{
-    // Types (Phase 1) ✅
-    SynthesisId,
+    ActiveSynthesis,
+    CategoryId,
+    DefaultSynthesisHook,
+    DiscoveryState,
+    Ingredient,
     // Note: RecipeId, EntityId not exported to avoid potential conflicts
     // Note: ItemId not exported to avoid conflict with inventory::ItemId
     // Use modular_synthesis::{RecipeId, EntityId, ItemId} instead
     IngredientType,
-    Ingredient,
-    ResultType,
-    SynthesisResult,
-    CategoryId,
-    SynthesisStatus,
-    SynthesisOutcome,
-    SynthesisError,
-    // Config (Phase 2) ✅
-    SynthesisConfig,
+    // Plugin (Phase 6) ✅
+    ModularSynthesisPlugin,
     // Recipe Registry (Phase 2) ✅
     Recipe,
     RecipeRegistry,
-    // State (Phase 3) ✅
-    Timestamp,
-    DiscoveryState,
-    ActiveSynthesis,
-    SynthesisState,
-    // Service (Phase 4) ✅
-    SynthesisService,
+    ResultType,
+    // Config (Phase 2) ✅
+    SynthesisConfig,
+    SynthesisError,
     // Hook (Phase 5) ✅
     SynthesisHook,
-    DefaultSynthesisHook,
+    // Types (Phase 1) ✅
+    SynthesisId,
+    SynthesisOutcome,
+    SynthesisResult,
+    // Service (Phase 4) ✅
+    SynthesisService,
+    SynthesisState,
+    SynthesisStatus,
     // System (Phase 5) ✅
     SynthesisSystem,
-    // Plugin (Phase 6) ✅
-    ModularSynthesisPlugin,
+    // State (Phase 3) ✅
+    Timestamp,
 };
 
 use crate::builder::RuntimeResourceEntry;

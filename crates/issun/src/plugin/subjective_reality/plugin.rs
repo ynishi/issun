@@ -271,8 +271,11 @@ mod tests {
 
     #[test]
     fn test_register_factions_vec() {
-        let plugin = SubjectiveRealityPlugin::new()
-            .register_factions(vec!["faction_a", "faction_b", "faction_c"]);
+        let plugin = SubjectiveRealityPlugin::new().register_factions(vec![
+            "faction_a",
+            "faction_b",
+            "faction_c",
+        ]);
 
         assert_eq!(plugin.registry.faction_count(), 3);
     }

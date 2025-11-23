@@ -1,8 +1,8 @@
 //! Runtime state for OrganizationSuitePlugin
 
-use std::collections::HashMap;
+use super::types::{FactionId, OrgArchetype, OrgSuiteError, TransitionHistory, TransitionTrigger};
 use serde::{Deserialize, Serialize};
-use super::types::{FactionId, OrgArchetype, TransitionHistory, TransitionTrigger, OrgSuiteError};
+use std::collections::HashMap;
 
 /// OrganizationSuite runtime state (Mutable RuntimeState)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,29 +185,33 @@ mod tests {
         let mut state = OrgSuiteState::new();
         state.register_faction("test", OrgArchetype::Holacracy);
 
-        state.record_transition(
-            "test",
-            OrgArchetype::Holacracy,
-            OrgArchetype::Hierarchy,
-            TransitionTrigger::Scaling {
-                from: OrgArchetype::Holacracy,
-                to: OrgArchetype::Hierarchy,
-                member_count: 50,
-            },
-        ).unwrap();
+        state
+            .record_transition(
+                "test",
+                OrgArchetype::Holacracy,
+                OrgArchetype::Hierarchy,
+                TransitionTrigger::Scaling {
+                    from: OrgArchetype::Holacracy,
+                    to: OrgArchetype::Hierarchy,
+                    member_count: 50,
+                },
+            )
+            .unwrap();
 
         state.tick();
 
-        state.record_transition(
-            "test",
-            OrgArchetype::Hierarchy,
-            OrgArchetype::Social,
-            TransitionTrigger::Decay {
-                from: OrgArchetype::Hierarchy,
-                to: OrgArchetype::Social,
-                corruption_level: 0.8,
-            },
-        ).unwrap();
+        state
+            .record_transition(
+                "test",
+                OrgArchetype::Hierarchy,
+                OrgArchetype::Social,
+                TransitionTrigger::Decay {
+                    from: OrgArchetype::Hierarchy,
+                    to: OrgArchetype::Social,
+                    corruption_level: 0.8,
+                },
+            )
+            .unwrap();
 
         let history = state.get_history();
         assert_eq!(history.len(), 2);

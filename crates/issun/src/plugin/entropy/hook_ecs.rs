@@ -64,8 +64,8 @@ impl EntropyHookECS for DefaultEntropyHookECS {}
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
-    use super::super::types::*;
 
     struct TestHook {
         on_destroyed_called: std::sync::Arc<std::sync::atomic::AtomicBool>,

@@ -120,11 +120,7 @@ impl ContagionService {
     /// Calculate credibility decay over time
     ///
     /// Decays linearly based on lifetime_turns
-    pub fn decay_credibility(
-        credibility: f32,
-        elapsed_turns: u64,
-        lifetime_turns: u64,
-    ) -> f32 {
+    pub fn decay_credibility(credibility: f32, elapsed_turns: u64, lifetime_turns: u64) -> f32 {
         let decay_rate = 1.0 / lifetime_turns as f32;
         (credibility - decay_rate * elapsed_turns as f32).max(0.0)
     }

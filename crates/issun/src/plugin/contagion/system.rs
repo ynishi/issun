@@ -363,9 +363,10 @@ mod tests {
 
                 // Assert spread details are populated
                 assert_eq!(report.spread_details.len(), report.spread_count);
-                assert!(report.spread_details.iter().all(|detail| {
-                    detail.from_node == "london" && detail.to_node == "paris"
-                }));
+                assert!(report
+                    .spread_details
+                    .iter()
+                    .all(|detail| { detail.from_node == "london" && detail.to_node == "paris" }));
 
                 break;
             }

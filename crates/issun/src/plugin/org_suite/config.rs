@@ -57,9 +57,9 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = OrgSuiteConfig::default();
-        assert_eq!(config.enable_auto_transition, true);
+        assert!(config.enable_auto_transition);
         assert_eq!(config.transition_check_interval, 1);
-        assert_eq!(config.log_transitions, true);
+        assert!(config.log_transitions);
     }
 
     #[test]
@@ -69,9 +69,9 @@ mod tests {
             .with_check_interval(10)
             .with_logging(false);
 
-        assert_eq!(config.enable_auto_transition, false);
+        assert!(!config.enable_auto_transition);
         assert_eq!(config.transition_check_interval, 10);
-        assert_eq!(config.log_transitions, false);
+        assert!(!config.log_transitions);
     }
 
     #[test]
@@ -81,6 +81,9 @@ mod tests {
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: OrgSuiteConfig = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(config.transition_check_interval, deserialized.transition_check_interval);
+        assert_eq!(
+            config.transition_check_interval,
+            deserialized.transition_check_interval
+        );
     }
 }

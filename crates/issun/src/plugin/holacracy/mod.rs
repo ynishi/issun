@@ -6,8 +6,8 @@
 // Phase 0: Types
 mod types;
 pub use types::{
-    Bid, BidScore, Circle, CircleId, HolacracyError, MemberId, Role, RoleId, RoleType,
-    SkillLevel, SkillTag, Task, TaskId, TaskPriority, TaskStatus,
+    Bid, BidScore, Circle, CircleId, HolacracyError, MemberId, Role, RoleId, RoleType, SkillLevel,
+    SkillTag, Task, TaskId, TaskPriority, TaskStatus,
 };
 
 // Phase 1: Config
@@ -25,34 +25,34 @@ pub use service::TaskAssignmentService;
 // Phase 4a: Events
 mod events;
 pub use events::{
-    // Command Events (Requests)
-    BidSubmitRequested,
-    BiddingProcessRequested,
-    BiddingStartRequested,
-    CircleCreateRequested,
-    MemberAddRequested,
-    MemberRemoveRequested,
-    RoleAssignRequested,
-    RoleUnassignRequested,
-    TaskAddRequested,
-    TaskAssignRequested,
-    TaskCancelRequested,
-    TaskCompleteRequested,
     // State Events (Results)
     BidRejectedEvent,
+    // Command Events (Requests)
+    BidSubmitRequested,
     BidSubmittedEvent,
     BiddingCompletedEvent,
+    BiddingProcessRequested,
+    BiddingStartRequested,
     BiddingStartedEvent,
+    CircleCreateRequested,
     CircleCreatedEvent,
+    MemberAddRequested,
     MemberAddedEvent,
+    MemberRemoveRequested,
     MemberRemovedEvent,
+    RoleAssignRequested,
     RoleAssignedEvent,
     RoleAssignmentFailedEvent,
+    RoleUnassignRequested,
     RoleUnassignedEvent,
+    TaskAddRequested,
     TaskAddedEvent,
+    TaskAssignRequested,
     TaskAssignedEvent,
     TaskAssignmentFailedEvent,
+    TaskCancelRequested,
     TaskCancelledEvent,
+    TaskCompleteRequested,
     TaskCompletedEvent,
 };
 

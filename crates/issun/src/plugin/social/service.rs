@@ -103,8 +103,7 @@ impl NetworkAnalysisService {
                 }
 
                 // Find all shortest paths from source to target
-                let shortest_path_length =
-                    Self::shortest_path_length(source, target, network);
+                let shortest_path_length = Self::shortest_path_length(source, target, network);
 
                 if let Some(sp_len) = shortest_path_length {
                     // Check if member_id is on a shortest path
@@ -224,11 +223,7 @@ impl NetworkAnalysisService {
             }
 
             // Normalize (L2 norm)
-            let norm: f32 = new_scores
-                .values()
-                .map(|v| v * v)
-                .sum::<f32>()
-                .sqrt();
+            let norm: f32 = new_scores.values().map(|v| v * v).sum::<f32>().sqrt();
 
             if norm > 0.0 {
                 for score in new_scores.values_mut() {
@@ -327,8 +322,7 @@ impl NetworkAnalysisService {
         config: &SocialConfig,
     ) -> Vec<(MemberId, f32)> {
         // Pre-calculate eigenvector centrality for all
-        let eigenvector_scores =
-            Self::calculate_eigenvector_centrality(network, 100, 0.0001);
+        let eigenvector_scores = Self::calculate_eigenvector_centrality(network, 100, 0.0001);
 
         let mut candidates = Vec::new();
 
@@ -478,9 +472,15 @@ mod tests {
     fn test_degree_centrality() {
         let network = create_test_network();
 
-        let degree_a = NetworkAnalysisService::calculate_degree_centrality(&"A".to_string(), &network).unwrap();
-        let degree_b = NetworkAnalysisService::calculate_degree_centrality(&"B".to_string(), &network).unwrap();
-        let degree_c = NetworkAnalysisService::calculate_degree_centrality(&"C".to_string(), &network).unwrap();
+        let degree_a =
+            NetworkAnalysisService::calculate_degree_centrality(&"A".to_string(), &network)
+                .unwrap();
+        let degree_b =
+            NetworkAnalysisService::calculate_degree_centrality(&"B".to_string(), &network)
+                .unwrap();
+        let degree_c =
+            NetworkAnalysisService::calculate_degree_centrality(&"C".to_string(), &network)
+                .unwrap();
 
         // A has 2 connections (to B and C)
         assert_eq!(degree_a, 1.0); // 2 / (3-1) = 1.0
@@ -496,7 +496,8 @@ mod tests {
     fn test_degree_centrality_invalid_member() {
         let network = create_test_network();
 
-        let result = NetworkAnalysisService::calculate_degree_centrality(&"X".to_string(), &network);
+        let result =
+            NetworkAnalysisService::calculate_degree_centrality(&"X".to_string(), &network);
         assert!(result.is_err());
     }
 
@@ -505,15 +506,27 @@ mod tests {
         let network = create_test_network();
 
         // Direct path A -> C (length 1)
-        let dist_ac = NetworkAnalysisService::shortest_path_length(&"A".to_string(), &"C".to_string(), &network);
+        let dist_ac = NetworkAnalysisService::shortest_path_length(
+            &"A".to_string(),
+            &"C".to_string(),
+            &network,
+        );
         assert_eq!(dist_ac, Some(1));
 
         // Path A -> B (length 1)
-        let dist_ab = NetworkAnalysisService::shortest_path_length(&"A".to_string(), &"B".to_string(), &network);
+        let dist_ab = NetworkAnalysisService::shortest_path_length(
+            &"A".to_string(),
+            &"B".to_string(),
+            &network,
+        );
         assert_eq!(dist_ab, Some(1));
 
         // Same node
-        let dist_aa = NetworkAnalysisService::shortest_path_length(&"A".to_string(), &"A".to_string(), &network);
+        let dist_aa = NetworkAnalysisService::shortest_path_length(
+            &"A".to_string(),
+            &"A".to_string(),
+            &network,
+        );
         assert_eq!(dist_aa, Some(0));
     }
 
@@ -521,7 +534,9 @@ mod tests {
     fn test_closeness_centrality() {
         let network = create_test_network();
 
-        let closeness_a = NetworkAnalysisService::calculate_closeness_centrality(&"A".to_string(), &network).unwrap();
+        let closeness_a =
+            NetworkAnalysisService::calculate_closeness_centrality(&"A".to_string(), &network)
+                .unwrap();
 
         // A can reach B (dist 1) and C (dist 1)
         // Closeness = 2 / (1 + 1) = 1.0
@@ -532,7 +547,8 @@ mod tests {
     fn test_eigenvector_centrality() {
         let network = create_test_network();
 
-        let scores = NetworkAnalysisService::calculate_eigenvector_centrality(&network, 100, 0.0001);
+        let scores =
+            NetworkAnalysisService::calculate_eigenvector_centrality(&network, 100, 0.0001);
 
         assert!(scores.contains_key("A"));
         assert!(scores.contains_key("B"));
@@ -550,7 +566,7 @@ mod tests {
 
         // At least one score should be positive
         let sum: f32 = scores.values().sum();
-        assert!(sum > 0.0 || sum == 0.0); // Allow zero for disconnected graphs
+        assert!(sum >= 0.0); // Allow zero for disconnected graphs
     }
 
     #[test]
@@ -604,7 +620,9 @@ mod tests {
             )
             .unwrap();
 
-        let betweenness_b = NetworkAnalysisService::calculate_betweenness_centrality(&"B".to_string(), &network).unwrap();
+        let betweenness_b =
+            NetworkAnalysisService::calculate_betweenness_centrality(&"B".to_string(), &network)
+                .unwrap();
 
         // B is on the path from A to C
         assert!(betweenness_b > 0.0);

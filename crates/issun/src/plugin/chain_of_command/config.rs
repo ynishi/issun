@@ -34,9 +34,9 @@ impl Default for ChainOfCommandConfig {
     fn default() -> Self {
         Self {
             min_tenure_for_promotion: 5,
-            loyalty_decay_rate: 0.02, // 2% per turn
+            loyalty_decay_rate: 0.02,        // 2% per turn
             base_order_compliance_rate: 0.8, // 80% base compliance
-            min_loyalty_for_promotion: 0.5, // 50% minimum loyalty
+            min_loyalty_for_promotion: 0.5,  // 50% minimum loyalty
         }
     }
 }

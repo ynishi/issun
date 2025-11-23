@@ -22,6 +22,7 @@ use super::types::{OrderOutcome, PromotionError};
 /// 3. Executes logic via HierarchyService
 /// 4. Updates HierarchyState
 /// 5. Publishes state events (MemberPromotedEvent, OrderExecutedEvent, etc.)
+#[allow(dead_code)]
 pub struct HierarchySystem<H: ChainOfCommandHook> {
     hook: H,
     service: HierarchyService,
@@ -41,11 +42,17 @@ impl<H: ChainOfCommandHook> HierarchySystem<H> {
     /// This should be called once per game tick/frame.
     pub async fn process_events(&mut self, resources: &mut ResourceContext) {
         // Collect events from EventBus
-        let promote_requests = self.collect_events::<MemberPromoteRequested>(resources).await;
+        let promote_requests = self
+            .collect_events::<MemberPromoteRequested>(resources)
+            .await;
         let order_requests = self.collect_events::<OrderIssueRequested>(resources).await;
-        let loyalty_requests = self.collect_events::<LoyaltyDecayRequested>(resources).await;
+        let loyalty_requests = self
+            .collect_events::<LoyaltyDecayRequested>(resources)
+            .await;
         let add_requests = self.collect_events::<MemberAddRequested>(resources).await;
-        let remove_requests = self.collect_events::<MemberRemoveRequested>(resources).await;
+        let remove_requests = self
+            .collect_events::<MemberRemoveRequested>(resources)
+            .await;
 
         // Process events
         for request in promote_requests {
@@ -70,7 +77,10 @@ impl<H: ChainOfCommandHook> HierarchySystem<H> {
     }
 
     /// Collect events of a specific type from EventBus
-    async fn collect_events<T: Clone + 'static + crate::event::Event>(&self, resources: &mut ResourceContext) -> Vec<T> {
+    async fn collect_events<T: Clone + 'static + crate::event::Event>(
+        &self,
+        resources: &mut ResourceContext,
+    ) -> Vec<T> {
         if let Some(mut bus) = resources.get_mut::<EventBus>().await {
             let reader = bus.reader::<T>();
             reader.iter().cloned().collect()
@@ -368,7 +378,8 @@ impl<H: ChainOfCommandHook> HierarchySystem<H> {
 
             for (_faction_id, hierarchy) in state.all_hierarchies_mut() {
                 // Collect member IDs first (to avoid borrow issues)
-                let member_ids: Vec<_> = hierarchy.all_members().map(|(id, _)| id.clone()).collect();
+                let member_ids: Vec<_> =
+                    hierarchy.all_members().map(|(id, _)| id.clone()).collect();
 
                 for member_id in member_ids {
                     // Get superior modifier first (before mutable borrow)
@@ -571,7 +582,9 @@ mod tests {
         // Add a member first
         {
             let mut state = resources.get_mut::<HierarchyState>().await.unwrap();
-            let hierarchy = state.get_hierarchy_mut(&"test_faction".to_string()).unwrap();
+            let hierarchy = state
+                .get_hierarchy_mut(&"test_faction".to_string())
+                .unwrap();
             hierarchy.add_member(Member::new("m1", "Member 1", "private"));
         }
 
@@ -603,7 +616,9 @@ mod tests {
         // Add a member with sufficient tenure and loyalty
         {
             let mut state = resources.get_mut::<HierarchyState>().await.unwrap();
-            let hierarchy = state.get_hierarchy_mut(&"test_faction".to_string()).unwrap();
+            let hierarchy = state
+                .get_hierarchy_mut(&"test_faction".to_string())
+                .unwrap();
             hierarchy.add_member(
                 Member::new("m1", "Member 1", "private")
                     .with_tenure(10)
@@ -642,7 +657,9 @@ mod tests {
         // Add a member with insufficient tenure
         {
             let mut state = resources.get_mut::<HierarchyState>().await.unwrap();
-            let hierarchy = state.get_hierarchy_mut(&"test_faction".to_string()).unwrap();
+            let hierarchy = state
+                .get_hierarchy_mut(&"test_faction".to_string())
+                .unwrap();
             hierarchy.add_member(
                 Member::new("m1", "Member 1", "private")
                     .with_tenure(2) // Need 5
@@ -680,7 +697,9 @@ mod tests {
         // Add a member
         {
             let mut state = resources.get_mut::<HierarchyState>().await.unwrap();
-            let hierarchy = state.get_hierarchy_mut(&"test_faction".to_string()).unwrap();
+            let hierarchy = state
+                .get_hierarchy_mut(&"test_faction".to_string())
+                .unwrap();
             hierarchy.add_member(
                 Member::new("m1", "Member 1", "private")
                     .with_loyalty(1.0)

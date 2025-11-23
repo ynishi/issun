@@ -3,9 +3,9 @@
 //! Provides extension points for games to add custom logic before, during,
 //! and after organizational transitions.
 
-use async_trait::async_trait;
-use super::events::{TransitionRequested, TransitionOccurredEvent, TransitionFailedEvent};
+use super::events::{TransitionFailedEvent, TransitionOccurredEvent, TransitionRequested};
 use super::types::{OrgArchetype, TransitionTrigger};
+use async_trait::async_trait;
 
 /// Hook trait for customizing organizational transition behavior
 ///

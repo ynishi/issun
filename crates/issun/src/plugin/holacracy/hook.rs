@@ -158,7 +158,12 @@ mod tests {
         let score = BidScore::new(0.8, 0.6, 0.9);
 
         let result = hook
-            .on_bid_submitted(&"t1".to_string(), &"alice".to_string(), &score, &mut resources)
+            .on_bid_submitted(
+                &"t1".to_string(),
+                &"alice".to_string(),
+                &score,
+                &mut resources,
+            )
             .await;
         assert!(result.is_ok());
     }

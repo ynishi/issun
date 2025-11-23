@@ -43,10 +43,7 @@ impl CultureService {
     ///   - Collaborative + Ruthless
     ///
     /// - **Neutral**: No strong match or conflict
-    pub fn check_alignment(
-        member: &Member,
-        culture_tags: &HashSet<CultureTag>,
-    ) -> Alignment {
+    pub fn check_alignment(member: &Member, culture_tags: &HashSet<CultureTag>) -> Alignment {
         let personality_traits = &member.personality_traits;
 
         // Check for alignment (positive matches)
@@ -214,7 +211,8 @@ impl CultureService {
         let new_fervor = match alignment {
             Alignment::Aligned { fervor_bonus } => {
                 // Aligned members gain fervor
-                let fervor_increase = fervor_bonus * config.base_fervor_growth_rate * culture_strength;
+                let fervor_increase =
+                    fervor_bonus * config.base_fervor_growth_rate * culture_strength;
                 current_fervor + fervor_increase
             }
             Alignment::Misaligned { .. } => {
@@ -394,12 +392,7 @@ mod tests {
             reason: "Test".to_string(),
         };
 
-        let new_stress = CultureService::calculate_stress_change(
-            0.5,
-            &alignment,
-            &config,
-            1.0,
-        );
+        let new_stress = CultureService::calculate_stress_change(0.5, &alignment, &config, 1.0);
 
         // stress_increase = 0.08 * 0.03 * 1.0 = 0.0024
         // new_stress = 0.5 + 0.0024 = 0.5024
@@ -412,12 +405,7 @@ mod tests {
         let config = CultureConfig::default();
         let alignment = Alignment::Aligned { fervor_bonus: 0.05 };
 
-        let new_stress = CultureService::calculate_stress_change(
-            0.5,
-            &alignment,
-            &config,
-            1.0,
-        );
+        let new_stress = CultureService::calculate_stress_change(0.5, &alignment, &config, 1.0);
 
         // Aligned members recover stress faster
         // new_stress = 0.5 - (0.01 * 2.0) = 0.48
@@ -429,12 +417,7 @@ mod tests {
         let config = CultureConfig::default();
         let alignment = Alignment::Aligned { fervor_bonus: 0.06 };
 
-        let new_fervor = CultureService::calculate_fervor_change(
-            0.5,
-            &alignment,
-            &config,
-            1.0,
-        );
+        let new_fervor = CultureService::calculate_fervor_change(0.5, &alignment, &config, 1.0);
 
         // fervor_increase = 0.06 * 0.02 * 1.0 = 0.0012
         // new_fervor = 0.5 + 0.0012 = 0.5012
@@ -450,12 +433,7 @@ mod tests {
             reason: "Test".to_string(),
         };
 
-        let new_fervor = CultureService::calculate_fervor_change(
-            0.5,
-            &alignment,
-            &config,
-            1.0,
-        );
+        let new_fervor = CultureService::calculate_fervor_change(0.5, &alignment, &config, 1.0);
 
         // new_fervor = 0.5 - 0.01 = 0.49
         assert_eq!(new_fervor, 0.49);
@@ -541,10 +519,7 @@ mod tests {
         };
 
         let new_stress = CultureService::calculate_stress_change(
-            0.95,
-            &alignment,
-            &config,
-            10.0, // Very high culture strength
+            0.95, &alignment, &config, 10.0, // Very high culture strength
         );
 
         // Should clamp to 1.0
@@ -556,12 +531,7 @@ mod tests {
         let config = CultureConfig::default();
         let alignment = Alignment::Aligned { fervor_bonus: 1.0 };
 
-        let new_fervor = CultureService::calculate_fervor_change(
-            0.95,
-            &alignment,
-            &config,
-            10.0,
-        );
+        let new_fervor = CultureService::calculate_fervor_change(0.95, &alignment, &config, 10.0);
 
         // Should clamp to 1.0
         assert_eq!(new_fervor, 1.0);

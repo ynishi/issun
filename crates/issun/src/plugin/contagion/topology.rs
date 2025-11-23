@@ -240,7 +240,12 @@ mod tests {
         topology.add_node(ContagionNode::new("berlin", NodeType::City, 70000));
 
         topology.add_edge(PropagationEdge::new("london_paris", "london", "paris", 0.8));
-        topology.add_edge(PropagationEdge::new("london_berlin", "london", "berlin", 0.6));
+        topology.add_edge(PropagationEdge::new(
+            "london_berlin",
+            "london",
+            "berlin",
+            0.6,
+        ));
         topology.add_edge(PropagationEdge::new("paris_berlin", "paris", "berlin", 0.7));
 
         let outgoing = topology.get_outgoing_edges(&"london".to_string());
@@ -256,7 +261,12 @@ mod tests {
         topology.add_node(ContagionNode::new("berlin", NodeType::City, 70000));
 
         topology.add_edge(PropagationEdge::new("london_paris", "london", "paris", 0.8));
-        topology.add_edge(PropagationEdge::new("london_berlin", "london", "berlin", 0.6));
+        topology.add_edge(PropagationEdge::new(
+            "london_berlin",
+            "london",
+            "berlin",
+            0.6,
+        ));
 
         let neighbors = topology.get_neighbors(&"london".to_string());
         assert_eq!(neighbors.len(), 2);
@@ -264,8 +274,8 @@ mod tests {
 
     #[test]
     fn test_node_with_resistance() {
-        let node = ContagionNode::new("fortress", NodeType::MilitaryBase, 1000)
-            .with_resistance(0.8);
+        let node =
+            ContagionNode::new("fortress", NodeType::MilitaryBase, 1000).with_resistance(0.8);
 
         assert_eq!(node.resistance, 0.8);
     }
@@ -279,8 +289,7 @@ mod tests {
 
     #[test]
     fn test_edge_with_noise() {
-        let edge =
-            PropagationEdge::new("edge1", "a", "b", 0.5).with_noise(0.3);
+        let edge = PropagationEdge::new("edge1", "a", "b", 0.5).with_noise(0.3);
 
         assert_eq!(edge.noise_level, 0.3);
     }

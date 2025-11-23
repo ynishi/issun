@@ -6,8 +6,8 @@
 use issun::context::ResourceContext;
 use issun::event::EventBus;
 use issun::plugin::culture::{
-    AlignmentCheckRequested, CultureConfig, CulturePlugin, CultureState, CultureSystem,
-    CultureTag, DefaultCultureHook, Member, PersonalityTrait,
+    AlignmentCheckRequested, CultureConfig, CulturePlugin, CultureState, CultureSystem, CultureTag,
+    DefaultCultureHook, Member, PersonalityTrait,
 };
 use issun::plugin::Plugin;
 

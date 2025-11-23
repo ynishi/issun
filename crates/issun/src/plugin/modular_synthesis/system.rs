@@ -6,7 +6,6 @@ use super::recipe_registry::RecipeRegistry;
 use super::service::SynthesisService;
 use super::state::{ActiveSynthesis, DiscoveryState, SynthesisState, Timestamp};
 use super::types::*;
-use rand::Rng;
 use std::sync::Arc;
 
 /// Synthesis system (orchestrates synthesis processes)
@@ -88,9 +87,7 @@ impl SynthesisSystem {
         synthesis_state.add_synthesis(active_synthesis);
 
         // Hook: Synthesis started
-        self.hook
-            .on_synthesis_started(&entity_id, &recipe_id)
-            .await;
+        self.hook.on_synthesis_started(&entity_id, &recipe_id).await;
 
         Ok(synthesis_id)
     }
@@ -164,10 +161,7 @@ impl SynthesisSystem {
 
                 // Byproduct check
                 let mut rng = rand::thread_rng();
-                if SynthesisService::should_generate_byproduct(
-                    config.byproduct_chance,
-                    &mut rng,
-                ) {
+                if SynthesisService::should_generate_byproduct(config.byproduct_chance, &mut rng) {
                     self.hook
                         .generate_byproduct(&synthesis.entity_id, &synthesis.recipe_id)
                         .await;
@@ -272,9 +266,7 @@ impl SynthesisSystem {
                 discovery_state.discover_recipe(&entity_id, recipe_id);
 
                 // Hook: Discovery event
-                self.hook
-                    .on_recipe_discovered(&entity_id, recipe_id)
-                    .await;
+                self.hook.on_recipe_discovered(&entity_id, recipe_id).await;
 
                 return Some(recipe_id.clone());
             }

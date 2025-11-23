@@ -46,12 +46,8 @@ impl<H: SocialHook> SocialSystem<H> {
         let political_action_requests = self
             .collect_events::<PoliticalActionRequested>(resources)
             .await;
-        let relation_add_requests = self
-            .collect_events::<RelationAddRequested>(resources)
-            .await;
-        let member_add_requests = self
-            .collect_events::<MemberAddRequested>(resources)
-            .await;
+        let relation_add_requests = self.collect_events::<RelationAddRequested>(resources).await;
+        let member_add_requests = self.collect_events::<MemberAddRequested>(resources).await;
         let member_remove_requests = self
             .collect_events::<MemberRemoveRequested>(resources)
             .await;
@@ -145,12 +141,7 @@ impl<H: SocialHook> SocialSystem<H> {
 
                 // Notify hook
                 self.hook
-                    .on_centrality_calculated(
-                        &request.faction_id,
-                        &member_id,
-                        &metrics,
-                        resources,
-                    )
+                    .on_centrality_calculated(&request.faction_id, &member_id, &metrics, resources)
                     .await;
 
                 // Check for shadow leaders
@@ -401,7 +392,14 @@ impl<H: SocialHook> SocialSystem<H> {
 
         // Notify hook
         self.hook
-            .on_secret_shared(faction_id, sharer, receiver, secret_id, sensitivity, resources)
+            .on_secret_shared(
+                faction_id,
+                sharer,
+                receiver,
+                secret_id,
+                sensitivity,
+                resources,
+            )
             .await;
 
         true
@@ -476,7 +474,11 @@ impl<H: SocialHook> SocialSystem<H> {
             None => return,
         };
 
-        let result = network.add_relation(request.from.clone(), request.to.clone(), request.relation.clone());
+        let result = network.add_relation(
+            request.from.clone(),
+            request.to.clone(),
+            request.relation.clone(),
+        );
 
         if result.is_ok() {
             self.publish_event(

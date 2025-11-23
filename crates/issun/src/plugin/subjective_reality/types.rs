@@ -58,28 +58,16 @@ pub struct PerceivedFact {
 #[serde(tag = "type")]
 pub enum FactType {
     /// Military strength of a faction
-    MilitaryStrength {
-        faction: FactionId,
-        strength: i32,
-    },
+    MilitaryStrength { faction: FactionId, strength: i32 },
 
     /// Infection/disease status at a location
-    InfectionStatus {
-        location: LocationId,
-        infected: i32,
-    },
+    InfectionStatus { location: LocationId, infected: i32 },
 
     /// Market price of an item/resource
-    MarketPrice {
-        item: ItemType,
-        price: f32,
-    },
+    MarketPrice { item: ItemType, price: f32 },
 
     /// Financial status of a faction
-    FinancialStatus {
-        faction: FactionId,
-        budget: f32,
-    },
+    FinancialStatus { faction: FactionId, budget: f32 },
 
     /// Custom fact type for game-specific data
     Custom {
@@ -165,7 +153,10 @@ mod tests {
         assert_eq!(fact.location, Some("fortress_alpha".into()));
 
         match fact.fact_type {
-            FactType::MilitaryStrength { ref faction, strength } => {
+            FactType::MilitaryStrength {
+                ref faction,
+                strength,
+            } => {
                 assert_eq!(faction, "empire");
                 assert_eq!(strength, 1000);
             }
