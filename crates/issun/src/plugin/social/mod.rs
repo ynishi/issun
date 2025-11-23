@@ -22,11 +22,40 @@ pub use state::{SocialMember, SocialNetwork, SocialState};
 mod service;
 pub use service::NetworkAnalysisService;
 
-// Phase 4a: Events (TODO)
-// mod events;
+// Phase 4a: Events
+mod events;
+pub use events::{
+    // Command Events (Requests)
+    CentralityRecalculationRequested,
+    FactionFormRequested,
+    FactionMergeRequested,
+    FactionSplitRequested,
+    MemberAddRequested,
+    MemberRemoveRequested,
+    PoliticalActionRequested,
+    RelationAddRequested,
+    RelationRemoveRequested,
+    // State Events (Results)
+    CentralityCalculatedEvent,
+    FactionCohesionChangedEvent,
+    FactionFormedEvent,
+    FactionMergedEvent,
+    FactionSplitEvent,
+    FavorExchangedEvent,
+    FavorExpiredEvent,
+    GossipSpreadEvent,
+    MemberAddedEvent,
+    MemberRemovedEvent,
+    PoliticalActionExecutedEvent,
+    RelationshipChangedEvent,
+    SecretSharedEvent,
+    ShadowLeaderDetectedEvent,
+    TrustDecayedEvent,
+};
 
-// Phase 4b: Hook (TODO)
-// mod hook;
+// Phase 4b: Hook
+mod hook;
+pub use hook::{DefaultSocialHook, SocialHook};
 
 // Phase 4c: System (TODO)
 // mod system;
