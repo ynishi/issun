@@ -1,8 +1,8 @@
 use crate::models::{
     CityMap, GameScene, GameSceneData, PlagueGameContext, ResultSceneData, TitleSceneData,
-    VictoryResult, Virus,
+    VictoryResult,
 };
-use crate::plugins::rumor::{RumorRegistry, RumorState};
+use issun::plugin::contagion::ContagionState;
 use issun::prelude::ResourceContext;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
@@ -18,17 +18,13 @@ pub fn render_scene(frame: &mut Frame, scene: &GameScene, resources: &ResourceCo
         GameScene::Game(data) => {
             let ctx_guard = resources.try_get::<PlagueGameContext>();
             let city_guard = resources.try_get::<CityMap>();
-            let virus_guard = resources.try_get::<Virus>();
-            let registry_guard = resources.try_get::<RumorRegistry>();
-            let state_guard = resources.try_get::<RumorState>();
+            let contagion_guard = resources.try_get::<ContagionState>();
 
             let ctx = ctx_guard.as_deref();
             let city = city_guard.as_deref();
-            let virus = virus_guard.as_deref();
-            let registry = registry_guard.as_deref();
-            let state = state_guard.as_deref();
+            let contagion_state = contagion_guard.as_deref();
 
-            render_game(frame, ctx, city, virus, registry, state, data);
+            render_game(frame, ctx, city, contagion_state, data);
         }
         GameScene::Result(data) => render_result(frame, data),
     }
@@ -85,9 +81,7 @@ fn render_game(
     frame: &mut Frame,
     ctx: Option<&PlagueGameContext>,
     city: Option<&CityMap>,
-    virus: Option<&Virus>,
-    registry: Option<&RumorRegistry>,
-    state: Option<&RumorState>,
+    contagion_state: Option<&ContagionState>,
     data: &GameSceneData,
 ) {
     let area = frame.area();
@@ -151,59 +145,26 @@ fn render_game(
         .constraints([Constraint::Length(6), Constraint::Min(5)])
         .split(main_chunks[1]);
 
-    // Virus info
-    let virus_text = if let Some(virus) = virus {
+    // Contagion info
+    let contagion_text = if let Some(state) = contagion_state {
+        let contagion_count = state.contagion_count();
         vec![
-            Line::from(format!("Strain: {}", virus.name)),
-            Line::from(format!("Spread Rate: {:.2}", virus.spread_rate)),
-            Line::from(format!("Lethality: {:.2}", virus.lethality)),
-            Line::from(format!("Stage: {}", virus.mutation_stage)),
+            Line::from(format!("Active Contagions: {}", contagion_count)),
+            Line::from(""),
+            Line::from("(Disease + Rumors spreading)"),
+            Line::from(""),
+            Line::from(Span::styled(
+                "[R] to spread rumor",
+                Style::default().fg(Color::Cyan),
+            )),
         ]
     } else {
-        vec![Line::from("No virus data")]
+        vec![Line::from("No contagion data")]
     };
 
-    let virus_block =
-        Paragraph::new(virus_text).block(Block::default().borders(Borders::ALL).title("Virus"));
-    frame.render_widget(virus_block, right_chunks[0]);
-
-    // Rumors info
-    let rumor_text = if let (Some(reg), Some(st)) = (registry, state) {
-        let active_count = st.active_rumors.len();
-
-        let mut lines = vec![
-            Line::from(format!("Active Rumors: {}", active_count)),
-            Line::from(""),
-        ];
-
-        if st.active_rumors.is_empty() {
-            lines.push(Line::from("No active rumors"));
-        } else {
-            for (rumor_id, active_rumor) in st.active_rumors.iter() {
-                if let Some(rumor) = reg.get(rumor_id) {
-                    let credibility_pct = (active_rumor.credibility * 100.0) as u32;
-                    lines.push(Line::from(format!(
-                        "• {} ({}%, T:{})",
-                        rumor.name, credibility_pct, active_rumor.turns_active
-                    )));
-                }
-            }
-        }
-
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "[R] to spread rumor",
-            Style::default().fg(Color::Cyan),
-        )));
-
-        lines
-    } else {
-        vec![Line::from("No rumor data")]
-    };
-
-    let rumor_block =
-        Paragraph::new(rumor_text).block(Block::default().borders(Borders::ALL).title("Rumors"));
-    frame.render_widget(rumor_block, right_chunks[1]);
+    let contagion_block = Paragraph::new(contagion_text)
+        .block(Block::default().borders(Borders::ALL).title("Contagions"));
+    frame.render_widget(contagion_block, right_chunks[0]);
 
     // Log messages
     let log_items: Vec<ListItem> = data

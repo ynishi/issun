@@ -1,4 +1,4 @@
-use crate::models::{CityMap, GameMode, VictoryResult};
+use crate::models::{CityMap, VictoryResult};
 use issun::prelude::*;
 
 /// Pure win condition checking service (stateless)

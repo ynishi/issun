@@ -5,14 +5,16 @@ mod services;
 mod systems;
 mod ui;
 
-use hooks::PlagueRumorHook;
+use hooks::PlagueContagionHook;
 use issun::engine::GameRunner;
 use issun::event::EventBus;
+use issun::plugin::contagion::{
+    Contagion, ContagionConfig, ContagionContent, ContagionPlugin, ContagionState, DiseaseLevel,
+};
+use issun::plugin::time::TurnBasedTimePlugin;
 use issun::prelude::*;
-use models::{handle_scene_input, CityMap, GameScene, PlagueGameContext, Virus};
-use plugins::rumor::{RumorRegistry, RumorState};
-use plugins::{PlagueGamePlugin, RumorPlugin};
-use std::sync::Arc;
+use models::{build_city_topology, handle_scene_input, CityMap, GameScene, PlagueGameContext};
+use plugins::WinConditionPlugin;
 use std::time::Duration;
 
 const TICK_RATE: Duration = Duration::from_millis(120);
@@ -21,15 +23,33 @@ const TICK_RATE: Duration = Duration::from_millis(120);
 async fn main() -> std::io::Result<()> {
     let mut tui = issun::ui::Tui::new()?;
 
-    // Build game with plugins
+    // Build city topology (districts + routes)
+    let topology = build_city_topology();
+
+    // Configure contagion plugin
+    let contagion_config = ContagionConfig::default()
+        .with_propagation_rate(0.7) // 70% base propagation chance
+        .with_mutation_rate(0.15) // 15% chance of mutation per spread
+        .with_lifetime_turns(20); // Contagions last 20 turns
+
+    // Build game with plugins (80% ISSUN, 20% custom)
     let builder = GameBuilder::new()
-        .with_plugin(PlagueGamePlugin::default())
+        // ISSUN built-in plugins
+        .with_plugin(TurnBasedTimePlugin::new(1, 20)) // 20 turns max
         .map_err(as_io)?
-        .with_plugin(RumorPlugin::new().with_hook(Arc::new(PlagueRumorHook)))
+        .with_plugin(
+            ContagionPlugin::new()
+                .with_topology(topology)
+                .with_config(contagion_config)
+                .with_hook(PlagueContagionHook),
+        )
         .map_err(as_io)?
+        // Custom plugin (only win condition logic)
+        .with_plugin(WinConditionPlugin::new())
+        .map_err(as_io)?
+        // Game resources
         .with_resource(PlagueGameContext::new())
-        .with_resource(CityMap::new())
-        .with_resource(Virus::initial());
+        .with_resource(CityMap::new());
 
     let Game {
         mut resources,
@@ -46,12 +66,29 @@ async fn main() -> std::io::Result<()> {
         resources.insert(EventBus::new());
     }
 
-    // Register Rumor resources manually
-    if !resources.contains::<RumorRegistry>() {
-        resources.insert(RumorRegistry::new());
+    // WORKAROUND: ContagionPlugin's #[plugin(runtime_state)] doesn't auto-register
+    // Manually insert ContagionState if not present
+    if !resources.contains::<ContagionState>() {
+        resources.insert(ContagionState::new());
     }
-    if !resources.contains::<RumorState>() {
-        resources.insert(RumorState::default());
+
+    // Register initial contagions
+    {
+        let mut contagion_state = resources
+            .get_mut::<ContagionState>()
+            .await
+            .expect("ContagionState should exist");
+
+        // Initial disease outbreak in downtown
+        contagion_state.spawn_contagion(Contagion::new(
+            "alpha_virus",
+            ContagionContent::Disease {
+                severity: DiseaseLevel::Mild,
+                location: "downtown".to_string(),
+            },
+            "downtown", // Start in downtown
+            0,          // Turn 0
+        ));
     }
 
     // Create initial scene

@@ -1,3 +1,3 @@
-pub mod plague_rumor;
+pub mod plague_contagion;
 
-pub use plague_rumor::PlagueRumorHook;
+pub use plague_contagion::PlagueContagionHook;

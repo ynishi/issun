@@ -1,5 +1,4 @@
 use crate::models::{GameMode, GameScene, PlagueGameContext};
-use crate::systems::TurnSystem;
 use issun::auto_pump;
 use issun::prelude::*;
 use issun::ui::InputEvent;
@@ -21,7 +20,7 @@ impl TitleSceneData {
     pub async fn handle_input(
         &mut self,
         _services: &ServiceContext,
-        systems: &mut SystemContext,
+        _systems: &mut SystemContext,
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
@@ -42,10 +41,8 @@ impl TitleSceneData {
                         ctx.turn = 1;
                     }
 
-                    // Seed infection
-                    if let Some(system) = systems.get_mut::<TurnSystem>() {
-                        system.seed_infection(resources).await;
-                    }
+                    // Initial infection is already seeded in main.rs via ContagionState
+                    // No need to manually seed here
 
                     SceneTransition::Switch(GameScene::Game(super::GameSceneData::new()))
                 } else {

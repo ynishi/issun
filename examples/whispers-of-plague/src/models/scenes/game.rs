@@ -1,10 +1,14 @@
+use crate::hooks::PlagueContagionHook;
 use crate::models::GameScene;
-use crate::plugins::rumor::RumorSystem;
-use crate::systems::TurnSystem;
+use crate::plugins::WinConditionPlugin;
 use issun::auto_pump;
+use issun::event::EventBus;
+use issun::plugin::contagion::{Contagion, ContagionContent, ContagionState, ContagionSystem};
+use issun::plugin::time::{AdvanceTimeRequested, DayChanged};
 use issun::prelude::*;
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameSceneData {
@@ -23,39 +27,61 @@ impl GameSceneData {
     #[auto_pump]
     pub async fn handle_input(
         &mut self,
-        _services: &ServiceContext,
+        services: &ServiceContext,
         systems: &mut SystemContext,
         resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
         match input {
             InputEvent::Char('n') | InputEvent::Char('N') => {
-                // Execute next turn
-                let mut logs = {
-                    if let Some(system) = systems.get_mut::<TurnSystem>() {
-                        system.next_turn(resources).await
-                    } else {
-                        vec![]
-                    }
-                };
+                // === Next Turn (Event-driven + Scene orchestration) ===
 
-                // Decay rumors (separate call to avoid borrow checker issues)
-                if let Some(rumor_system) = systems.get_mut::<RumorSystem>() {
-                    let decay_logs = rumor_system.decay_rumors(resources).await;
-                    logs.extend(decay_logs);
+                // 1. Request time advancement (TurnBasedTimePlugin listens)
+                {
+                    let mut event_bus = resources
+                        .get_mut::<EventBus>()
+                        .await
+                        .expect("EventBus not found");
+                    event_bus.publish(AdvanceTimeRequested);
                 }
 
-                self.log_messages.extend(logs);
+                // 2. Propagate contagions (Scene orchestration)
+                // ContagionSystem doesn't implement System trait, so we call it directly
+                {
+                    let contagion_system = ContagionSystem::new(Arc::new(PlagueContagionHook));
+
+                    match contagion_system.propagate_contagions(resources).await {
+                        Ok(report) => {
+                            if report.spread_count > 0 {
+                                self.log_messages.insert(
+                                    0,
+                                    format!("🦠 {} spreads, {} mutations", report.spread_count, report.mutation_count),
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            self.log_messages.insert(0, format!("⚠️  Propagation error: {}", e));
+                        }
+                    }
+                }
+
+                // 3. Check for DayChanged events
+                {
+                    let mut event_bus = resources
+                        .get_mut::<EventBus>()
+                        .await
+                        .expect("EventBus not found");
+                    let reader = event_bus.reader::<DayChanged>();
+
+                    for event in reader.iter() {
+                        self.log_messages.push(format!("=== Turn {} ===", event.day));
+                    }
+                }
+
                 self.log_messages.truncate(10);
 
-                // Check victory condition
-                let victory = {
-                    if let Some(system) = systems.get::<TurnSystem>() {
-                        system.check_victory(resources).await
-                    } else {
-                        None
-                    }
-                };
+                // 4. Check victory condition
+                let victory = WinConditionPlugin::check_victory(resources).await;
 
                 if let Some(result) = victory {
                     return SceneTransition::Switch(GameScene::Result(
@@ -65,40 +91,45 @@ impl GameSceneData {
 
                 SceneTransition::Stay
             }
-            InputEvent::Char('r') | InputEvent::Char('R') => {
-                // Apply first available rumor
-                if let Some(system) = systems.get_mut::<RumorSystem>() {
-                    let available = system.get_available_rumors(resources).await;
 
-                    if let Some(rumor) = available.first() {
-                        match system.apply_rumor(&rumor.id, resources).await {
-                            Ok(log) => {
-                                self.log_messages.insert(0, log);
-                            }
-                            Err(err) => {
-                                self.log_messages
-                                    .insert(0, format!("Rumor failed: {}", err));
-                            }
-                        }
-                        self.log_messages.truncate(10);
-                    } else {
-                        self.log_messages.insert(0, "No rumors available".into());
-                    }
-                } else {
-                    self.log_messages.insert(0, "RumorSystem not found".into());
+            InputEvent::Char('r') | InputEvent::Char('R') => {
+                // === Spread Rumor (spawn new contagion) ===
+                {
+                    let mut contagion_state = resources
+                        .get_mut::<ContagionState>()
+                        .await
+                        .expect("ContagionState not found");
+
+                    // Spawn a new rumor contagion
+                    contagion_state.spawn_contagion(Contagion::new(
+                        format!("rumor_{}", uuid::Uuid::new_v4()),
+                        ContagionContent::Political {
+                            faction: "player".to_string(),
+                            claim: "Government conspiracy about plague".to_string(),
+                        },
+                        "downtown", // Start in downtown
+                        0,          // Current turn
+                    ));
+
+                    self.log_messages.insert(0, "📢 Rumor spreading...".into());
+                    self.log_messages.truncate(10);
                 }
+
                 SceneTransition::Stay
             }
+
             InputEvent::Up => {
                 if self.selected_district > 0 {
                     self.selected_district -= 1;
                 }
                 SceneTransition::Stay
             }
+
             InputEvent::Down => {
                 self.selected_district += 1;
                 SceneTransition::Stay
             }
+
             InputEvent::Cancel | InputEvent::Char('q') => SceneTransition::Quit,
             _ => SceneTransition::Stay,
         }

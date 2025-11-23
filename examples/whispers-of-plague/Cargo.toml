@@ -14,3 +14,4 @@ async-trait = "0.1"
 ratatui = "0.28"
 thiserror = "1"
 rand = "0.8"
+uuid = { version = "1.6", features = ["v4"] }

@@ -95,25 +95,3 @@ impl Virus {
         }
     }
 }
-
-/// Rumor that can be spread to manipulate panic levels
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Rumor {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub effect: RumorEffect,
-    pub credibility: f32,
-}
-
-/// Effect types for rumors
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RumorEffect {
-    IncreasePanic(f32),
-    DecreasePanic(f32),
-    PromoteMigration {
-        from_district: usize,
-        to_district: usize,
-    },
-    PromoteIsolation,
-}

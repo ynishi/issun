@@ -1,8 +1,6 @@
-pub mod plague;
-pub mod rumor;
+pub mod win_condition;
 
-pub use plague::PlagueGamePlugin;
-pub use rumor::RumorPlugin;
+pub use win_condition::WinConditionPlugin;
 
 use issun::prelude::{ResourceContext, ServiceContext, SystemContext};
 
