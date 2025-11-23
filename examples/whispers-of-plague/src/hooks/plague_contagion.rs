@@ -34,22 +34,12 @@ impl ContagionHook for PlagueContagionHook {
     /// Handle spread events (logging, updates)
     async fn on_contagion_spread(
         &self,
-        contagion: &Contagion,
-        from_node: &NodeId,
-        to_node: &NodeId,
+        _contagion: &Contagion,
+        _from_node: &NodeId,
+        _to_node: &NodeId,
     ) {
-        match &contagion.content {
-            ContagionContent::Disease { severity, .. } => {
-                println!(
-                    "🦠 Disease ({:?}) spread from {} to {}",
-                    severity, from_node, to_node
-                );
-            }
-            ContagionContent::Political { claim, .. } => {
-                println!("📢 Rumor spread from {} to {}: {}", from_node, to_node, claim);
-            }
-            _ => {}
-        }
+        // Note: In TUI applications, we should NOT use println! as it corrupts the display.
+        // Instead, spread events are logged in GameScene's update() method.
     }
 
     /// Custom mutation logic for diseases and rumors
@@ -64,7 +54,7 @@ impl ContagionHook for PlagueContagionHook {
                 if noise_level > 0.15 {
                     let new_severity = severity.increase();
                     if new_severity != *severity {
-                        println!("⚠️  MUTATION: Disease evolved from {:?} to {:?}", severity, new_severity);
+                        // Note: Mutation events are logged via GameScene's mutation_count tracking
                         return Some(ContagionContent::Disease {
                             severity: new_severity,
                             location: location.clone(),
