@@ -163,6 +163,13 @@ impl Resources {
         self.data.is_empty()
     }
 
+    /// Consume the Resources and return the internal HashMap (internal use only)
+    ///
+    /// This is used by GameBuilder to transfer resources to ResourceContext.
+    pub(crate) fn into_inner(self) -> HashMap<TypeId, Box<dyn Any + Send + Sync>> {
+        self.data
+    }
+
     /// Remove a resource from the registry
     ///
     /// Returns the removed resource if it existed.

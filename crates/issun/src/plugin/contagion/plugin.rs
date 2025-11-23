@@ -261,4 +261,46 @@ mod tests {
         assert_eq!(plugin.config.global_propagation_rate, 0.7);
         assert_eq!(plugin.config.default_mutation_rate, 0.15);
     }
+
+    #[tokio::test]
+    async fn test_plugin_registers_resources() {
+        use crate::builder::GameBuilder;
+
+        let config = ContagionConfig::default().with_propagation_rate(0.8);
+        let mut topology = GraphTopology::new();
+        topology.add_node(super::super::ContagionNode::new(
+            "test_city",
+            super::super::NodeType::City,
+            1000,
+        ));
+
+        let game = GameBuilder::new()
+            .with_plugin(
+                ContagionPlugin::new()
+                    .with_config(config)
+                    .with_topology(topology),
+            )
+            .expect("Failed to add plugin")
+            .build()
+            .await
+            .expect("Failed to build game");
+
+        // Verify ContagionConfig was registered
+        assert!(
+            game.resources.contains::<ContagionConfig>(),
+            "ContagionConfig should be registered by Plugin derive"
+        );
+
+        // Verify GraphTopology was registered
+        assert!(
+            game.resources.contains::<GraphTopology>(),
+            "GraphTopology should be registered by Plugin derive"
+        );
+
+        // Verify ContagionState was registered
+        assert!(
+            game.resources.contains::<ContagionState>(),
+            "ContagionState should be registered by Plugin derive"
+        );
+    }
 }

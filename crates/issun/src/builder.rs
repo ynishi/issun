@@ -131,8 +131,14 @@ impl GameBuilder {
             entry.insert(&mut resource_context);
         }
 
-        // Register resources from plugins (read-only data)
-        *context.resources_mut() = plugin_resources;
+        // Register resources from plugins into resource_context (new architecture)
+        // Move resources from plugin_resources to resource_context
+        for (type_id, boxed) in plugin_resources.into_inner().into_iter() {
+            resource_context.insert_boxed(type_id, boxed);
+        }
+
+        // Note: Legacy context.resources() is no longer used in the new architecture
+        // Game now uses resource_context which has all the resources
 
         Ok(Game {
             resources: resource_context,

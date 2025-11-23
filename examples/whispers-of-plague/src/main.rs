@@ -66,11 +66,8 @@ async fn main() -> std::io::Result<()> {
         resources.insert(EventBus::new());
     }
 
-    // WORKAROUND: ContagionPlugin's #[plugin(runtime_state)] doesn't auto-register
-    // Manually insert ContagionState if not present
-    if !resources.contains::<ContagionState>() {
-        resources.insert(ContagionState::new());
-    }
+    // Note: ContagionPlugin now correctly registers all resources via #[plugin(...)] attributes
+    // No manual workarounds needed anymore!
 
     // Register initial contagions
     {
