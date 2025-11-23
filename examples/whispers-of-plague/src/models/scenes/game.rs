@@ -14,6 +14,9 @@ use std::sync::Arc;
 pub struct GameSceneData {
     pub selected_district: usize,
     pub log_messages: Vec<String>,
+    pub rumor_count: u32,  // Actions per turn (Plague mode)
+    pub treat_count: u32,  // Actions per turn (Savior mode)
+    pub calm_count: u32,   // Actions per turn (Savior mode)
 }
 
 impl GameSceneData {
@@ -21,6 +24,9 @@ impl GameSceneData {
         Self {
             selected_district: 0,
             log_messages: vec![],
+            rumor_count: 0,
+            treat_count: 0,
+            calm_count: 0,
         }
     }
 
@@ -166,6 +172,11 @@ impl GameSceneData {
 
                 self.log_messages.truncate(10);
 
+                // Reset action counts for the new turn
+                self.rumor_count = 0;
+                self.treat_count = 0;
+                self.calm_count = 0;
+
                 // 4. Check victory condition
                 let victory = WinConditionPlugin::check_victory(resources).await;
 
@@ -186,24 +197,30 @@ impl GameSceneData {
                     .expect("PlagueGameContext not found");
 
                 if ctx.mode == GameMode::Plague {
-                    let mut contagion_state = resources
-                        .get_mut::<ContagionState>()
-                        .await
-                        .expect("ContagionState not found");
+                    if self.rumor_count >= 1 {
+                        self.log_messages.insert(0, "⚠️  Already spread rumor this turn".into());
+                        self.log_messages.truncate(10);
+                    } else {
+                        let mut contagion_state = resources
+                            .get_mut::<ContagionState>()
+                            .await
+                            .expect("ContagionState not found");
 
-                    // Spawn a new rumor contagion
-                    contagion_state.spawn_contagion(Contagion::new(
-                        format!("rumor_{}", uuid::Uuid::new_v4()),
-                        ContagionContent::Political {
-                            faction: "player".to_string(),
-                            claim: "Government conspiracy about plague".to_string(),
-                        },
-                        "downtown", // Start in downtown
-                        0,          // Current turn
-                    ));
+                        // Spawn a new rumor contagion
+                        contagion_state.spawn_contagion(Contagion::new(
+                            format!("rumor_{}", uuid::Uuid::new_v4()),
+                            ContagionContent::Political {
+                                faction: "player".to_string(),
+                                claim: "Government conspiracy about plague".to_string(),
+                            },
+                            "downtown", // Start in downtown
+                            0,          // Current turn
+                        ));
 
-                    self.log_messages.insert(0, "📢 Rumor spreading...".into());
-                    self.log_messages.truncate(10);
+                        self.rumor_count += 1;
+                        self.log_messages.insert(0, "📢 Rumor spreading...".into());
+                        self.log_messages.truncate(10);
+                    }
                 }
 
                 SceneTransition::Stay
@@ -217,12 +234,16 @@ impl GameSceneData {
                     .expect("PlagueGameContext not found");
 
                 if ctx.mode == GameMode::Savior {
-                    if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
+                    if self.treat_count >= 1 {
+                        self.log_messages.insert(0, "⚠️  Already treated this turn".into());
+                        self.log_messages.truncate(10);
+                    } else if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
                         if self.selected_district < city_map.districts.len() {
                             let district = &mut city_map.districts[self.selected_district];
                             let treated = district.infected.min(200);
                             district.infected = district.infected.saturating_sub(200);
 
+                            self.treat_count += 1;
                             self.log_messages.insert(
                                 0,
                                 format!("💊 Treated {} people in {}", treated, district.name),
@@ -243,12 +264,16 @@ impl GameSceneData {
                     .expect("PlagueGameContext not found");
 
                 if ctx.mode == GameMode::Savior {
-                    if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
+                    if self.calm_count >= 1 {
+                        self.log_messages.insert(0, "⚠️  Already calmed this turn".into());
+                        self.log_messages.truncate(10);
+                    } else if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
                         if self.selected_district < city_map.districts.len() {
                             let district = &mut city_map.districts[self.selected_district];
                             let old_panic = district.panic_level;
                             district.panic_level = (district.panic_level - 0.3).max(0.0);
 
+                            self.calm_count += 1;
                             self.log_messages.insert(
                                 0,
                                 format!(
