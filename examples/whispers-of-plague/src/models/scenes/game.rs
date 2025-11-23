@@ -74,22 +74,31 @@ impl GameSceneData {
                         .await
                         .expect("ContagionState not found");
 
-                    // Collect all districts with active disease contagions
+                    // Collect all districts with active contagions
                     let mut infected_districts: HashSet<String> = HashSet::new();
+                    let mut rumor_districts: HashSet<String> = HashSet::new();
+
                     for (_id, contagion) in contagion_state.all_contagions() {
-                        // Only count disease contagions
-                        if matches!(contagion.content, ContagionContent::Disease { .. }) {
-                            for node_id in &contagion.spread {
-                                infected_districts.insert(node_id.clone());
+                        for node_id in &contagion.spread {
+                            match &contagion.content {
+                                ContagionContent::Disease { .. } => {
+                                    infected_districts.insert(node_id.clone());
+                                }
+                                ContagionContent::Political { .. } => {
+                                    rumor_districts.insert(node_id.clone());
+                                }
+                                _ => {}
                             }
                         }
                     }
 
-                    // Update CityMap districts with exponential growth
+                    // Update CityMap districts
                     if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
                         let mut newly_infected = Vec::new();
+                        let mut panic_rising = Vec::new();
 
                         for district in &mut city_map.districts {
+                            // Handle disease infections with exponential growth
                             if infected_districts.contains(&district.id) {
                                 if district.infected == 0 {
                                     // New infection: start with initial outbreak
@@ -106,6 +115,22 @@ impl GameSceneData {
                                     }
                                 }
                             }
+
+                            // Handle rumors → increase panic
+                            if rumor_districts.contains(&district.id) {
+                                let old_panic = district.panic_level;
+                                district.panic_level += 0.1; // +10% panic per turn
+                                district.panic_level = district.panic_level.min(1.0); // Cap at 100%
+
+                                // Log significant panic increases
+                                if old_panic < 0.5 && district.panic_level >= 0.5 {
+                                    panic_rising.push(format!(
+                                        "{} ({}%)",
+                                        district.name,
+                                        (district.panic_level * 100.0) as u32
+                                    ));
+                                }
+                            }
                         }
 
                         // Log new infections
@@ -113,6 +138,14 @@ impl GameSceneData {
                             self.log_messages.insert(
                                 0,
                                 format!("⚠️  New outbreak in: {}", newly_infected.join(", ")),
+                            );
+                        }
+
+                        // Log panic increases
+                        if !panic_rising.is_empty() {
+                            self.log_messages.insert(
+                                0,
+                                format!("😱 Panic rising: {}", panic_rising.join(", ")),
                             );
                         }
                     }
