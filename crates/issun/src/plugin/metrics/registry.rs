@@ -1,5 +1,6 @@
 //! Metrics registry and aggregation logic
 
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
@@ -35,6 +36,8 @@ impl Default for MetricsConfig {
         }
     }
 }
+
+impl Resource for MetricsConfig {}
 
 /// Registry of all metrics in the game
 #[derive(Debug, Clone, Serialize, Deserialize)]

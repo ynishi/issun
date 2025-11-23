@@ -1,5 +1,6 @@
 //! Configuration for SubjectiveRealityPlugin
 
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 
 /// Perception system configuration (Resource, ReadOnly)
@@ -32,6 +33,8 @@ impl Default for PerceptionConfig {
         }
     }
 }
+
+impl Resource for PerceptionConfig {}
 
 impl PerceptionConfig {
     /// Create a new configuration with custom values

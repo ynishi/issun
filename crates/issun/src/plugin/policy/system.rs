@@ -27,6 +27,7 @@ use super::state::PolicyState;
 /// ```text
 /// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
+#[derive(Clone)]
 pub struct PolicySystem {
     #[allow(dead_code)]
     hook: Arc<dyn PolicyHook>,

@@ -7,10 +7,14 @@ use super::state::{Contagion, ContagionState};
 use super::topology::GraphTopology;
 use super::types::{ContagionId, NodeId};
 use crate::context::ResourceContext;
+use crate::system::System;
+use async_trait::async_trait;
 use rand::Rng;
+use std::any::Any;
 use std::sync::Arc;
 
 /// System for orchestrating contagion propagation
+#[derive(Clone)]
 pub struct ContagionSystem {
     hook: Arc<dyn ContagionHook>,
 }
@@ -250,6 +254,21 @@ impl ContagionSystem {
             .into_iter()
             .cloned()
             .collect())
+    }
+}
+
+#[async_trait]
+impl System for ContagionSystem {
+    fn name(&self) -> &'static str {
+        "contagion_system"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

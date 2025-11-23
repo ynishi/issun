@@ -20,6 +20,7 @@ use super::reporting::{MetricReport, MetricSnapshot};
 /// 3. Processes snapshot and report generation requests
 /// 4. Calls hooks for custom behavior
 /// 5. Publishes state change events for network replication
+#[derive(Clone)]
 pub struct MetricsSystem {
     hook: Arc<dyn MetricsHook>,
 }

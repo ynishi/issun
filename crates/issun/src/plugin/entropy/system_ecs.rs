@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
 /// ECS-based entropy system
+#[derive(Clone)]
 pub struct EntropySystemECS {
     hook: Arc<dyn EntropyHookECS>,
     service: EntropyService,

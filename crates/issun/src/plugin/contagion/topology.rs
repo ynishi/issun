@@ -1,6 +1,7 @@
 //! Graph topology for contagion propagation
 
 use super::types::{EdgeId, NodeId};
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -49,6 +50,8 @@ pub struct PropagationEdge {
     /// Higher noise = more likely to mutate during propagation
     pub noise_level: f32,
 }
+
+impl Resource for GraphTopology {}
 
 impl GraphTopology {
     /// Create a new empty graph topology

@@ -28,6 +28,7 @@ use super::types::*;
 /// ```text
 /// Command Event → Validation (Hook) → State Update → Hook Call → State Event
 /// ```
+#[derive(Clone)]
 pub struct ResearchSystem {
     hook: Arc<dyn ResearchHook>,
 }

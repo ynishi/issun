@@ -8,6 +8,9 @@ use super::service::PerceptionService;
 use super::state::KnowledgeBoardRegistry;
 use super::types::{FactionId, GroundTruthFact};
 use crate::context::ResourceContext;
+use crate::system::System;
+use async_trait::async_trait;
+use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -204,6 +207,21 @@ impl PerceptionSystem {
     ) -> Option<super::state::KnowledgeBoard> {
         let boards = resources.get::<KnowledgeBoardRegistry>().await?;
         boards.get_board(faction_id).cloned()
+    }
+}
+
+#[async_trait]
+impl System for PerceptionSystem {
+    fn name(&self) -> &'static str {
+        "perception_system"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

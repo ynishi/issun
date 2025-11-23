@@ -26,6 +26,7 @@ use super::types::*;
 /// ```text
 /// Command Event → State Update → Hook Call → State Event
 /// ```
+#[derive(Clone)]
 pub struct FactionSystem {
     hook: Arc<dyn FactionHook>,
     /// Unique operation ID counter

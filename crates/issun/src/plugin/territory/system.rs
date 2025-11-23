@@ -19,6 +19,7 @@ use super::territories::Territories;
 /// 2. Processes development requests
 /// 3. Calls hooks for custom behavior
 /// 4. Publishes state change events for network replication
+#[derive(Clone)]
 pub struct TerritorySystem {
     hook: Arc<dyn TerritoryHook>,
 }

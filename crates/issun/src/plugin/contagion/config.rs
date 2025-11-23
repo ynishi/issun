@@ -1,5 +1,6 @@
 //! Configuration for ContagionPlugin
 
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 
 /// Configuration for contagion propagation behavior
@@ -38,6 +39,8 @@ impl Default for ContagionConfig {
         }
     }
 }
+
+impl Resource for ContagionConfig {}
 
 impl ContagionConfig {
     /// Create a new configuration with default values

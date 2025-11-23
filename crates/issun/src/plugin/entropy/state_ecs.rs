@@ -50,6 +50,14 @@ impl Default for EntropyStateECS {
     }
 }
 
+impl Clone for EntropyStateECS {
+    fn clone(&self) -> Self {
+        // Note: hecs::World doesn't implement Clone, so we create a new empty world
+        // For runtime state, cloning should create a fresh instance
+        Self::default()
+    }
+}
+
 impl State for EntropyStateECS {}
 
 impl EntropyStateECS {
