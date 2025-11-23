@@ -157,7 +157,7 @@ impl GameSceneData {
                     }
                 }
 
-                // 3. Check for DayChanged events
+                // 3. Check for DayChanged events and update turn counter
                 {
                     let mut event_bus = resources
                         .get_mut::<EventBus>()
@@ -167,6 +167,11 @@ impl GameSceneData {
 
                     for event in reader.iter() {
                         self.log_messages.push(format!("=== Turn {} ===", event.day));
+
+                        // Update PlagueGameContext.turn to sync with TimePlugin
+                        if let Some(mut ctx) = resources.get_mut::<PlagueGameContext>().await {
+                            ctx.turn = event.day;
+                        }
                     }
                 }
 
