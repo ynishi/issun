@@ -21,3 +21,37 @@ pub use state::{HolacracyMember, HolacracyState, TaskPool};
 // Phase 3: Service
 mod service;
 pub use service::TaskAssignmentService;
+
+// Phase 4a: Events
+mod events;
+pub use events::{
+    // Command Events (Requests)
+    BidSubmitRequested,
+    BiddingProcessRequested,
+    BiddingStartRequested,
+    CircleCreateRequested,
+    MemberAddRequested,
+    MemberRemoveRequested,
+    RoleAssignRequested,
+    RoleUnassignRequested,
+    TaskAddRequested,
+    TaskAssignRequested,
+    TaskCancelRequested,
+    TaskCompleteRequested,
+    // State Events (Results)
+    BidRejectedEvent,
+    BidSubmittedEvent,
+    BiddingCompletedEvent,
+    BiddingStartedEvent,
+    CircleCreatedEvent,
+    MemberAddedEvent,
+    MemberRemovedEvent,
+    RoleAssignedEvent,
+    RoleAssignmentFailedEvent,
+    RoleUnassignedEvent,
+    TaskAddedEvent,
+    TaskAssignedEvent,
+    TaskAssignmentFailedEvent,
+    TaskCancelledEvent,
+    TaskCompletedEvent,
+};
