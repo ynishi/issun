@@ -1,787 +1,718 @@
 # HolacracyPlugin Design Document
 
-## 🎯 概要
+**Status**: Implemented ✅
+**Created**: 2025-11-23
+**Author**: issun team
+**v0.3 Fundamental Plugin**: Social Dynamics - Task-Based Self-Organization
 
-**HolacracyPlugin** は、命令ではなく「役割」と「タスク」で動く自律分散型組織をシミュレートするプラグインです。
+---
 
-上意下達の命令（Hierarchy）や文化（Culture）、人脈（Social）ではなく、**タスクマーケット（Task Market）** と **動的役割割り当て（Dynamic Role Assignment）** によって、メンバーが自律的にタスクを選択し、組織が自己組織化する仕組みを提供します。
+## 🎯 Overview
 
-## 🏛️ 理論背景
+HolacracyPlugin provides task-based self-organizing dynamics where members autonomously pull work from a task market based on their skills, interests, and workload capacity. Organization emerges from distributed decision-making rather than hierarchical commands.
 
-### ホラクラシー（Holacracy）
-- **サークル型組織**: ヒエラルキーではなく、役割の集合（サークル）で構成
-- **分散型権限**: 各役割が明確な責任範囲（アカウンタビリティ）を持つ
-- **ガバナンスとオペレーション**: ルール決定と実行を分離
+**Core Concept**: Organizations operate through a "task market" where members bid on tasks based on skill match, available capacity, and personal interest. Roles are dynamic and self-assigned, with circles providing lightweight coordination rather than command-and-control management.
 
-### アジャイル/スクラム
-- **プルシステム**: 指示待ちではなく、自ら仕事を取りに行く
-- **スプリントとバックログ**: タスクを可視化し、優先順位をつける
-- **自己組織化チーム**: 外部からの命令ではなく、チーム内で最適化
+**Use Cases**:
+- **Strategy Games**: Autonomous drone swarms, self-organizing settlements, guild task boards
+- **Management Sims**: Startup culture simulation, agile team dynamics, freelancer marketplaces
+- **Survival Games**: Emergency response coordination, dynamic role switching during crises
+- **Simulation Games**: Ant colony algorithms, swarm intelligence, distributed problem-solving
 
-### 自律分散システム
-- **Swarm Intelligence（群知能）**: 個々の単純なルールから全体の複雑な振る舞いが創発
-- **Resilience（回復力）**: 単一障害点（SPOF）がない。一部が破壊されても機能継続
+---
 
-## 🧩 コアコンセプト
+## 🏗️ Architecture
 
-### 1. Task（タスク）
+### Core Concepts
 
-組織が達成すべき具体的な仕事の単位。
+1. **Task Market**: Pull-based work distribution where tasks are openly available for bidding
+2. **Bidding System**: Members submit bids scored by skill match (50%), workload capacity (30%), and interest (20%)
+3. **Dynamic Roles**: Operational, Coordination, and RepLink roles that members can take/drop flexibly
+4. **Circles**: Self-managing teams with domains of responsibility (equivalent to Scrum teams)
+5. **Assignment Modes**: FullyAutonomous (auto-assign), SemiAutonomous (requires approval), Manual (explicit assignment)
+6. **Skill-Based Matching**: Tasks require specific skills; members with higher proficiency complete faster
 
-```rust
-pub enum TaskPriority {
-    Critical,  // 最優先（緊急対応）
-    High,      // 高優先度
-    Medium,    // 通常
-    Low,       // 低優先度
-    Backlog,   // バックログ（いつかやる）
-}
+### Key Design Principles
 
-pub enum TaskStatus {
-    Open,         // 未着手
-    Assigned,     // 担当者決定
-    InProgress,   // 作業中
-    Blocked,      // ブロック中（依存タスク待ち）
-    Completed,    // 完了
-    Cancelled,    // キャンセル
-}
+✅ **80/20 Split**: 80% framework (bidding, assignment, task lifecycle) / 20% game (hook responses, custom logic)
+✅ **Hook-based Customization**: HolacracyHook for game-specific bid validation, assignment overrides, and completion rewards
+✅ **Pure Logic Separation**: TaskAssignmentService (stateless algorithms) vs HolacracySystem (orchestration)
+✅ **Resource/State Separation**: HolacracyConfig (ReadOnly) vs HolacracyState (Mutable)
+✅ **Self-Organization Theory**: Based on holacracy, agile/scrum, and swarm intelligence principles
 
-pub struct Task {
-    pub id: TaskId,
-    pub title: String,
-    pub description: String,
+---
 
-    /// タスクの優先度
-    pub priority: TaskPriority,
+## 📦 Component Structure
 
-    /// 現在のステータス
-    pub status: TaskStatus,
-
-    /// 必要なスキルタグ
-    pub required_skills: HashSet<SkillTag>,
-
-    /// 推定コスト（時間、リソース）
-    pub estimated_cost: f32,
-
-    /// 報酬（経験値、アイテムなど）
-    pub reward: f32,
-
-    /// タスク期限（ターン数）
-    pub deadline: Option<u64>,
-
-    /// 依存タスク（これらが完了しないと着手できない）
-    pub dependencies: Vec<TaskId>,
-
-    /// 現在の担当者
-    pub assignee: Option<MemberId>,
-
-    /// 作業開始時刻
-    pub started_at: Option<u64>,
-
-    /// 作業完了時刻
-    pub completed_at: Option<u64>,
-}
+```
+crates/issun/src/plugin/holacracy/
+├── mod.rs              # Public exports
+├── types.rs            # Task, Role, Bid, Circle, SkillTag (19 tests)
+├── config.rs           # HolacracyConfig, BiddingConfig (17 tests)
+├── state.rs            # HolacracyMember, TaskPool, HolacracyState (17 tests)
+├── service.rs          # TaskAssignmentService (Pure Logic) (14 tests)
+├── events.rs           # Command/State events (15 tests)
+├── hook.rs             # HolacracyHook trait + DefaultHolacracyHook (5 tests)
+├── system.rs           # HolacracySystem (Orchestration) (2 tests)
+└── plugin.rs           # HolacracyPlugin implementation (5 tests)
 ```
 
-### 2. Role（役割）
+**Total Test Coverage**: 94 tests ✅
 
-メンバーが持つ動的な役割。固定ではなく、状況に応じて変化。
+---
+
+## 🧩 Core Types
+
+### types.rs
 
 ```rust
+pub type TaskId = String;
+pub type RoleId = String;
+pub type CircleId = String;
+pub type MemberId = String;
+
+/// Skill tag for matching tasks and members
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SkillTag(pub String);
+
+/// Task priority levels
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TaskPriority {
+    Critical,  // Urgent and important (2x priority boost)
+    High,      // Important but not urgent
+    Medium,    // Normal priority (default)
+    Low,       // Can be delayed
+}
+
+/// Task lifecycle status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TaskStatus {
+    Available,   // Available in task pool
+    Bidding,     // Being bid on by members
+    Assigned,    // Assigned to a member
+    InProgress,  // Work in progress
+    Blocked,     // Blocked by dependencies
+    Completed,   // Successfully completed
+    Cancelled,   // Cancelled or abandoned
+}
+
+/// A task in the task pool
+pub struct Task {
+    pub id: TaskId,
+    pub description: String,
+    pub priority: TaskPriority,
+    pub status: TaskStatus,
+    pub required_skills: HashSet<SkillTag>,
+    pub estimated_cost: f32,
+    pub dependencies: Vec<TaskId>,
+    pub assignee: Option<MemberId>,
+    pub created_at: u64,
+    pub deadline: Option<u64>,
+}
+
+/// Type of role in the organization
 pub enum RoleType {
-    /// 戦闘員（攻撃タスク担当）
-    Combatant,
+    /// Operational role (execution work)
+    Operational {
+        required_skills: HashSet<SkillTag>,
+    },
 
-    /// 医療班（回復タスク担当）
-    Medic,
+    /// Coordination role (facilitator of circle)
+    Coordination {
+        circle_id: CircleId,
+    },
 
-    /// エンジニア（修理・建築タスク担当）
-    Engineer,
+    /// Representative link between circles
+    RepLink {
+        from_circle: CircleId,
+        to_circle: CircleId,
+    },
 
-    /// 偵察員（情報収集タスク担当）
-    Scout,
-
-    /// 物資管理（補給タスク担当）
-    Logistics,
-
-    /// 研究者（開発タスク担当）
-    Researcher,
-
-    /// カスタム役割
     Custom(String),
 }
 
+/// A role that can be filled by members
 pub struct Role {
+    pub id: RoleId,
+    pub name: String,
     pub role_type: RoleType,
-
-    /// この役割で対応できるタスクのスキルタグ
-    pub skill_coverage: HashSet<SkillTag>,
-
-    /// 役割の習熟度（0.0-1.0）
-    /// 同じ役割を続けると上昇
-    pub proficiency: f32,
+    pub accountabilities: Vec<String>,
+    pub current_holder: Option<MemberId>,
 }
 
-impl Role {
-    /// タスクとの適合性を計算
-    pub fn calculate_fit(&self, task: &Task) -> f32 {
-        let skill_overlap = self
-            .skill_coverage
-            .intersection(&task.required_skills)
-            .count();
-
-        let skill_coverage_ratio =
-            skill_overlap as f32 / task.required_skills.len().max(1) as f32;
-
-        // 習熟度も考慮
-        skill_coverage_ratio * (0.5 + self.proficiency * 0.5)
-    }
+/// Bid score calculation result
+pub struct BidScore {
+    pub total: f32,           // Overall score (0.0-1.0)
+    pub skill_match: f32,     // Skill alignment component
+    pub workload_factor: f32, // Capacity component
+    pub interest_factor: f32, // Motivation component
 }
-```
 
-### 3. Bid（入札）
-
-メンバーがタスクに対して「私がやります」と宣言する仕組み。
-
-```rust
+/// A bid for a task by a member
 pub struct Bid {
     pub task_id: TaskId,
     pub member_id: MemberId,
-
-    /// 入札スコア（自動計算または手動指定）
-    pub score: f32,
-
-    /// 見積もり完了時間（ターン数）
+    pub score: BidScore,
     pub estimated_completion: u64,
-
-    /// 入札理由（デバッグ用）
-    pub reason: String,
+    pub bid_at: u64,
 }
 
-impl Bid {
-    /// 入札スコアを計算
-    pub fn calculate_score(
-        member: &HolacracyMember,
-        task: &Task,
-        current_turn: u64,
-    ) -> f32 {
-        let mut score = 0.0;
-
-        // 1. スキル適合度（最重要）
-        let skill_fit = member.calculate_skill_fit(task);
-        score += skill_fit * 0.5;
-
-        // 2. 現在の負荷（低負荷ほど高スコア）
-        let workload_factor = 1.0 - member.current_workload();
-        score += workload_factor * 0.2;
-
-        // 3. 優先度ボーナス
-        let priority_bonus = match task.priority {
-            TaskPriority::Critical => 0.3,
-            TaskPriority::High => 0.15,
-            TaskPriority::Medium => 0.0,
-            TaskPriority::Low => -0.1,
-            TaskPriority::Backlog => -0.2,
-        };
-        score += priority_bonus;
-
-        // 4. 期限切迫度（deadline近いほど高スコア）
-        if let Some(deadline) = task.deadline {
-            let urgency = 1.0 - ((deadline - current_turn) as f32 / 100.0).min(1.0);
-            score += urgency * 0.1;
-        }
-
-        score.max(0.0).min(1.0)
-    }
-}
-```
-
-### 4. Circle（サークル）
-
-役割の集合。組織の機能単位。
-
-```rust
+/// A circle (team/domain) in the organization
 pub struct Circle {
     pub id: CircleId,
     pub name: String,
-
-    /// サークルのメンバー
+    pub purpose: String,
+    pub parent_circle: Option<CircleId>,
     pub members: HashSet<MemberId>,
-
-    /// サークルが責任を持つタスクカテゴリ
-    pub responsibility_tags: HashSet<SkillTag>,
-
-    /// サークルの自律性レベル（0.0-1.0）
-    /// 高いほど外部からの介入が少ない
-    pub autonomy: f32,
-
-    /// サークルリーダー（optional: ホラクラシーでは不要）
-    pub lead_link: Option<MemberId>,
+    pub roles: HashMap<RoleId, Role>,
+    pub domains: Vec<String>,  // Areas of responsibility
 }
 ```
 
-### 5. TaskPool（タスクプール）
+---
 
-組織内の全タスクを管理する中央マーケット。
+## ⚙️ Configuration
+
+### config.rs
 
 ```rust
-pub struct TaskPool {
-    /// 全タスク
-    tasks: HashMap<TaskId, Task>,
+/// Task assignment mode
+pub enum TaskAssignmentMode {
+    /// Tasks auto-assigned to best bid
+    FullyAutonomous,
 
-    /// ステータス別インデックス（高速検索用）
-    open_tasks: HashSet<TaskId>,
-    assigned_tasks: HashMap<MemberId, Vec<TaskId>>,
-    completed_tasks: Vec<TaskId>,
+    /// Best bids presented, requires approval
+    SemiAutonomous,
 
-    /// 優先度別キュー
-    priority_queues: HashMap<TaskPriority, Vec<TaskId>>,
+    /// All assignments require explicit approval
+    Manual,
 }
 
-impl TaskPool {
-    /// 新しいタスクを追加
-    pub fn add_task(&mut self, task: Task) {
-        let task_id = task.id.clone();
-        let priority = task.priority.clone();
+/// Bidding system configuration
+pub struct BiddingConfig {
+    pub bidding_duration: u64,           // Turns to collect bids
+    pub min_bids_required: usize,        // Minimum bids before auto-assign
+    pub allow_bid_retraction: bool,      // Can members withdraw bids?
+    pub retraction_penalty: f32,         // Penalty for retracting (0.0-1.0)
+    pub allow_overbidding: bool,         // Can members bid beyond capacity?
+    pub overbid_penalty_multiplier: f32, // Score penalty for overbidding
+}
 
-        self.tasks.insert(task_id.clone(), task);
-        self.open_tasks.insert(task_id.clone());
-        self.priority_queues
-            .entry(priority)
-            .or_insert_with(Vec::new)
-            .push(task_id);
-    }
-
-    /// 利用可能なタスクを取得（依存関係を考慮）
-    pub fn get_available_tasks(&self) -> Vec<&Task> {
-        self.open_tasks
-            .iter()
-            .filter_map(|id| self.tasks.get(id))
-            .filter(|task| self.are_dependencies_met(task))
-            .collect()
-    }
-
-    /// 依存関係が満たされているか
-    fn are_dependencies_met(&self, task: &Task) -> bool {
-        task.dependencies
-            .iter()
-            .all(|dep_id| {
-                self.tasks
-                    .get(dep_id)
-                    .map(|t| t.status == TaskStatus::Completed)
-                    .unwrap_or(false)
-            })
-    }
-
-    /// タスクをアサイン
-    pub fn assign_task(&mut self, task_id: &TaskId, member_id: MemberId) -> bool {
-        if let Some(task) = self.tasks.get_mut(task_id) {
-            if task.status == TaskStatus::Open {
-                task.status = TaskStatus::Assigned;
-                task.assignee = Some(member_id.clone());
-                self.open_tasks.remove(task_id);
-                self.assigned_tasks
-                    .entry(member_id)
-                    .or_insert_with(Vec::new)
-                    .push(task_id.clone());
-                return true;
-            }
-        }
-        false
-    }
+/// Main plugin configuration
+pub struct HolacracyConfig {
+    pub assignment_mode: TaskAssignmentMode,
+    pub bidding: BiddingConfig,
+    pub max_tasks_per_member: usize,     // Task capacity limit
+    pub max_roles_per_member: usize,     // Role capacity limit
+    pub critical_priority_boost: f32,    // Priority multiplier for Critical
+    pub skill_match_weight: f32,         // Weight in bid score (default: 0.5)
+    pub workload_weight: f32,            // Weight in bid score (default: 0.3)
+    pub interest_weight: f32,            // Weight in bid score (default: 0.2)
+    pub enable_role_switching: bool,     // Allow dynamic role changes
+    pub role_switch_cooldown: u64,       // Cooldown period (turns)
+    pub min_skill_level_for_bid: f32,    // Minimum skill (0.0-1.0)
+    pub max_circle_depth: usize,         // Max nesting of circles
 }
 ```
 
-## 📊 データ構造
+**Default Weights**: Skill match (50%) + Workload capacity (30%) + Interest (20%) = 100%
 
-### HolacracyMember（メンバー）
+---
+
+## 🗄️ State Management
+
+### state.rs
 
 ```rust
+/// Member in a holacracy organization
 pub struct HolacracyMember {
     pub id: MemberId,
     pub name: String,
-
-    /// 現在の役割（複数可）
-    pub current_roles: Vec<Role>,
-
-    /// スキルセット
-    pub skills: HashMap<SkillTag, f32>, // スキル -> 熟練度
-
-    /// 現在担当中のタスク
+    pub current_roles: Vec<RoleId>,
+    pub skills: HashMap<SkillTag, SkillLevel>,  // SkillLevel: 0.0-1.0
     pub assigned_tasks: Vec<TaskId>,
-
-    /// 最大同時タスク数
-    pub max_concurrent_tasks: usize,
-
-    /// パフォーマンス履歴（完了タスク数、平均完了時間など）
-    pub performance_stats: PerformanceStats,
-
-    /// 自律性レベル（0.0-1.0）
-    /// 高いほど自発的にタスクを取る
-    pub autonomy_level: f32,
+    pub autonomy_level: f32,                     // 0.0-1.0
+    pub interests: HashMap<SkillTag, f32>,       // Interest level 0.0-1.0
+    pub last_role_switch: Option<u64>,           // For cooldown
 }
 
-impl HolacracyMember {
-    /// タスクとのスキル適合度を計算
-    pub fn calculate_skill_fit(&self, task: &Task) -> f32 {
-        let mut total_fit = 0.0;
-        let mut count = 0;
+/// Task pool for managing tasks
+pub struct TaskPool {
+    tasks: HashMap<TaskId, Task>,
+    bids: HashMap<TaskId, Vec<Bid>>,
+    dependencies: HashMap<TaskId, Vec<TaskId>>,
+    bidding_started: HashMap<TaskId, u64>,
+}
 
-        for required_skill in &task.required_skills {
-            if let Some(proficiency) = self.skills.get(required_skill) {
-                total_fit += proficiency;
-                count += 1;
-            }
-        }
+/// Global holacracy state
+pub struct HolacracyState {
+    members: HashMap<MemberId, HolacracyMember>,
+    task_pool: TaskPool,
+    circles: HashMap<CircleId, Circle>,
+    current_turn: u64,
+}
+```
 
-        if count == 0 {
-            return 0.0;
-        }
+---
 
-        // 必要スキルのカバー率も考慮
-        let coverage_ratio = count as f32 / task.required_skills.len() as f32;
-        let avg_proficiency = total_fit / count as f32;
+## 🧮 Service Logic
 
-        coverage_ratio * avg_proficiency
+### service.rs - TaskAssignmentService
+
+**Pure stateless algorithms** for bid scoring and task matching:
+
+#### Bid Score Calculation
+
+```rust
+impl TaskAssignmentService {
+    /// Calculate bid score for a member bidding on a task
+    pub fn calculate_bid_score(
+        member: &HolacracyMember,
+        task: &Task,
+        config: &HolacracyConfig,
+    ) -> Result<BidScore, HolacracyError> {
+        let skill_match = Self::calculate_skill_match(member, task);
+        let workload_factor = 1.0 - (member.workload() / config.max_tasks_per_member);
+        let interest_factor = Self::calculate_interest_factor(member, task);
+
+        let total = (skill_match * config.skill_match_weight)
+                  + (workload_factor * config.workload_weight)
+                  + (interest_factor * config.interest_weight);
+
+        Ok(BidScore { total, skill_match, workload_factor, interest_factor })
     }
-
-    /// 現在のワークロード（0.0-1.0）
-    pub fn current_workload(&self) -> f32 {
-        self.assigned_tasks.len() as f32 / self.max_concurrent_tasks as f32
-    }
-
-    /// タスクを引き受けられるか
-    pub fn can_accept_task(&self) -> bool {
-        self.assigned_tasks.len() < self.max_concurrent_tasks
-    }
-}
-
-pub struct PerformanceStats {
-    pub tasks_completed: u32,
-    pub tasks_failed: u32,
-    pub average_completion_time: f32,
-    pub on_time_delivery_rate: f32, // 期限内完了率
 }
 ```
 
-### HolacracyOrganization（組織）- State
+#### Skill Matching Algorithm
+
+- **Perfect Match (1.0)**: Member has all required skills at high proficiency
+- **Partial Match (0.0-1.0)**: Average proficiency across required skills
+- **No Match (0.0)**: Member lacks all required skills
+
+#### Completion Time Estimation
 
 ```rust
-pub struct HolacracyOrganization {
-    pub faction_id: FactionId,
-
-    /// メンバー
-    pub members: HashMap<MemberId, HolacracyMember>,
-
-    /// タスクプール
-    pub task_pool: TaskPool,
-
-    /// サークル
-    pub circles: HashMap<CircleId, Circle>,
-
-    /// 入札履歴（最近N件）
-    pub recent_bids: Vec<Bid>,
-
-    /// 組織の自律性レベル（0.0-1.0）
-    pub organization_autonomy: f32,
-
-    /// タスク自動生成が有効か
-    pub enable_auto_task_generation: bool,
-}
+efficiency = 0.5 + (skill_match * 0.5)  // 50% to 100% efficiency
+adjusted_time = base_cost / efficiency
 ```
 
-### HolacracyConfig（設定）- Resource
+- Expert (skill=1.0): 100% efficiency (base time)
+- Novice (skill=0.0): 50% efficiency (2x base time)
 
-```rust
-pub struct HolacracyConfig {
-    /// タスク割り当て方式
-    pub assignment_mode: AssignmentMode,
+#### Dependency Management
 
-    /// 入札の再計算間隔（ターン数）
-    pub bidding_recalc_interval: u32, // Default: 1
-
-    /// タスク完了時の報酬倍率
-    pub reward_multiplier: f32, // Default: 1.0
-
-    /// タスク失敗時のペナルティ
-    pub failure_penalty: f32, // Default: 0.5
-
-    /// 役割習熟度の成長速度
-    pub role_proficiency_growth_rate: f32, // Default: 0.01
-
-    /// 役割切り替えコスト（習熟度減少）
-    pub role_switch_cost: f32, // Default: 0.1
-
-    /// 最大タスク保持期間（ターン数）
-    /// これを超えたタスクは自動キャンセル
-    pub max_task_lifetime: u64, // Default: 100
-
-    /// 自動タスク生成の有効化
-    pub enable_auto_task_generation: bool, // Default: false
-}
-
-pub enum AssignmentMode {
-    /// 完全自動（最高スコアの入札者に自動アサイン）
-    FullyAutonomous,
-
-    /// 半自動（入札はするが、承認が必要）
-    SemiAutonomous,
-
-    /// 手動（ゲームロジックが明示的にアサイン）
-    Manual,
-}
-```
-
-## 🔄 システムフロー
-
-### BiddingSystem（入札システム）
-
-毎ターン実行され、メンバーが利用可能なタスクに入札。
-
-```
-Every turn:
-  1. タスクプールから利用可能なタスクを取得
-  2. 各メンバーについて:
-     a. ワークロードチェック（max_concurrent_tasks未満か？）
-     b. タスクとのスキル適合度を計算
-     c. 入札スコアを計算
-     d. スコアが閾値を超えたら入札
-  3. 各タスクについて:
-     a. 全入札をスコアでソート
-     b. 最高スコアの入札者にアサイン（FullyAutonomous時）
-     c. BidSubmittedEvent, TaskAssignedEvent を発火
-```
-
-### TaskProgressSystem（タスク進行システム）
-
-担当タスクの進行状況を更新。
-
-```
-Every turn:
-  For each member with assigned tasks:
-    1. タスクの進捗を更新
-    2. estimated_cost に基づいて完了判定
-    3. 完了したら:
-       - TaskCompletedEvent 発火
-       - 報酬付与（経験値、スキル熟練度）
-       - 役割習熟度を上昇
-    4. ブロック状態をチェック（依存タスクが未完了など）
-    5. 期限切れをチェック → TaskExpiredEvent
-```
-
-### RoleDynamicsSystem（役割動態システム）
-
-メンバーの役割を動的に変更。
-
-```
-Trigger: メンバーの状態変化（負傷、スキル成長など）
-
-  1. 現在の役割と状況の適合性を評価
-  2. ミスマッチがあれば役割切り替えを提案
-     例:
-     - 負傷中 → Combatant から Logistics へ
-     - スキル成長 → Engineer の習熟度上昇
-  3. RoleSwitchedEvent 発火
-  4. 習熟度をリセット（role_switch_cost 分減少）
-```
-
-## 🎮 ユースケース
-
-### 1. 高度なAI兵器群（ドローン）
-
-```rust
-let mut org = HolacracyOrganization::new("drone_swarm");
-
-// 司令塔（SPOF）が存在しない
-// 各ドローンが自律的にタスクを選択
-
-// タスク: 敵拠点を偵察
-org.task_pool.add_task(Task {
-    id: "recon_1".to_string(),
-    required_skills: hashset!["flying", "camera"],
-    priority: TaskPriority::High,
-    ..Default::default()
-});
-
-// タスク: 負傷したドローンを回収
-org.task_pool.add_task(Task {
-    id: "rescue_1".to_string(),
-    required_skills: hashset!["flying", "cargo"],
-    priority: TaskPriority::Critical,
-    ..Default::default()
-});
-
-// → 各ドローンが自動的に入札
-// → 最適なドローンが自動的にアサインされる
-// → 司令塔が破壊されても、残ったドローンが役割分担して継続
-```
-
-### 2. 現代的スタートアップ
-
-```rust
-let mut org = HolacracyOrganization::new("startup");
-
-// 誰も命令しないのに、勝手にプロダクトが開発される
-
-// バックログにタスクを追加
-org.task_pool.add_task(Task {
-    id: "feature_auth".to_string(),
-    required_skills: hashset!["backend", "security"],
-    priority: TaskPriority::High,
-    ..Default::default()
-});
-
-org.task_pool.add_task(Task {
-    id: "bug_fix_ui".to_string(),
-    required_skills: hashset!["frontend", "css"],
-    priority: TaskPriority::Medium,
-    ..Default::default()
-});
-
-// → エンジニアが自律的にタスクを取得
-// → スキルと負荷に応じて自動的に分散
-// → 誰かが休んでも、他のメンバーがカバー
-```
-
-### 3. 緊急対応チーム
-
-```rust
-let mut org = HolacracyOrganization::new("emergency_response");
-
-// 災害発生 → 大量のタスクが一気に追加される
-for i in 0..10 {
-    org.task_pool.add_task(Task {
-        id: format!("rescue_{}", i),
-        priority: TaskPriority::Critical,
-        required_skills: hashset!["medical", "transport"],
-        deadline: Some(current_turn + 10), // 10ターン以内
-        ..Default::default()
-    });
-}
-
-// → メンバーが urgency（期限切迫度）を考慮して自動入札
-// → Critical タスクが優先的に処理される
-// → 誰かが倒れても、残りのメンバーで継続
-```
-
-### 4. 動的役割変更
-
-```rust
-let mut member = org.get_member_mut("member_1").unwrap();
-
-// 初期状態: 戦闘員
-assert_eq!(member.current_roles[0].role_type, RoleType::Combatant);
-
-// 負傷イベント発生
-member.is_injured = true;
-
-// → RoleDynamicsSystem が自動的に役割を変更
-// → Combatant から Logistics（後方支援）へ
-
-// タスク割り当ても自動的に変化
-// 戦闘タスクの入札スコアが下がり、補給タスクのスコアが上がる
-```
-
-### 5. スケーリング（Holacracy → Hierarchy変容）
-
-```rust
-// 組織が大きくなりすぎた（メンバー数 > 50）
-if org.members.len() > 50 {
-    // → OrganizationSuitePlugin が自動変容を検出
-    // → Holacracy から Hierarchy へ変容
-
-    // データ引き継ぎ:
-    // - Circle の lead_link → Hierarchy の leader
-    // - Task Pool → Command Queue（命令キュー）
-    // - Bidding → Assignment（上司が割り当て）
-}
-```
-
-## 🔧 実装フェーズ
-
-### Phase 0: Types ✅
-- `Task`, `TaskPriority`, `TaskStatus`
-- `Role`, `RoleType`, `Bid`
-- `Circle`, `TaskPool`, `HolacracyError`
-
-### Phase 1: Config
-- `HolacracyConfig` with validation and builder pattern
-- `AssignmentMode` enum
-
-### Phase 2: State
-- `HolacracyMember` - Member with roles and skills
-- `HolacracyOrganization` - Organization with task pool
-- `TaskPool` - Task management with priority queues
-- `HolacracyState` - Multi-faction state container (Resource)
-
-### Phase 3: Service
-- `BiddingService` - Pure functions for:
-  - Bid score calculation
-  - Task-member matching
-  - Workload balancing
-- `TaskService` - Pure functions for:
-  - Task dependency resolution
-  - Task prioritization
-  - Completion validation
-
-### Phase 4: Hook, System, Events
-- `HolacracyHook` - Extensibility points
-- Systems:
-  - `BiddingSystem` - Task assignment via bidding
-  - `TaskProgressSystem` - Task execution and completion
-  - `RoleDynamicsSystem` - Dynamic role switching
-- Events:
-  - `TaskAddedEvent`, `BidSubmittedEvent`, `TaskAssignedEvent`
-  - `TaskCompletedEvent`, `TaskFailedEvent`, `TaskExpiredEvent`
-  - `RoleSwitchedEvent`, `RoleProficiencyIncreasedEvent`
-
-### Phase 5: Plugin
-- `HolacracyPlugin` - Tie everything together
-- Register with GameBuilder
-
-### Phase 6: Tests
-- Unit tests for all components
-- Bidding algorithm validation
-- Task assignment correctness
-- Integration tests with other organization plugins
-- Performance tests (1000+ members, 10000+ tasks)
-
-## 🌐 他Pluginとの連携
-
-### with ChainOfCommandPlugin (HierarchyPlugin)
-```rust
-// 小規模組織: Holacracy（自律的、速い）
-// 大規模組織: Hierarchy（統制的、遅いが安定）
-
-// 変容パターン:
-// Holacracy → Hierarchy (Scale Up: メンバー数増加)
-// Hierarchy → Holacracy (Downsize: 小規模化で敏捷性回復)
-```
-
-### with CulturePlugin
-```rust
-// Culture([RiskTaking]) + Holacracy → 入札の積極性が上昇
-// Culture([Bureaucratic]) + Holacracy → 入札の慎重性が上昇（スコア閾値上昇）
-```
-
-### with SocialPlugin
-```rust
-// Social Network の中心性が高いメンバー → タスク割り当て優先度上昇
-// 「影響力のある人」が選んだタスクは、他のメンバーも選びやすくなる
-```
-
-## 📈 メトリクス
-
-HolacracyPluginが提供する観測可能な指標:
-
-- **タスク完了率** - 組織の生産性
-- **平均完了時間** - 組織の効率性
-- **タスク失敗率** - 組織の品質
-- **期限遵守率** - 組織の信頼性
-- **メンバー負荷分散度** - ワークロードの公平性
-- **役割切り替え頻度** - 組織の柔軟性
-- **自律性スコア** - 組織の自己組織化度
-
-## 🚀 次のステップ
-
-1. **Types 設計** - `Task`, `Role`, `Bid`, `Circle` の実装
-2. **Service 設計** - Bidding algorithm, Task prioritization ロジック
-3. **State 設計** - `HolacracyOrganization`, `TaskPool` の実装
-4. **System & Events** - メインループの実装
-5. **Plugin 統合** - 他Pluginとの連携テスト
-6. **パフォーマンス検証** - 1000+ members, 10000+ tasks での動作確認
+- **Circular Dependency Detection**: Recursive graph traversal to prevent deadlocks
+- **Ready Tasks Filter**: Only tasks with satisfied dependencies are available for bidding
 
 ---
 
-## 💡 設計上の重要ポイント
+## 📡 Events
 
-### 1. 命令ではなく「目的」
-- タスクは「何をすべきか」を定義するが、「誰がやるか」は指定しない
-- メンバーが自律的に判断して選択する
+### Command Events (Requests)
 
-### 2. 単一障害点（SPOF）の排除
-- リーダー不在でも組織が機能する
-- 誰かが欠けても、残りのメンバーで役割分担
+```rust
+TaskAddRequested           // Add task to pool
+BiddingStartRequested      // Start bidding period
+BidSubmitRequested         // Submit a bid
+TaskAssignRequested        // Assign task to member
+TaskCompleteRequested      // Mark task complete
+TaskCancelRequested        // Cancel task
+MemberAddRequested         // Add new member
+MemberRemoveRequested      // Remove member
+RoleAssignRequested        // Assign role to member
+RoleUnassignRequested      // Unassign role
+CircleCreateRequested      // Create new circle
+BiddingProcessRequested    // Process expired bidding periods
+```
 
-### 3. 動的な役割
-- 固定的な役職ではなく、状況に応じて変化する役割
-- 負傷したら戦闘員から医療班へ、回復したら戻る
+### State Events (Results)
 
-### 4. スキルベースマッチング
-- タスクが求めるスキルと、メンバーが持つスキルの適合度
-- 最適なマッチングを自動的に見つける
-
-### 5. 測定可能な「自律性」
-- 組織の自律性レベル（autonomy）を数値化
-- 高いほど外部からの介入が少なく、自己組織化が進む
-
----
-
-## ✅ 実装ステータス
-
-### 未実装 ⏳
-
-このドキュメントはv0.3のための設計仕様書です。実装は今後進めていきます。
-
-### 実装優先順位
-
-1. **Phase 0-1**: Types & Config（基礎定義）
-2. **Phase 3**: Service - Bidding & Task Management（コアロジック）
-3. **Phase 2**: State - HolacracyOrganization（組織構造）
-4. **Phase 4a**: Events（イベント定義）
-5. **Phase 4b**: Hook（拡張ポイント）
-6. **Phase 4c**: Systems（メインループ）
-7. **Phase 5**: Plugin（統合）
-8. **Phase 6**: Tests（検証）
+```rust
+TaskAddedEvent             // Task added successfully
+BiddingStartedEvent        // Bidding period started
+BidSubmittedEvent          // Bid accepted
+BidRejectedEvent           // Bid rejected (ineligible)
+TaskAssignedEvent          // Task assigned to member
+TaskAssignmentFailedEvent  // Assignment failed
+TaskCompletedEvent         // Task completed
+TaskCancelledEvent         // Task cancelled
+MemberAddedEvent           // Member added
+MemberRemovedEvent         // Member removed
+RoleAssignedEvent          // Role assigned
+RoleUnassignedEvent        // Role unassigned
+RoleAssignmentFailedEvent  // Role assignment failed
+CircleCreatedEvent         // Circle created
+BiddingCompletedEvent      // Bidding period ended (auto-assign)
+```
 
 ---
 
-## 📚 参考文献
+## 🎣 Hook System
 
-### 理論
-- Robertson, B. (2015). "Holacracy: The New Management System for a Rapidly Changing World"
-- Laloux, F. (2014). "Reinventing Organizations"
-- Sutherland, J. (2014). "Scrum: The Art of Doing Twice the Work in Half the Time"
+### hook.rs - HolacracyHook Trait
 
-### 実装パターン
-- Task Queue Pattern
-- Work Stealing Algorithm
-- Self-Organizing Maps
+**13 extension points** for game-specific behavior:
 
-### 関連技術
-- Swarm Robotics
-- Multi-Agent Systems (MAS)
-- Distributed Task Allocation
+```rust
+#[async_trait]
+pub trait HolacracyHook: Send + Sync {
+    /// Validate bid before acceptance (return Err to reject)
+    async fn on_bid_submitted(
+        &self,
+        task_id: &TaskId,
+        member_id: &MemberId,
+        score: &BidScore,
+        resources: &mut ResourceContext,
+    ) -> Result<(), String>;
+
+    /// Called after bid is accepted
+    async fn on_bid_accepted(...);
+
+    /// Validate task assignment (return Err to prevent)
+    async fn on_task_assign_requested(...) -> Result<(), String>;
+
+    /// Called after task is assigned
+    async fn on_task_assigned(...);
+
+    /// Called when task is completed
+    async fn on_task_completed(...);
+
+    /// Called when task is cancelled
+    async fn on_task_cancelled(...);
+
+    /// Validate role assignment (return Err to prevent)
+    async fn on_role_assign_requested(...) -> Result<(), String>;
+
+    /// Called after role is assigned
+    async fn on_role_assigned(...);
+
+    /// Called when role is unassigned
+    async fn on_role_unassigned(...);
+
+    /// Override automatic assignment (return Some(member_id))
+    async fn on_bidding_completed(
+        &self,
+        task_id: &TaskId,
+        bids: &[&Bid],
+        resources: &mut ResourceContext,
+    ) -> Option<MemberId>;
+
+    /// Called when member is added
+    async fn on_member_added(...);
+
+    /// Called when member is removed
+    async fn on_member_removed(...);
+
+    /// Called when circle is created
+    async fn on_circle_created(...);
+}
+```
 
 ---
 
-## 🎯 成功基準
+## 🔄 System Flow
 
-HolacracyPluginが成功したと言えるのは、以下の体験を提供できた時:
+### system.rs - HolacracySystem
 
-1. **「自律性」の実感**: プレイヤーが命令しなくても、組織が勝手に動く驚き
-2. **「適応性」の体験**: 状況変化に応じてメンバーが役割を変える柔軟さ
-3. **「回復力」の証明**: リーダーが倒れても組織が機能し続ける安心感
-4. **「最適化」の発見**: スキルマッチングによる効率的なタスク割り当て
-5. **「創発」の観察**: 単純なルールから複雑な組織行動が生まれる面白さ
+**Event Processing Pipeline**:
 
-これらが実現できれば、単なる「タスク管理」を超えた、**「自己組織化する生きた組織」** のシミュレーションになります。
+1. **Collect Events** from EventBus
+2. **Validate** via hook (can veto)
+3. **Execute Logic** via TaskAssignmentService
+4. **Update State** (HolacracyState mutation)
+5. **Publish Events** (success/failure)
+6. **Notify Hook** (for side effects)
+
+### Bidding Period Flow
+
+```
+1. TaskAddRequested → TaskAddedEvent
+2. BiddingStartRequested → BiddingStartedEvent
+3. [Members submit bids over N turns]
+4. BidSubmitRequested → BidSubmittedEvent / BidRejectedEvent
+5. BiddingProcessRequested (after N turns)
+   → Best bid selected
+   → TaskAssignRequested (automatic)
+   → TaskAssignedEvent
+   → BiddingCompletedEvent
+```
+
+### Task Lifecycle
+
+```
+Available → Bidding → Assigned → InProgress → Completed
+         ↓                    ↓
+      Cancelled            Blocked
+```
 
 ---
 
-## 🔗 組織型プラグイン比較表
+## 🎮 Use Cases
 
-| Plugin | 駆動力 | 構造 | 意思決定 | SPOF | 適応性 | 向いている組織 |
-|--------|--------|------|----------|------|--------|----------------|
-| **Hierarchy** | Authority（権限） | ▲ ピラミッド | トップダウン | あり（リーダー） | 低 | 軍隊、大企業 |
-| **Culture** | Meme（空気） | 🌫 霧 | 暗黙の同調 | なし（ミーム） | 中 | カルト、コミュニティ |
-| **Social** | Interest（利害） | 🕸 ネットワーク | 根回し、政治 | あり（KingMaker） | 中 | 官僚、スパイ網 |
-| **Holacracy** | Purpose（目的） | ⭕ サークル | 自律的選択 | なし | 高 | IT企業、ドローン |
+### 1. Autonomous Drone Swarm
 
-**組織変容の流れ:**
-- 小規模 → **Holacracy**（速い、柔軟）
-- 拡大 → **Hierarchy**（統制、安定）
-- 腐敗 → **Social**（派閥、政治）
-- 過激化 → **Culture**（カルト、狂信）
+**Scenario**: RTS game with autonomous repair/combat drones
 
-この循環をシミュレートすることで、組織のライフサイクル全体を表現できます。
+```rust
+// Setup
+let plugin = HolacracyPlugin::new()
+    .with_config(
+        HolacracyConfig::default()
+            .with_assignment_mode(TaskAssignmentMode::FullyAutonomous)
+            .with_max_tasks(1)  // Each drone takes 1 task at a time
+    );
+
+// Create drones with different skills
+let repair_drone = HolacracyMember::new("drone_1", "RepairBot")
+    .with_skill("repair".into(), 0.9)
+    .with_skill("combat".into(), 0.3);
+
+let combat_drone = HolacracyMember::new("drone_2", "CombatBot")
+    .with_skill("combat".into(), 0.9)
+    .with_skill("repair".into(), 0.3);
+
+// Add tasks
+let repair_task = Task::new("repair_base", "Repair damaged building")
+    .with_skills(vec!["repair".into()])
+    .with_priority(TaskPriority::Critical);
+
+// System automatically assigns based on skill match
+// repair_drone gets repair_task (skill=0.9 >> 0.3)
+```
+
+### 2. Startup Task Board
+
+**Scenario**: Management sim where employees pick tasks from sprint backlog
+
+```rust
+let plugin = HolacracyPlugin::new()
+    .with_config(
+        HolacracyConfig::default()
+            .with_assignment_mode(TaskAssignmentMode::SemiAutonomous)
+            .with_skill_weights(0.4, 0.4, 0.2)  // Balance skill and workload
+    );
+
+// Create diverse team
+let backend_dev = HolacracyMember::new("alice", "Alice")
+    .with_skill("backend".into(), 0.8)
+    .with_skill("frontend".into(), 0.4)
+    .with_interest("backend".into(), 0.9);  // Prefers backend work
+
+// Sprint planning - add tasks
+let api_task = Task::new("api_endpoint", "Implement REST API")
+    .with_skills(vec!["backend".into()])
+    .with_priority(TaskPriority::High);
+
+// Bidding period
+// alice bids: skill=0.8, workload=1.0 (empty), interest=0.9
+// → score = 0.8*0.4 + 1.0*0.4 + 0.9*0.2 = 0.32 + 0.40 + 0.18 = 0.90
+
+// Manager approves (SemiAutonomous mode)
+```
+
+### 3. Emergency Response Coordination
+
+**Scenario**: Crisis management game where roles switch dynamically
+
+```rust
+let plugin = HolacracyPlugin::new()
+    .with_config(
+        HolacracyConfig::default()
+            .with_role_switching(true)
+            .with_role_switch_cooldown(0)  // Instant switching in crisis
+    );
+
+// Member starts as medic
+let member = HolacracyMember::new("bob", "Bob")
+    .with_skill("medical".into(), 0.7)
+    .with_skill("firefighting".into(), 0.6);
+
+// Initial role: Medic
+member.add_role("medic".to_string());
+
+// CRISIS: Fire breaks out, no firefighters available
+let fire_task = Task::new("extinguish_fire", "Put out fire")
+    .with_skills(vec!["firefighting".into()])
+    .with_priority(TaskPriority::Critical);
+
+// Bob switches role dynamically
+member.remove_role("medic");
+member.add_role("firefighter");
+
+// Bob bids on fire_task with firefighting skill
+```
+
+### 4. Guild Task Board (MMO)
+
+**Scenario**: Guild members take quests from shared board
+
+```rust
+// Guild circle
+let guild_circle = Circle::new("guild_001", "Dragon Slayers", "Defeat dragons")
+    .with_domains(vec!["Raids".to_string(), "Crafting".to_string()]);
+
+// Add members to guild
+guild_circle.add_member("player_1");
+guild_circle.add_member("player_2");
+
+// Guild quest
+let raid_task = Task::new("dragon_raid", "Defeat Elder Dragon")
+    .with_skills(vec!["combat".into(), "strategy".into()])
+    .with_priority(TaskPriority::High)
+    .with_cost(60.0);  // 60 minute raid
+
+// Tank player bids
+let tank = HolacracyMember::new("player_1", "TankWarrior")
+    .with_skill("combat".into(), 0.9)
+    .with_skill("strategy".into(), 0.6);
+
+// DPS player bids
+let dps = HolacracyMember::new("player_2", "MageDPS")
+    .with_skill("combat".into(), 0.7)
+    .with_skill("strategy".into(), 0.4);
+
+// Tank wins bid (higher skill match: 0.75 vs 0.55)
+```
+
+### 5. Scaling Organization
+
+**Scenario**: Growing company splitting into sub-teams
+
+```rust
+// Top-level circle
+let company = Circle::new("company", "TechCorp", "Build great products");
+
+// Engineering splits into sub-circles
+let backend_circle = Circle::new("backend", "Backend Team", "API services")
+    .with_parent("company");
+
+let frontend_circle = Circle::new("frontend", "Frontend Team", "User interfaces")
+    .with_parent("company");
+
+// RepLink connects circles (backend representative to company meetings)
+let rep_link_role = Role::new(
+    "backend_rep",
+    "Backend Representative",
+    RoleType::rep_link("backend", "company"),
+);
+
+// As organization grows, circles can be nested up to max_circle_depth (default: 5)
+```
+
+---
+
+## 🔧 Integration
+
+### With Other Organization Plugins
+
+HolacracyPlugin complements the other three organization types:
+
+| Plugin | Authority Source | Best For |
+|--------|-----------------|----------|
+| **ChainOfCommand** | Hierarchical rank | Military, bureaucracies, strict command chains |
+| **Culture** | Memetic alignment | Cults, ideological movements, implicit norms |
+| **Social** | Network position | Political intrigue, informal power, "shadow leaders" |
+| **Holacracy** | Task competence | Startups, agile teams, autonomous systems |
+
+**Combination Example**: Military unit with hierarchical command (ChainOfCommand) but tactical decisions through task bidding (Holacracy):
+
+```rust
+let game = GameBuilder::new()
+    .add_plugin(ChainOfCommandPlugin::new())  // Ranks and promotions
+    .add_plugin(HolacracyPlugin::new())       // Mission assignment
+    .build()?;
+
+// Officer rank from ChainOfCommand
+// Task assignment from Holacracy bidding
+// → Officers can veto task assignments via hook
+```
+
+---
+
+## 📊 Performance Considerations
+
+### Bid Scoring Complexity
+
+- **O(M × T)** where M = members, T = tasks per bidding cycle
+- **Optimization**: Pre-filter eligible members by skill threshold before scoring
+
+### Dependency Resolution
+
+- **Circular Dependency Detection**: O(T) worst-case (recursive DFS)
+- **Ready Tasks Filter**: O(T × D) where D = average dependencies per task
+
+### Scalability
+
+- **Recommended Limits**:
+  - `max_tasks_per_member`: 3-10 (prevents overload)
+  - `max_circle_depth`: 3-5 (prevents deep nesting)
+  - `bidding_duration`: 1-5 turns (balance between competition and responsiveness)
+
+---
+
+## 🧪 Testing Strategy
+
+### Unit Tests (94 total)
+
+- **types.rs** (19 tests): Task/Role/Bid/Circle creation and validation
+- **config.rs** (17 tests): Configuration validation and builder pattern
+- **state.rs** (17 tests): State mutation and member/task management
+- **service.rs** (14 tests): Bid scoring, skill matching, dependency resolution
+- **events.rs** (15 tests): Event creation and serialization
+- **hook.rs** (5 tests): Default hook behavior
+- **system.rs** (2 tests): System initialization and empty event processing
+- **plugin.rs** (5 tests): Plugin configuration and builder pattern
+
+### Integration Test Scenarios
+
+```rust
+#[tokio::test]
+async fn test_full_task_lifecycle() {
+    // 1. Add task to pool
+    // 2. Start bidding
+    // 3. Members submit bids
+    // 4. Bidding expires
+    // 5. Auto-assign to best bid
+    // 6. Member completes task
+    // 7. Verify events published
+}
+```
+
+---
+
+## 📚 References
+
+### Theoretical Foundations
+
+- **Holacracy Constitution**: Brian Robertson, 2015
+- **Reinventing Organizations**: Frederic Laloux (Teal organizations)
+- **Agile Manifesto**: Beck et al., 2001
+- **Scrum Guide**: Schwaber & Sutherland
+- **Swarm Intelligence**: Kennedy & Eberhart
+
+### Implementation Patterns
+
+- **Task Queue Pattern**: Event-driven task processing
+- **Bid/Ask Market**: Economic auction mechanisms
+- **Pull System**: Lean manufacturing principles (Kanban)
+
+---
+
+## 🚀 Future Extensions
+
+### Potential Enhancements
+
+1. **Reputation System**: Track member reliability (completed tasks / assigned tasks)
+2. **Skill Learning**: Members gain skill proficiency by completing tasks
+3. **Task Batching**: Assign multiple related tasks to same member for efficiency
+4. **Workload Balancing**: Automatic task redistribution when members become overloaded
+5. **Deadline Penalties**: Reduced scores for members who miss deadlines
+6. **Team Tasks**: Tasks requiring multiple members (coordination overhead)
+7. **Circle Governance**: Democracy-based rule changes within circles
+
+---
+
+**Implementation Status**: ✅ **Complete**
+**Test Coverage**: 94/94 tests passing
+**Documentation**: ✅ Complete with use cases and integration examples
