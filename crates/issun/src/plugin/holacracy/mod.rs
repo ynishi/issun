@@ -13,3 +13,7 @@ pub use types::{
 // Phase 1: Config
 mod config;
 pub use config::{BiddingConfig, HolacracyConfig, TaskAssignmentMode};
+
+// Phase 2: State
+mod state;
+pub use state::{HolacracyMember, HolacracyState, TaskPool};
