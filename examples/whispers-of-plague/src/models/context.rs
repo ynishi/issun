@@ -13,7 +13,7 @@ impl PlagueGameContext {
     pub fn new() -> Self {
         Self {
             turn: 0,
-            max_turns: 10,
+            max_turns: 20,
             mode: GameMode::Plague,
         }
     }

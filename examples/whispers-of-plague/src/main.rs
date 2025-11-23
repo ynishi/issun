@@ -35,7 +35,7 @@ async fn main() -> std::io::Result<()> {
     // Build game with plugins (80% ISSUN, 20% custom)
     let builder = GameBuilder::new()
         // ISSUN built-in plugins
-        .with_plugin(TurnBasedTimePlugin::new(1, 10)) // 10 turns max
+        .with_plugin(TurnBasedTimePlugin::new(1, 20)) // 20 turns max
         .map_err(as_io)?
         .with_plugin(
             ContagionPlugin::new()

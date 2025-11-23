@@ -24,11 +24,11 @@ impl CityMap {
     pub fn new() -> Self {
         Self {
             districts: vec![
-                District::new("downtown", "Downtown", 100000),
-                District::new("industrial", "Industrial Zone", 80000),
-                District::new("residential", "Residential Area", 150000),
-                District::new("suburbs", "Suburbs", 120000),
-                District::new("harbor", "Harbor District", 90000),
+                District::new("downtown", "Downtown", 10000),
+                District::new("industrial", "Industrial Zone", 8000),
+                District::new("residential", "Residential Area", 15000),
+                District::new("suburbs", "Suburbs", 12000),
+                District::new("harbor", "Harbor District", 9000),
             ],
         }
     }
