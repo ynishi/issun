@@ -29,6 +29,7 @@ pub mod action;
 pub mod combat;
 pub mod dungeon;
 pub mod economy;
+pub mod entropy;
 pub mod faction;
 pub mod inventory;
 pub mod loot;

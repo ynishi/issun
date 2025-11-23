@@ -29,6 +29,8 @@ uuid = { workspace = true }
 figlet-rs = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+hecs = { workspace = true }
+rayon = { workspace = true }
 quinn = { workspace = true, optional = true }
 rustls = { workspace = true, optional = true }
 
