@@ -45,6 +45,7 @@ pub mod chain_of_command;
 pub mod culture;
 pub mod market;
 pub mod modular_synthesis;
+pub mod social;
 pub mod territory;
 pub mod time;
 
