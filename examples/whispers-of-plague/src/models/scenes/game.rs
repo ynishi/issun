@@ -67,47 +67,53 @@ impl GameSceneData {
 
                 // 2.5. Update district statistics from ContagionState
                 {
-                    use std::collections::HashMap;
+                    use std::collections::HashSet;
 
                     let contagion_state = resources
                         .get::<ContagionState>()
                         .await
                         .expect("ContagionState not found");
 
-                    // Count infections per district
-                    let mut infection_counts: HashMap<String, u32> = HashMap::new();
-                    let mut disease_count = 0;
+                    // Collect all districts with active disease contagions
+                    let mut infected_districts: HashSet<String> = HashSet::new();
                     for (_id, contagion) in contagion_state.all_contagions() {
                         // Only count disease contagions
                         if matches!(contagion.content, ContagionContent::Disease { .. }) {
-                            disease_count += 1;
                             for node_id in &contagion.spread {
-                                *infection_counts.entry(node_id.clone()).or_insert(0) += 1;
+                                infected_districts.insert(node_id.clone());
                             }
                         }
                     }
 
-                    // Debug: Log infection statistics
-                    if disease_count > 0 {
-                        let details: Vec<String> = infection_counts
-                            .iter()
-                            .map(|(loc, count)| format!("{}: {}", loc, count))
-                            .collect();
-                        self.log_messages.insert(
-                            0,
-                            format!(
-                                "📊 {} diseases in {} locations [{}]",
-                                disease_count,
-                                infection_counts.len(),
-                                details.join(", ")
-                            ),
-                        );
-                    }
-
-                    // Update CityMap districts
+                    // Update CityMap districts with exponential growth
                     if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
+                        let mut newly_infected = Vec::new();
+
                         for district in &mut city_map.districts {
-                            district.infected = infection_counts.get(&district.id).copied().unwrap_or(0);
+                            if infected_districts.contains(&district.id) {
+                                if district.infected == 0 {
+                                    // New infection: start with initial outbreak
+                                    district.infected = 100; // Initial outbreak size
+                                    newly_infected.push(district.name.clone());
+                                } else {
+                                    // Exponential growth: 20% increase per turn + 50 new cases
+                                    let growth = (district.infected as f32 * 0.20) as u32;
+                                    district.infected += growth + 50;
+
+                                    // Cap at population size
+                                    if district.infected > district.population {
+                                        district.infected = district.population;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Log new infections
+                        if !newly_infected.is_empty() {
+                            self.log_messages.insert(
+                                0,
+                                format!("⚠️  New outbreak in: {}", newly_infected.join(", ")),
+                            );
                         }
                     }
                 }
