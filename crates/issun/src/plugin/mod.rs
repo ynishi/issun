@@ -49,6 +49,7 @@ pub mod modular_synthesis;
 pub mod social;
 pub mod territory;
 pub mod time;
+pub mod org_suite;
 
 // Re-exports for convenience
 pub use action::{
@@ -594,6 +595,31 @@ pub use market::{
     MarketSystem,
     // Plugin (Phase 8) ✅
     MarketPlugin,
+};
+
+// OrganizationSuitePlugin exports (Phase 0 complete ✅)
+pub use org_suite::{
+    // Types (Phase 0) ✅
+    FactionId as OrgSuiteFactionId,
+    OrgArchetype,
+    OrgSuiteError,
+    TransitionHistory,
+    TransitionTrigger,
+    // Config (Phase 0) ✅
+    OrgSuiteConfig,
+    // State (Phase 0) ✅
+    OrgSuiteState,
+    // Events (Phase 0) ✅
+    FactionRegisterRequested as OrgSuiteFactionRegisterRequested,
+    TransitionRequested,
+    FactionRegisteredEvent as OrgSuiteFactionRegisteredEvent,
+    TransitionFailedEvent,
+    TransitionOccurredEvent,
+    // Transition Framework (Phase 0) ✅
+    ConditionContext,
+    OrgConverter,
+    TransitionCondition,
+    TransitionRegistry,
 };
 
 // ModularSynthesisPlugin exports (Phase 0-6 complete ✅)
