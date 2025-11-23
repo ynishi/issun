@@ -155,24 +155,60 @@ fn render_game(
         List::new(districts_items).block(Block::default().borders(Borders::ALL).title("Districts"));
     frame.render_widget(districts_list, main_chunks[0]);
 
-    // Right panel: Virus + Rumors
+    // Right panel: Statistics + Contagions
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(6), Constraint::Min(5)])
+        .constraints([Constraint::Length(10), Constraint::Min(5)])
         .split(main_chunks[1]);
 
-    // Contagion info
-    let contagion_text = if let Some(state) = contagion_state {
-        let contagion_count = state.contagion_count();
+    // Statistics panel
+    let stats_text = if let (Some(ctx), Some(city)) = (ctx, city) {
+        let total_pop: u32 = city.districts.iter().map(|d| d.population).sum();
+        let total_infected: u32 = city.districts.iter().map(|d| d.infected).sum();
+        let infection_rate = if total_pop > 0 {
+            (total_infected as f32 / total_pop as f32) * 100.0
+        } else {
+            0.0
+        };
+
         vec![
-            Line::from(format!("Active Contagions: {}", contagion_count)),
+            Line::from(format!("Turn: {}/{}", ctx.turn, ctx.max_turns)),
+            Line::from(format!("Mode: {:?}", ctx.mode)),
             Line::from(""),
-            Line::from("(Disease + Rumors spreading)"),
+            Line::from(format!("Total Pop: {}", total_pop)),
+            Line::from(format!("Infected: {} ({:.1}%)", total_infected, infection_rate)),
             Line::from(""),
-            Line::from(Span::styled(
-                "[R] to spread rumor",
-                Style::default().fg(Color::Cyan),
-            )),
+            Line::from(match ctx.mode {
+                GameMode::Plague => format!("Goal: 70% (now {:.1}%)", infection_rate),
+                GameMode::Savior => format!("Survive: >60% (now {:.1}%)", 100.0 - infection_rate),
+            }),
+        ]
+    } else {
+        vec![Line::from("Loading...")]
+    };
+
+    let stats_block = Paragraph::new(stats_text)
+        .block(Block::default().borders(Borders::ALL).title("Statistics"));
+    frame.render_widget(stats_block, right_chunks[0]);
+
+    // Contagion info with details
+    let contagion_text = if let Some(state) = contagion_state {
+        let all_contagions: Vec<_> = state.all_contagions().collect();
+        let disease_count = all_contagions
+            .iter()
+            .filter(|(_, c)| matches!(c.content, issun::plugin::contagion::ContagionContent::Disease { .. }))
+            .count();
+        let rumor_count = all_contagions
+            .iter()
+            .filter(|(_, c)| matches!(c.content, issun::plugin::contagion::ContagionContent::Political { .. }))
+            .count();
+
+        vec![
+            Line::from(format!("Active Contagions: {}", all_contagions.len())),
+            Line::from(format!("  🦠 Disease: {}", disease_count)),
+            Line::from(format!("  📢 Rumors: {}", rumor_count)),
+            Line::from(""),
+            Line::from("(Spreading via topology)"),
         ]
     } else {
         vec![Line::from("No contagion data")]
@@ -180,7 +216,7 @@ fn render_game(
 
     let contagion_block = Paragraph::new(contagion_text)
         .block(Block::default().borders(Borders::ALL).title("Contagions"));
-    frame.render_widget(contagion_block, right_chunks[0]);
+    frame.render_widget(contagion_block, right_chunks[1]);
 
     // Log messages
     let log_items: Vec<ListItem> = data
@@ -189,18 +225,24 @@ fn render_game(
         .map(|msg| ListItem::new(msg.as_str()))
         .collect();
 
-    // Build control help text based on game mode
+    // Build control help text based on game mode with action usage
     let controls = if let Some(ctx) = ctx {
         match ctx.mode {
             GameMode::Plague => {
-                "Log | [N] Next Turn | [R] Rumor | [Q] Quit"
+                format!(
+                    "Log | [N] Next Turn | [R] Rumor ({}/1) | [Q] Quit",
+                    data.rumor_count
+                )
             }
             GameMode::Savior => {
-                "Log | [N] Next Turn | [T] Treat | [C] Calm | [Q] Quit"
+                format!(
+                    "Log | [N] Next Turn | [T] Treat ({}/1) [C] Calm ({}/1) | [Q] Quit",
+                    data.treat_count, data.calm_count
+                )
             }
         }
     } else {
-        "Log | [N] Next Turn | [Q] Quit"
+        "Log | [N] Next Turn | [Q] Quit".to_string()
     };
 
     let log_list = List::new(log_items).block(
