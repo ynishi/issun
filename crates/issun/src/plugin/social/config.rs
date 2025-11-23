@@ -322,8 +322,10 @@ mod tests {
         let valid = SocialConfig::default();
         assert!(valid.is_valid());
 
-        let mut invalid = SocialConfig::default();
-        invalid.min_faction_size = 1; // Too small
+        let invalid = SocialConfig {
+            min_faction_size: 1, // Too small
+            ..Default::default()
+        };
         assert!(!invalid.is_valid());
     }
 }

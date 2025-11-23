@@ -750,7 +750,7 @@ mod tests {
     #[tokio::test]
     async fn test_system_creation() {
         let _system = HolacracySystem::new(DefaultHolacracyHook);
-        assert!(true);
+        // System created successfully - compilation is the test
     }
 
     #[tokio::test]

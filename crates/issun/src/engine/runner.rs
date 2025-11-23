@@ -48,6 +48,39 @@ impl<S: Scene> GameRunner<S> {
         &mut self.director
     }
 
+    /// Update all registered systems that require periodic updates.
+    ///
+    /// This method processes event-driven systems like TimerSystem and ActionResetSystem
+    /// that respond to published events (AdvanceTimeRequested, DayChanged, etc.).
+    ///
+    /// Systems with custom update signatures will be called with appropriate contexts.
+    async fn update_systems(&mut self) {
+        use crate::plugin::action::ActionResetSystem;
+        use crate::plugin::time::TimerSystem;
+
+        // Update TimerSystem (processes AdvanceTimeRequested → DayChanged)
+        self.director
+            .with_current_async(|_, services, systems, resources| {
+                Box::pin(async move {
+                    if let Some(timer_system) = systems.get_mut::<TimerSystem>() {
+                        timer_system.update(services, resources).await;
+                    }
+                })
+            })
+            .await;
+
+        // Update ActionResetSystem (processes DayChanged → reset action points)
+        self.director
+            .with_current_async(|_, services, systems, resources| {
+                Box::pin(async move {
+                    if let Some(action_reset) = systems.get_mut::<ActionResetSystem>() {
+                        action_reset.update(services, resources).await;
+                    }
+                })
+            })
+            .await;
+    }
+
     /// Run the game loop until the director requests quit.
     ///
     /// # Parameters
@@ -79,7 +112,7 @@ impl<S: Scene> GameRunner<S> {
             let timeout = self
                 .tick_rate
                 .checked_sub(last_tick.elapsed())
-                .unwrap_or_else(|| Duration::from_secs(0));
+                .unwrap_or(Duration::ZERO);
 
             // Poll input with timeout
             let input = poll_input(timeout)?;
@@ -100,6 +133,10 @@ impl<S: Scene> GameRunner<S> {
             if last_tick.elapsed() >= self.tick_rate {
                 let transition = self.director.update().await;
                 self.director.handle(transition).await?;
+
+                // Update registered systems (handles event-driven logic)
+                self.update_systems().await;
+
                 last_tick = Instant::now();
             }
 

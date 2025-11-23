@@ -573,8 +573,7 @@ mod tests {
     #[tokio::test]
     async fn test_system_creation() {
         let _system = SocialSystem::new(DefaultSocialHook);
-        // System created successfully (no panic)
-        assert!(true);
+        // System created successfully - compilation is the test
     }
 
     #[tokio::test]

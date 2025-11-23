@@ -185,8 +185,10 @@ mod tests {
     #[test]
     fn test_is_valid_with_invalid_values() {
         // Manually create invalid config (bypassing constructor clamping)
-        let mut config = ChainOfCommandConfig::default();
-        config.loyalty_decay_rate = 1.5; // Invalid
+        let config = ChainOfCommandConfig {
+            loyalty_decay_rate: 1.5, // Invalid
+            ..Default::default()
+        };
 
         assert!(!config.is_valid());
     }

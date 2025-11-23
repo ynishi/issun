@@ -1,7 +1,7 @@
 use crate::models::CityMap;
 use async_trait::async_trait;
 use issun::plugin::contagion::{
-    Contagion, ContagionContent, ContagionHook, DiseaseLevel, NodeId, PropagationEdge,
+    Contagion, ContagionContent, ContagionHook, NodeId, PropagationEdge,
 };
 use issun::prelude::ResourceContext;
 

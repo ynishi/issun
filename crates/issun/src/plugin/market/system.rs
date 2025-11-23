@@ -250,7 +250,7 @@ mod tests {
         let config = create_config();
 
         // Equilibrium: no change expected
-        let changes = system.update_prices(&mut state, &config).await;
+        let _changes = system.update_prices(&mut state, &config).await;
 
         // Might have small changes due to drift, or none
         // We just verify it doesn't panic
@@ -407,7 +407,7 @@ mod tests {
             Some(0.9),
         );
 
-        let changes = system.update_prices(&mut state, &config).await;
+        let _changes = system.update_prices(&mut state, &config).await;
         let water_price = state.get_price(&"water".to_string()).unwrap();
 
         assert!(water_price >= 5.0); // Price floor enforced

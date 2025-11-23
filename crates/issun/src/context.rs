@@ -465,9 +465,12 @@ impl ResourceContext {
     /// Insert a pre-boxed resource into the context (internal use)
     ///
     /// Used by GameBuilder to transfer resources from plugin registration.
-    pub(crate) fn insert_boxed(&mut self, type_id: TypeId, boxed: Box<dyn std::any::Any + Send + Sync>) {
-        self.resources
-            .insert(type_id, Arc::new(RwLock::new(boxed)));
+    pub(crate) fn insert_boxed(
+        &mut self,
+        type_id: TypeId,
+        boxed: Box<dyn std::any::Any + Send + Sync>,
+    ) {
+        self.resources.insert(type_id, Arc::new(RwLock::new(boxed)));
     }
 
     /// Get immutable reference to a resource (async read lock)

@@ -285,16 +285,22 @@ mod tests {
 
     #[test]
     fn test_is_valid_with_invalid_values() {
-        let mut config = MarketConfig::default();
-        config.price_update_rate = 1.5; // Invalid
+        let config = MarketConfig {
+            price_update_rate: 1.5, // Invalid
+            ..Default::default()
+        };
         assert!(!config.is_valid());
 
-        let mut config = MarketConfig::default();
-        config.min_price_multiplier = 0.0; // Invalid (must be > 0.0)
+        let config = MarketConfig {
+            min_price_multiplier: 0.0, // Invalid (must be > 0.0)
+            ..Default::default()
+        };
         assert!(!config.is_valid());
 
-        let mut config = MarketConfig::default();
-        config.price_history_length = 0; // Invalid
+        let config = MarketConfig {
+            price_history_length: 0, // Invalid
+            ..Default::default()
+        };
         assert!(!config.is_valid());
     }
 

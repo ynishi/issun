@@ -1,8 +1,8 @@
 //! Test to verify Plugin derive macro correctly registers resources
 
+use async_trait::async_trait;
 use issun::builder::GameBuilder;
 use issun::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
-use async_trait::async_trait;
 
 #[derive(Clone, Debug, PartialEq, issun_macros::Resource)]
 struct TestConfig {

@@ -142,24 +142,30 @@ mod tests {
 
     #[test]
     fn test_validation_invalid_propagation_rate() {
-        let mut config = ContagionConfig::default();
-        config.global_propagation_rate = 1.5;
+        let config = ContagionConfig {
+            global_propagation_rate: 1.5,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_validation_invalid_mutation_rate() {
-        let mut config = ContagionConfig::default();
-        config.default_mutation_rate = -0.1;
+        let config = ContagionConfig {
+            default_mutation_rate: -0.1,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_validation_zero_lifetime() {
-        let mut config = ContagionConfig::default();
-        config.lifetime_turns = 0;
+        let config = ContagionConfig {
+            lifetime_turns: 0,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }

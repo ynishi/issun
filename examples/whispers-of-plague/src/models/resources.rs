@@ -63,10 +63,12 @@ impl District {
         }
     }
 
+    #[allow(dead_code)]
     pub fn healthy(&self) -> u32 {
         self.population.saturating_sub(self.infected + self.dead)
     }
 
+    #[allow(dead_code)]
     pub fn infection_rate(&self) -> f32 {
         if self.population == 0 {
             0.0
@@ -78,6 +80,7 @@ impl District {
 
 /// Virus strain with mutation tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Virus {
     pub name: String,
     pub spread_rate: f32,
@@ -85,6 +88,7 @@ pub struct Virus {
     pub mutation_stage: u32,
 }
 
+#[allow(dead_code)]
 impl Virus {
     pub fn initial() -> Self {
         Self {

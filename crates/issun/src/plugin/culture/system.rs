@@ -22,6 +22,7 @@ use super::state::CultureState;
 /// 5. Publishes state events (StressAccumulatedEvent, MemberBreakdownEvent, etc.)
 pub struct CultureSystem<H: CultureHook> {
     hook: H,
+    #[allow(dead_code)]
     service: CultureService,
 }
 

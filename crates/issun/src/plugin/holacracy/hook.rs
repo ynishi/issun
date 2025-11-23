@@ -148,7 +148,7 @@ mod tests {
     #[tokio::test]
     async fn test_default_hook_creation() {
         let _hook = DefaultHolacracyHook;
-        assert!(true); // Hook created successfully
+        // Hook created successfully - compilation is the test
     }
 
     #[tokio::test]

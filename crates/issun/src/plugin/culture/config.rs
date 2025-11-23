@@ -244,8 +244,10 @@ mod tests {
     #[test]
     fn test_is_valid_with_invalid_values() {
         // Manually create invalid config (bypassing constructor clamping)
-        let mut config = CultureConfig::default();
-        config.base_stress_rate = 1.5; // Invalid
+        let config = CultureConfig {
+            base_stress_rate: 1.5, // Invalid
+            ..Default::default()
+        };
 
         assert!(!config.is_valid());
     }

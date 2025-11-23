@@ -215,8 +215,8 @@ mod tests {
         let accuracies = hook.get_faction_accuracies(&truth, &registry).await;
 
         assert_eq!(accuracies.len(), 2);
-        assert_eq!(accuracies.get(&"faction_a".to_string()), Some(&0.7));
-        assert_eq!(accuracies.get(&"faction_b".to_string()), Some(&0.7));
+        assert_eq!(accuracies.get("faction_a"), Some(&0.7));
+        assert_eq!(accuracies.get("faction_b"), Some(&0.7));
     }
 
     #[tokio::test]
@@ -312,9 +312,9 @@ mod tests {
         let accuracies = hook.get_faction_accuracies(&truth, &registry).await;
 
         // Faction A has spy → high accuracy
-        assert_eq!(accuracies.get(&"faction_a".to_string()), Some(&0.95));
+        assert_eq!(accuracies.get("faction_a"), Some(&0.95));
 
         // Faction B has no spy → base accuracy
-        assert_eq!(accuracies.get(&"faction_b".to_string()), Some(&0.5));
+        assert_eq!(accuracies.get("faction_b"), Some(&0.5));
     }
 }

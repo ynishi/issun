@@ -247,7 +247,7 @@ mod tests {
         };
 
         // Spawn entity with 0 durability
-        let entity = state.spawn_entity(
+        let _entity = state.spawn_entity(
             Durability {
                 current: 0.0,
                 max: 100.0,

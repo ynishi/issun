@@ -288,26 +288,32 @@ mod tests {
 
     #[test]
     fn test_config_validation_weights_sum() {
-        let mut config = HolacracyConfig::default();
-        config.skill_match_weight = 0.5;
-        config.workload_weight = 0.3;
-        config.interest_weight = 0.1; // Sum = 0.9, should fail
+        let config = HolacracyConfig {
+            skill_match_weight: 0.5,
+            workload_weight: 0.3,
+            interest_weight: 0.1, // Sum = 0.9, should fail
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_config_validation_weight_range() {
-        let mut config = HolacracyConfig::default();
-        config.skill_match_weight = 1.5; // Out of range
+        let config = HolacracyConfig {
+            skill_match_weight: 1.5, // Out of range
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_config_validation_min_skill_level() {
-        let mut config = HolacracyConfig::default();
-        config.min_skill_level_for_bid = 1.5; // Out of range
+        let config = HolacracyConfig {
+            min_skill_level_for_bid: 1.5, // Out of range
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
@@ -352,16 +358,20 @@ mod tests {
 
     #[test]
     fn test_bidding_config_validation_duration() {
-        let mut config = BiddingConfig::default();
-        config.bidding_duration = 0;
+        let config = BiddingConfig {
+            bidding_duration: 0,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_bidding_config_validation_penalty_range() {
-        let mut config = BiddingConfig::default();
-        config.retraction_penalty = 1.5;
+        let config = BiddingConfig {
+            retraction_penalty: 1.5,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
@@ -397,24 +407,30 @@ mod tests {
 
     #[test]
     fn test_config_validation_max_tasks() {
-        let mut config = HolacracyConfig::default();
-        config.max_tasks_per_member = 0;
+        let config = HolacracyConfig {
+            max_tasks_per_member: 0,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_config_validation_max_roles() {
-        let mut config = HolacracyConfig::default();
-        config.max_roles_per_member = 0;
+        let config = HolacracyConfig {
+            max_roles_per_member: 0,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_config_validation_max_circle_depth() {
-        let mut config = HolacracyConfig::default();
-        config.max_circle_depth = 0;
+        let config = HolacracyConfig {
+            max_circle_depth: 0,
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }

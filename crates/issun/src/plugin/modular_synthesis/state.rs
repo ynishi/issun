@@ -206,8 +206,8 @@ mod tests {
 
         let recipes = state.get_discovered_recipes(&"player1".to_string());
         assert_eq!(recipes.len(), 2);
-        assert!(recipes.contains(&"recipe1".to_string()));
-        assert!(recipes.contains(&"recipe2".to_string()));
+        assert!(recipes.contains("recipe1"));
+        assert!(recipes.contains("recipe2"));
     }
 
     #[test]
