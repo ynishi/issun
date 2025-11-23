@@ -71,10 +71,20 @@ pub use transition::{
     OrgConverter,
     TransitionCondition,
     TransitionRegistry,
-    // Default implementations
+    // Default converter implementations (12 total covering all 16 transitions)
     HolacracyToHierarchyConverter,
+    HolacracyToSocialConverter,
+    HolacracyToCultureConverter,
+    HierarchyToHolacracyConverter,
     HierarchyToSocialConverter,
+    HierarchyToCultureConverter,
+    SocialToHolacracyConverter,
+    SocialToHierarchyConverter,
     SocialToCultureConverter,
+    CultureToHolacracyConverter,
+    CultureToHierarchyConverter,
+    CultureToSocialConverter,
+    // Default condition implementations
     ScalingCondition,
     DecayCondition,
     RadicalizationCondition,

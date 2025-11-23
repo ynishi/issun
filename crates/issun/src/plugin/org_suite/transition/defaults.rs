@@ -119,6 +119,313 @@ impl OrgConverter for SocialToCultureConverter {
     }
 }
 
+/// Default converter: Holacracy → Social
+///
+/// Direct transformation from self-organization to network without hierarchy phase.
+///
+/// # Data Mapping
+///
+/// - Task collaboration history → Trust relationships
+/// - Circle memberships → Network clusters
+/// - Skill proficiency → Social capital
+pub struct HolacracyToSocialConverter;
+
+impl OrgConverter for HolacracyToSocialConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Holacracy
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Social
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "social",
+            "converted_from": "holacracy",
+            "network_edges": source_data.get("collaborations").unwrap_or(&json!([])),
+            "clusters": source_data.get("circles").unwrap_or(&json!([])),
+            "social_capital": source_data.get("skill_scores").unwrap_or(&json!({})),
+            "note": "Converted from task-based collaboration to social influence network"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Holacracy → Culture
+///
+/// Rapid radicalization from self-organizing collective to cult.
+///
+/// # Data Mapping
+///
+/// - Shared purpose → Dogma
+/// - High-performing members → Zealots
+/// - Circle rituals → Cultural practices
+pub struct HolacracyToCultureConverter;
+
+impl OrgConverter for HolacracyToCultureConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Holacracy
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Culture
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "culture",
+            "converted_from": "holacracy",
+            "dogmas": source_data.get("shared_purpose").unwrap_or(&json!([])),
+            "zealots": source_data.get("high_performers").unwrap_or(&json!([])),
+            "rituals": source_data.get("circle_practices").unwrap_or(&json!([])),
+            "note": "Converted from self-organizing purpose to cultural zealotry"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Hierarchy → Holacracy
+///
+/// Organizational reform from bureaucracy to self-organization.
+///
+/// # Data Mapping
+///
+/// - Departments → Circles
+/// - Positions → Roles
+/// - Command queue → Task pool
+/// - Middle management eliminated
+pub struct HierarchyToHolacracyConverter;
+
+impl OrgConverter for HierarchyToHolacracyConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Hierarchy
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Holacracy
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "holacracy",
+            "converted_from": "hierarchy",
+            "circles": source_data.get("departments").unwrap_or(&json!([])),
+            "roles": source_data.get("positions").unwrap_or(&json!([])),
+            "task_pool": source_data.get("command_queue").unwrap_or(&json!([])),
+            "note": "Converted from hierarchical departments to self-organizing circles"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Hierarchy → Culture
+///
+/// Authoritarian regime becomes personality cult.
+///
+/// # Data Mapping
+///
+/// - Leader → Divine figure
+/// - Orders → Sacred commandments
+/// - Loyalty → Fanatical devotion
+pub struct HierarchyToCultureConverter;
+
+impl OrgConverter for HierarchyToCultureConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Hierarchy
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Culture
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "culture",
+            "converted_from": "hierarchy",
+            "divine_leader": source_data.get("top_leader").unwrap_or(&json!(null)),
+            "commandments": source_data.get("orders").unwrap_or(&json!([])),
+            "devotion_level": source_data.get("loyalty_average").unwrap_or(&json!(0.0)),
+            "note": "Converted from hierarchical authority to personality cult"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Social → Holacracy
+///
+/// Network coalesces into purposeful self-organization.
+///
+/// # Data Mapping
+///
+/// - Influential members → Circle leads
+/// - Network clusters → Circles
+/// - Shared goals → Task definitions
+pub struct SocialToHolacracyConverter;
+
+impl OrgConverter for SocialToHolacracyConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Social
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Holacracy
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "holacracy",
+            "converted_from": "social",
+            "circles": source_data.get("clusters").unwrap_or(&json!([])),
+            "circle_leads": source_data.get("influential_members").unwrap_or(&json!([])),
+            "tasks": source_data.get("shared_goals").unwrap_or(&json!([])),
+            "note": "Converted from social network to purposeful self-organization"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Social → Hierarchy
+///
+/// Informal network formalizes into hierarchy.
+///
+/// # Data Mapping
+///
+/// - High-influence members → Leaders
+/// - Network structure → Reporting hierarchy
+/// - Favors owed → Formal obligations
+pub struct SocialToHierarchyConverter;
+
+impl OrgConverter for SocialToHierarchyConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Social
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Hierarchy
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "hierarchy",
+            "converted_from": "social",
+            "leaders": source_data.get("high_influence").unwrap_or(&json!([])),
+            "reporting_structure": source_data.get("network_edges").unwrap_or(&json!([])),
+            "formal_obligations": source_data.get("favors_owed").unwrap_or(&json!([])),
+            "note": "Converted from informal influence network to formal hierarchy"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Culture → Holacracy
+///
+/// Cult deprogramming into rational self-organization.
+///
+/// # Data Mapping
+///
+/// - Dogmas → Shared principles
+/// - Rituals → Work practices
+/// - Former zealots → Team members
+pub struct CultureToHolacracyConverter;
+
+impl OrgConverter for CultureToHolacracyConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Culture
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Holacracy
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "holacracy",
+            "converted_from": "culture",
+            "principles": source_data.get("dogmas").unwrap_or(&json!([])),
+            "practices": source_data.get("rituals").unwrap_or(&json!([])),
+            "members": source_data.get("zealots").unwrap_or(&json!([])),
+            "note": "Converted from cultural dogma to rational self-organization"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Culture → Hierarchy
+///
+/// Cult institutionalizes into formal structure.
+///
+/// # Data Mapping
+///
+/// - Charismatic leader → Formal authority
+/// - Inner circle → Executive committee
+/// - Dogmas → Official policies
+pub struct CultureToHierarchyConverter;
+
+impl OrgConverter for CultureToHierarchyConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Culture
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Hierarchy
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "hierarchy",
+            "converted_from": "culture",
+            "formal_leader": source_data.get("charismatic_leader").unwrap_or(&json!(null)),
+            "executive_committee": source_data.get("inner_circle").unwrap_or(&json!([])),
+            "policies": source_data.get("dogmas").unwrap_or(&json!([])),
+            "note": "Converted from cultural movement to institutional hierarchy"
+        });
+
+        Ok(converted)
+    }
+}
+
+/// Default converter: Culture → Social
+///
+/// Cult dissolution into informal networks.
+///
+/// # Data Mapping
+///
+/// - Former members → Network nodes
+/// - Shared beliefs → Network bonds
+/// - Charisma → Social influence
+pub struct CultureToSocialConverter;
+
+impl OrgConverter for CultureToSocialConverter {
+    fn from_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Culture
+    }
+
+    fn to_archetype(&self) -> OrgArchetype {
+        OrgArchetype::Social
+    }
+
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError> {
+        let converted = json!({
+            "archetype": "social",
+            "converted_from": "culture",
+            "network_nodes": source_data.get("members").unwrap_or(&json!([])),
+            "bonds": source_data.get("shared_beliefs").unwrap_or(&json!([])),
+            "influence_map": source_data.get("charisma_scores").unwrap_or(&json!({})),
+            "note": "Converted from cultural cult to informal social network"
+        });
+
+        Ok(converted)
+    }
+}
+
 // ========== Default Conditions ==========
 
 /// Scaling condition: Triggers when member count exceeds threshold
@@ -311,6 +618,160 @@ mod tests {
         let result = converter.convert(&source).unwrap();
         assert_eq!(result["archetype"], "culture");
         assert_eq!(result["fervor"], 0.9);
+    }
+
+    #[test]
+    fn test_holacracy_to_social_converter() {
+        let converter = HolacracyToSocialConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Social);
+
+        let source = json!({
+            "collaborations": [{"a": "b"}],
+            "circles": ["circle1"],
+            "skill_scores": {"member1": 0.9}
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "social");
+        assert_eq!(result["converted_from"], "holacracy");
+    }
+
+    #[test]
+    fn test_holacracy_to_culture_converter() {
+        let converter = HolacracyToCultureConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Culture);
+
+        let source = json!({
+            "shared_purpose": ["mission1"],
+            "high_performers": ["member1", "member2"],
+            "circle_practices": ["daily_standup"]
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "culture");
+        assert_eq!(result["converted_from"], "holacracy");
+    }
+
+    #[test]
+    fn test_hierarchy_to_holacracy_converter() {
+        let converter = HierarchyToHolacracyConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Holacracy);
+
+        let source = json!({
+            "departments": ["engineering", "sales"],
+            "positions": ["dev", "manager"],
+            "command_queue": ["task1"]
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "holacracy");
+        assert_eq!(result["converted_from"], "hierarchy");
+    }
+
+    #[test]
+    fn test_hierarchy_to_culture_converter() {
+        let converter = HierarchyToCultureConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Culture);
+
+        let source = json!({
+            "top_leader": "supreme_leader",
+            "orders": ["order1", "order2"],
+            "loyalty_average": 0.95
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "culture");
+        assert_eq!(result["converted_from"], "hierarchy");
+        assert_eq!(result["devotion_level"], 0.95);
+    }
+
+    #[test]
+    fn test_social_to_holacracy_converter() {
+        let converter = SocialToHolacracyConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Holacracy);
+
+        let source = json!({
+            "clusters": ["cluster1", "cluster2"],
+            "influential_members": ["leader1"],
+            "shared_goals": ["goal1"]
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "holacracy");
+        assert_eq!(result["converted_from"], "social");
+    }
+
+    #[test]
+    fn test_social_to_hierarchy_converter() {
+        let converter = SocialToHierarchyConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Hierarchy);
+
+        let source = json!({
+            "high_influence": ["influencer1"],
+            "network_edges": [{"from": "A", "to": "B"}],
+            "favors_owed": ["favor1"]
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "hierarchy");
+        assert_eq!(result["converted_from"], "social");
+    }
+
+    #[test]
+    fn test_culture_to_holacracy_converter() {
+        let converter = CultureToHolacracyConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Holacracy);
+
+        let source = json!({
+            "dogmas": ["belief1", "belief2"],
+            "rituals": ["ritual1"],
+            "zealots": ["member1", "member2"]
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "holacracy");
+        assert_eq!(result["converted_from"], "culture");
+    }
+
+    #[test]
+    fn test_culture_to_hierarchy_converter() {
+        let converter = CultureToHierarchyConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Hierarchy);
+
+        let source = json!({
+            "charismatic_leader": "leader1",
+            "inner_circle": ["member1", "member2"],
+            "dogmas": ["dogma1"]
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "hierarchy");
+        assert_eq!(result["converted_from"], "culture");
+    }
+
+    #[test]
+    fn test_culture_to_social_converter() {
+        let converter = CultureToSocialConverter;
+        assert_eq!(converter.from_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.to_archetype(), OrgArchetype::Social);
+
+        let source = json!({
+            "members": ["member1", "member2"],
+            "shared_beliefs": ["belief1"],
+            "charisma_scores": {"member1": 0.8}
+        });
+
+        let result = converter.convert(&source).unwrap();
+        assert_eq!(result["archetype"], "social");
+        assert_eq!(result["converted_from"], "culture");
     }
 
     // ========== Condition Tests ==========
