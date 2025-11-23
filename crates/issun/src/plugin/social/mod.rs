@@ -57,8 +57,10 @@ pub use events::{
 mod hook;
 pub use hook::{DefaultSocialHook, SocialHook};
 
-// Phase 4c: System (TODO)
-// mod system;
+// Phase 4c: System
+mod system;
+pub use system::SocialSystem;
 
-// Phase 5: Plugin (TODO)
-// mod plugin;
+// Phase 5: Plugin
+mod plugin;
+pub use plugin::SocialPlugin;
