@@ -23,11 +23,11 @@ use serde_json::json;
 pub struct HolacracyToHierarchyConverter;
 
 impl OrgConverter for HolacracyToHierarchyConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Holacracy
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Hierarchy
     }
 
@@ -62,11 +62,11 @@ impl OrgConverter for HolacracyToHierarchyConverter {
 pub struct HierarchyToSocialConverter;
 
 impl OrgConverter for HierarchyToSocialConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Hierarchy
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Social
     }
 
@@ -97,11 +97,11 @@ impl OrgConverter for HierarchyToSocialConverter {
 pub struct SocialToCultureConverter;
 
 impl OrgConverter for SocialToCultureConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Social
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Culture
     }
 
@@ -131,11 +131,11 @@ impl OrgConverter for SocialToCultureConverter {
 pub struct HolacracyToSocialConverter;
 
 impl OrgConverter for HolacracyToSocialConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Holacracy
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Social
     }
 
@@ -165,11 +165,11 @@ impl OrgConverter for HolacracyToSocialConverter {
 pub struct HolacracyToCultureConverter;
 
 impl OrgConverter for HolacracyToCultureConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Holacracy
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Culture
     }
 
@@ -200,11 +200,11 @@ impl OrgConverter for HolacracyToCultureConverter {
 pub struct HierarchyToHolacracyConverter;
 
 impl OrgConverter for HierarchyToHolacracyConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Hierarchy
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Holacracy
     }
 
@@ -234,11 +234,11 @@ impl OrgConverter for HierarchyToHolacracyConverter {
 pub struct HierarchyToCultureConverter;
 
 impl OrgConverter for HierarchyToCultureConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Hierarchy
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Culture
     }
 
@@ -268,11 +268,11 @@ impl OrgConverter for HierarchyToCultureConverter {
 pub struct SocialToHolacracyConverter;
 
 impl OrgConverter for SocialToHolacracyConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Social
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Holacracy
     }
 
@@ -302,11 +302,11 @@ impl OrgConverter for SocialToHolacracyConverter {
 pub struct SocialToHierarchyConverter;
 
 impl OrgConverter for SocialToHierarchyConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Social
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Hierarchy
     }
 
@@ -336,11 +336,11 @@ impl OrgConverter for SocialToHierarchyConverter {
 pub struct CultureToHolacracyConverter;
 
 impl OrgConverter for CultureToHolacracyConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Culture
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Holacracy
     }
 
@@ -370,11 +370,11 @@ impl OrgConverter for CultureToHolacracyConverter {
 pub struct CultureToHierarchyConverter;
 
 impl OrgConverter for CultureToHierarchyConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Culture
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Hierarchy
     }
 
@@ -404,11 +404,11 @@ impl OrgConverter for CultureToHierarchyConverter {
 pub struct CultureToSocialConverter;
 
 impl OrgConverter for CultureToSocialConverter {
-    fn from_archetype(&self) -> OrgArchetype {
+    fn source_archetype(&self) -> OrgArchetype {
         OrgArchetype::Culture
     }
 
-    fn to_archetype(&self) -> OrgArchetype {
+    fn target_archetype(&self) -> OrgArchetype {
         OrgArchetype::Social
     }
 
@@ -575,8 +575,8 @@ mod tests {
     #[test]
     fn test_holacracy_to_hierarchy_converter() {
         let converter = HolacracyToHierarchyConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Holacracy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Hierarchy);
 
         let source = json!({
             "circles": ["engineering", "sales"],
@@ -592,8 +592,8 @@ mod tests {
     #[test]
     fn test_hierarchy_to_social_converter() {
         let converter = HierarchyToSocialConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Hierarchy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Social);
 
         let source = json!({
             "relationships": [{"from": "A", "to": "B"}],
@@ -607,8 +607,8 @@ mod tests {
     #[test]
     fn test_social_to_culture_converter() {
         let converter = SocialToCultureConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Social);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Culture);
 
         let source = json!({
             "factions": ["faction_a", "faction_b"],
@@ -623,8 +623,8 @@ mod tests {
     #[test]
     fn test_holacracy_to_social_converter() {
         let converter = HolacracyToSocialConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Holacracy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Social);
 
         let source = json!({
             "collaborations": [{"a": "b"}],
@@ -640,8 +640,8 @@ mod tests {
     #[test]
     fn test_holacracy_to_culture_converter() {
         let converter = HolacracyToCultureConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Holacracy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Culture);
 
         let source = json!({
             "shared_purpose": ["mission1"],
@@ -657,8 +657,8 @@ mod tests {
     #[test]
     fn test_hierarchy_to_holacracy_converter() {
         let converter = HierarchyToHolacracyConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Hierarchy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Holacracy);
 
         let source = json!({
             "departments": ["engineering", "sales"],
@@ -674,8 +674,8 @@ mod tests {
     #[test]
     fn test_hierarchy_to_culture_converter() {
         let converter = HierarchyToCultureConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Hierarchy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Culture);
 
         let source = json!({
             "top_leader": "supreme_leader",
@@ -692,8 +692,8 @@ mod tests {
     #[test]
     fn test_social_to_holacracy_converter() {
         let converter = SocialToHolacracyConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Social);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Holacracy);
 
         let source = json!({
             "clusters": ["cluster1", "cluster2"],
@@ -709,8 +709,8 @@ mod tests {
     #[test]
     fn test_social_to_hierarchy_converter() {
         let converter = SocialToHierarchyConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Social);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Hierarchy);
 
         let source = json!({
             "high_influence": ["influencer1"],
@@ -726,8 +726,8 @@ mod tests {
     #[test]
     fn test_culture_to_holacracy_converter() {
         let converter = CultureToHolacracyConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Culture);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Holacracy);
 
         let source = json!({
             "dogmas": ["belief1", "belief2"],
@@ -743,8 +743,8 @@ mod tests {
     #[test]
     fn test_culture_to_hierarchy_converter() {
         let converter = CultureToHierarchyConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Culture);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Hierarchy);
 
         let source = json!({
             "charismatic_leader": "leader1",
@@ -760,8 +760,8 @@ mod tests {
     #[test]
     fn test_culture_to_social_converter() {
         let converter = CultureToSocialConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Culture);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Social);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Culture);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Social);
 
         let source = json!({
             "members": ["member1", "member2"],

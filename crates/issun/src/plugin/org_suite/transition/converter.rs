@@ -9,10 +9,10 @@ use crate::plugin::org_suite::types::{OrgArchetype, OrgSuiteError};
 /// representation for plugin interoperability.
 pub trait OrgConverter: Send + Sync {
     /// Get the source archetype
-    fn from_archetype(&self) -> OrgArchetype;
+    fn source_archetype(&self) -> OrgArchetype;
 
     /// Get the target archetype
-    fn to_archetype(&self) -> OrgArchetype;
+    fn target_archetype(&self) -> OrgArchetype;
 
     /// Convert organization data from source to target archetype
     ///
@@ -23,10 +23,7 @@ pub trait OrgConverter: Send + Sync {
     /// # Returns
     ///
     /// JSON representation of the target organization data, or error if conversion fails
-    fn convert(
-        &self,
-        source_data: &serde_json::Value,
-    ) -> Result<serde_json::Value, OrgSuiteError>;
+    fn convert(&self, source_data: &serde_json::Value) -> Result<serde_json::Value, OrgSuiteError>;
 }
 
 #[cfg(test)]
@@ -38,11 +35,11 @@ mod tests {
     struct MockConverter;
 
     impl OrgConverter for MockConverter {
-        fn from_archetype(&self) -> OrgArchetype {
+        fn source_archetype(&self) -> OrgArchetype {
             OrgArchetype::Holacracy
         }
 
-        fn to_archetype(&self) -> OrgArchetype {
+        fn target_archetype(&self) -> OrgArchetype {
             OrgArchetype::Hierarchy
         }
 
@@ -63,8 +60,8 @@ mod tests {
     #[test]
     fn test_mock_converter() {
         let converter = MockConverter;
-        assert_eq!(converter.from_archetype(), OrgArchetype::Holacracy);
-        assert_eq!(converter.to_archetype(), OrgArchetype::Hierarchy);
+        assert_eq!(converter.source_archetype(), OrgArchetype::Holacracy);
+        assert_eq!(converter.target_archetype(), OrgArchetype::Hierarchy);
 
         let source = json!({"members": 50});
         let result = converter.convert(&source).unwrap();

@@ -132,6 +132,7 @@ pub trait SocialHook: Send + Sync {
     /// - Affect reputation systems
     /// - Create misinformation mechanics
     /// - Trigger social events
+    #[allow(clippy::too_many_arguments)]
     async fn on_gossip_spread(
         &self,
         _faction_id: &FactionId,

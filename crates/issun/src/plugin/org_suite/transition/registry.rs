@@ -1,9 +1,9 @@
 //! Transition registry for managing converters and conditions
 
-use std::collections::HashMap;
-use super::converter::OrgConverter;
 use super::condition::TransitionCondition;
+use super::converter::OrgConverter;
 use crate::plugin::org_suite::types::{OrgArchetype, OrgSuiteError};
+use std::collections::HashMap;
 
 /// Registry for managing available transitions
 ///
@@ -32,7 +32,7 @@ impl TransitionRegistry {
     ///
     /// * `converter` - Converter implementation for transforming organization data
     pub fn register_converter(&mut self, converter: Box<dyn OrgConverter>) {
-        let key = (converter.from_archetype(), converter.to_archetype());
+        let key = (converter.source_archetype(), converter.target_archetype());
         self.converters.insert(key, converter);
     }
 
@@ -104,8 +104,8 @@ impl Default for TransitionRegistry {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::condition::ConditionContext;
+    use super::*;
     use crate::plugin::org_suite::types::TransitionTrigger;
 
     // Mock converter
@@ -115,11 +115,11 @@ mod tests {
     }
 
     impl OrgConverter for MockConverter {
-        fn from_archetype(&self) -> OrgArchetype {
+        fn source_archetype(&self) -> OrgArchetype {
             self.from
         }
 
-        fn to_archetype(&self) -> OrgArchetype {
+        fn target_archetype(&self) -> OrgArchetype {
             self.to
         }
 
@@ -156,10 +156,7 @@ mod tests {
 
         registry.register_converter(converter);
 
-        assert!(registry.is_transition_valid(
-            OrgArchetype::Holacracy,
-            OrgArchetype::Hierarchy
-        ));
+        assert!(registry.is_transition_valid(OrgArchetype::Holacracy, OrgArchetype::Hierarchy));
 
         let result = registry.get_converter(OrgArchetype::Holacracy, OrgArchetype::Hierarchy);
         assert!(result.is_ok());
