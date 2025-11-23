@@ -1,5 +1,5 @@
 use crate::hooks::PlagueContagionHook;
-use crate::models::GameScene;
+use crate::models::{CityMap, GameScene};
 use crate::plugins::WinConditionPlugin;
 use issun::auto_pump;
 use issun::event::EventBus;
@@ -61,6 +61,34 @@ impl GameSceneData {
                         }
                         Err(e) => {
                             self.log_messages.insert(0, format!("⚠️  Propagation error: {}", e));
+                        }
+                    }
+                }
+
+                // 2.5. Update district statistics from ContagionState
+                {
+                    use std::collections::HashMap;
+
+                    let contagion_state = resources
+                        .get::<ContagionState>()
+                        .await
+                        .expect("ContagionState not found");
+
+                    // Count infections per district
+                    let mut infection_counts: HashMap<String, u32> = HashMap::new();
+                    for (_id, contagion) in contagion_state.all_contagions() {
+                        // Only count disease contagions
+                        if matches!(contagion.content, ContagionContent::Disease { .. }) {
+                            for node_id in &contagion.spread {
+                                *infection_counts.entry(node_id.clone()).or_insert(0) += 1;
+                            }
+                        }
+                    }
+
+                    // Update CityMap districts
+                    if let Some(mut city_map) = resources.get_mut::<CityMap>().await {
+                        for district in &mut city_map.districts {
+                            district.infected = infection_counts.get(&district.id).copied().unwrap_or(0);
                         }
                     }
                 }
