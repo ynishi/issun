@@ -37,6 +37,7 @@ pub mod config;
 pub mod state;
 pub mod events;
 pub mod transition;
+pub mod service;
 
 // Re-exports for convenience
 pub use types::{
@@ -49,6 +50,7 @@ pub use types::{
 
 pub use config::OrgSuiteConfig;
 pub use state::OrgSuiteState;
+pub use service::TransitionService;
 
 pub use events::{
     // Command events
@@ -65,4 +67,11 @@ pub use transition::{
     OrgConverter,
     TransitionCondition,
     TransitionRegistry,
+    // Default implementations
+    HolacracyToHierarchyConverter,
+    HierarchyToSocialConverter,
+    SocialToCultureConverter,
+    ScalingCondition,
+    DecayCondition,
+    RadicalizationCondition,
 };
