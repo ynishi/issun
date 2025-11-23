@@ -181,6 +181,182 @@ Reputation management with multiple factions and relationship tracking.
 
 ---
 
+## 🏛️ Organization & Society Plugins
+
+### ChainOfCommandPlugin (`issun:chain_of_command`)
+**Status**: ✅ Production Ready
+
+Organizational hierarchy and command structure with dynamic promotion/demotion and order compliance systems.
+
+**Components**:
+- `HierarchyService` - Order compliance calculations, promotion/demotion logic
+- `HierarchySystem` - Command chain orchestration, loyalty/morale tracking
+- `HierarchyState` (Runtime State) - Organizational hierarchy per faction
+- `RankDefinitions` (Resource) - Rank levels and authority definitions
+
+**Features**:
+- **Hierarchy Structure**: Tree-like organization with superior-subordinate relationships
+- **Rank System**: Defined levels with authority and subordinate capacity
+- **Promotion/Demotion**: Dynamic rank changes based on tenure, loyalty, and custom conditions
+- **Order System**: Commands issued through chain-of-command with compliance checks
+- **Loyalty & Morale**: Dynamic values affecting order compliance and organizational stability
+
+**Hook**: `ChainOfCommandHook` - Custom promotion rules, order compliance calculations
+
+**Use Cases**:
+- Military organizations with rank structure
+- Corporate hierarchies with promotion ladders
+- Criminal organizations with loyalty mechanics
+- Any command-and-control structure
+
+**80/20 Split**:
+- 80% Framework: Hierarchy structure, order system, promotion mechanics
+- 20% Game: Rank definitions, loyalty rules, order types
+
+---
+
+### CulturePlugin (`issun:culture`)
+**Status**: ✅ Production Ready
+
+Organizational culture and memetic behavior where "atmosphere" and implicit rules drive member behavior.
+
+**Components**:
+- `CultureService` - Culture-personality alignment calculations, stress/fervor dynamics
+- `CultureSystem` - Culture propagation, member wellbeing tracking
+- `CultureState` (Runtime State) - Organizational culture per faction
+- `CultureConfig` (Resource) - Stress/fervor rate configuration
+
+**Features**:
+- **Culture Tags**: Memetic DNA defining organizational atmosphere (RiskTaking, Fanatic, PsychologicalSafety, etc.)
+- **Personality Traits**: Individual member temperament (Cautious, Bold, Zealous, etc.)
+- **Alignment**: Culture-personality fit affecting stress and fervor
+- **Stress/Fervor**: Dynamic values showing member wellbeing and devotion
+
+**Hook**: `CultureHook` - Custom alignment calculation, culture propagation
+
+**Use Cases**:
+- Cult organizations with fanatical behavior
+- Corporate culture simulation
+- Community atmosphere dynamics
+- Ideological movements
+
+**80/20 Split**:
+- 80% Framework: Alignment system, stress/fervor mechanics, culture propagation
+- 20% Game: Culture tags, personality traits, alignment rules
+
+---
+
+### SocialPlugin (`issun:social`)
+**Status**: ✅ Production Ready
+
+Political network and influence dynamics simulating informal power structures and social capital.
+
+**Components**:
+- `NetworkAnalysisService` - Centrality calculations, network metrics
+- `SocialSystem` - Faction dynamics, political action orchestration
+- `SocialState` (Runtime State) - Social network graph per faction
+- `SocialConfig` (Resource) - Centrality weights, decay rates
+
+**Features**:
+- **Social Network**: Graph-based relationship tracking (trust, favors, secrets)
+- **Centrality Metrics**: Detect "shadow leaders" with high influence
+- **Social Capital**: Track trust, favors, and political leverage
+- **Faction Dynamics**: Coalition formation, splits, merges
+- **Political Actions**: Lobbying, bribery, gossip, favor exchange
+
+**Hook**: `SocialHook` - Custom influence calculations, political action effects
+
+**Use Cases**:
+- Political intrigue and backstabbing
+- Informal power structures (bureaucracies, corporations)
+- Resistance networks without formal leadership
+- Social deduction games
+
+**80/20 Split**:
+- 80% Framework: Network analysis, centrality metrics, faction dynamics
+- 20% Game: Political action types, influence rules
+
+---
+
+### HolacracyPlugin (`issun:holacracy`)
+**Status**: ✅ Production Ready
+
+Task-based self-organizing dynamics with purpose-driven role assignment and task markets.
+
+**Components**:
+- `TaskAssignmentService` - Bidding calculations, task-skill matching
+- `HolacracySystem` - Task pool management, automatic role assignment
+- `HolacracyState` (Runtime State) - Task pool and circle definitions
+- `HolacracyConfig` (Resource) - Bidding rules, assignment mode
+
+**Features**:
+- **Task Market**: Task pool where members autonomously claim tasks
+- **Bidding System**: Members bid on tasks based on skills and availability
+- **Dynamic Roles**: Role assignment changes based on current needs
+- **Circles**: Self-organizing groups with purpose-driven goals
+- **Skill Tags**: Competency-based task matching
+
+**Hook**: `HolacracyHook` - Custom bidding logic, task completion rewards
+
+**Use Cases**:
+- Modern tech companies (Agile/Scrum teams)
+- Self-organizing AI systems (drone swarms)
+- Decentralized organizations (DAOs)
+- Any organization without fixed hierarchy
+
+**80/20 Split**:
+- 80% Framework: Task market, bidding system, role assignment
+- 20% Game: Task types, skill definitions, bidding rules
+
+---
+
+### OrganizationSuitePlugin (`issun:org_suite`)
+**Status**: ✅ Production Ready
+
+Organizational metamorphosis framework enabling transitions between organizational archetypes.
+
+**Components**:
+- `TransitionService` - Archetype conversion logic, condition evaluation
+- `OrgSuiteSystem` - Automatic transition detection and execution
+- `OrgSuiteState` (Runtime State) - Faction archetype tracking, transition history
+- `TransitionRegistry` - Available converters and conditions
+
+**Features**:
+- **Four Archetypes**: Hierarchy, Culture, Social, Holacracy
+- **Archetype Transitions**: 12 default converters covering all transitions
+- **Condition System**: Automatic detection of transition triggers
+- **Data Conversion**: Intelligent mapping between archetype data (e.g., tax_rate → fervor)
+- **Transition History**: Track organizational evolution over time
+
+**Hook**: `OrgSuiteHook` - Custom transition conditions, post-transition effects
+
+**Default Converters**:
+- **Scaling** (Holacracy → Hierarchy): Small team becomes bureaucracy
+- **Decay** (Hierarchy → Social): Authority collapse into factionalism
+- **Radicalization** (Social → Culture): Political movement becomes cult
+- And 9 more covering all 16 possible transitions
+
+**Use Cases**:
+- Dynamic organizational evolution based on conditions
+- Simulate organizational lifecycle (startup → corporation → political entity → cult)
+- Player choices affecting organizational structure
+- Emergent narrative from organizational change
+
+**80/20 Split**:
+- 80% Framework: Converter abstraction, condition system, transition orchestration
+- 20% Game: Which transitions to enable, transition triggers, post-transition effects
+
+**Example**:
+```rust
+OrganizationSuitePlugin::new()
+    .with_transitions(
+        TransitionRegistry::default_transitions() // All 12 converters
+    )
+    .register_faction("rebels", OrgArchetype::Holacracy)
+```
+
+---
+
 ## 🧠 Cognition & Perception Plugins
 
 ### SubjectiveRealityPlugin (`issun:subjective_reality`)
@@ -293,6 +469,181 @@ ContagionPlugin::new()
 - Edges: Trade routes, social connections (with transmission rate and noise)
 - Supports directed and undirected graphs
 - Closed paths (cycles) fully supported
+
+---
+
+## ⚡ Chaos Layer Plugins
+
+### EntropyPluginECS (`issun:entropy`)
+**Status**: ✅ Production Ready
+
+High-performance entity degradation system where all entities with durability gradually decay over time.
+
+**Components**:
+- `EntropyService` - Pure decay calculations, material-based decay rates
+- `EntropySystemECS` - Parallel ECS update orchestration using `hecs` and `rayon`
+- `EntropyStateECS` (Runtime State) - hecs::World with durability entities
+- `EntropyConfig` (Resource) - Global decay settings, environmental modifiers
+
+**Features**:
+- **Parallel Processing**: Multi-core optimized for 100k+ entities
+- **Material-based Decay**: Different materials (Metal, Wood, Organic, Stone, Synthetic) decay at different rates
+- **Environmental Factors**: Humidity, pollution, temperature affect decay rates
+- **Maintenance System**: Track repairs, costs, and maintenance history
+- **Performance**: 10,000 entities ~1ms, 100,000 entities ~10ms per update
+- **Auto-destroy**: Optional automatic entity removal at zero durability
+
+**Hook**: `EntropyHookECS` - Custom decay modifiers, maintenance costs, destruction events
+
+**Decay Formula**:
+```
+final_rate = base_rate × material_modifier × environmental_modifiers × global_multiplier
+durability -= final_rate × delta_time
+```
+
+**Use Cases**:
+- Survival games (food spoilage, equipment degradation)
+- City builders (building decay, infrastructure maintenance)
+- Post-apocalyptic worlds (gradual environmental decay)
+- Economic pressure through maintenance costs
+
+**80/20 Split**:
+- 80% Framework: ECS architecture, parallel processing, decay calculations
+- 20% Game: Material types, environmental rules, maintenance costs
+
+**Performance Notes**:
+- Uses `par_iter()` for optimal CPU utilization
+- Suitable for large-scale simulations (cities, ecosystems)
+
+---
+
+### MarketPlugin (`issun:market`)
+**Status**: ✅ Production Ready
+
+Dynamic market economy where all items have real-time prices driven by supply and demand.
+
+**Components**:
+- `MarketService` - Supply/demand price calculations, trend detection
+- `MarketSystem` - Market event processing, price updates
+- `MarketState` (Runtime State) - Per-item market data, price history
+- `MarketConfig` (Resource) - Elasticity settings, volatility limits
+
+**Features**:
+- **Supply/Demand Dynamics**: Automatic price adjustment based on market forces
+- **Market Events**: DemandShock, SupplyShock, Rumors, Scarcity, Abundance
+- **Trend Detection**: Automatic detection of Rising, Falling, Stable, or Volatile markets
+- **Price History**: Track price changes over time for analysis and charts
+- **Volatility Control**: Configurable min/max price limits
+- **Hook System**: Extensible with game-specific market rules
+
+**Hook**: `MarketHook` - Custom price modifiers, event effects, market manipulation
+
+**Price Formula**:
+```
+base_price × (demand / supply)^elasticity
+```
+
+**Market Events**:
+- **Rumor**: Misinformation affecting prices (can be debunked)
+- **DemandShock**: Sudden demand change (pandemic, fashion trends)
+- **SupplyShock**: Sudden supply change (harvest failure, factory closure)
+- **Scarcity/Abundance**: Long-term supply changes
+
+**Use Cases**:
+- Trading games with dynamic economies
+- Survival games where scarcity drives prices
+- Business simulations with market manipulation
+- Strategy games with economic warfare (e.g., spread rumors to crash competitor prices)
+
+**80/20 Split**:
+- 80% Framework: Supply/demand calculations, event system, trend detection
+- 20% Game: Item definitions, event triggers, market manipulation mechanics
+
+**Example**:
+```rust
+MarketPlugin::new()
+    .with_config(
+        MarketConfig::default()
+            .with_demand_elasticity(0.7)
+            .with_supply_elasticity(0.6)
+    )
+    .register_item("water", 10.0)
+    .register_item("ammo", 50.0)
+```
+
+---
+
+### ModularSynthesisPlugin (`issun:modular_synthesis`)
+**Status**: ✅ Production Ready
+
+Universal crafting/synthesis system where modular components can be combined to create new things.
+
+**Components**:
+- `SynthesisService` - Recipe validation, dependency checking, success probability
+- `SynthesisSystem` - Time-based synthesis processing, discovery mechanics
+- `SynthesisState` (Runtime State) - Active synthesis processes
+- `DiscoveryState` (Runtime State) - Recipe discovery tracking
+- `RecipeRegistry` (Resource) - Recipe definitions with dependencies
+
+**Features**:
+- **Recipe System**: Complex recipes with ingredients, results, prerequisites
+- **Dependency Graphs**: Automatic prerequisite checking, circular dependency detection
+- **Discovery Mechanics**: Experimentation-based recipe discovery with attempt bonuses
+- **Time-based Synthesis**: Processes run over time with completion tracking
+- **Quality System**: Success probability affects result quality and quantity
+- **Material Conservation**: Partial refund on failure based on consumption rate
+- **Prerequisite System**: Technology/knowledge requirements for recipes
+
+**Hook**: `SynthesisHook` - Material consumption/refund, skill modifiers, discovery bonuses
+
+**Synthesis Formula**:
+```
+success_chance = base_success × skill_modifier × attempt_bonus
+quality = success_chance × quality_factor
+quantity = base_quantity × quality
+```
+
+**Discovery System**:
+- Unknown recipes can be discovered through experimentation
+- Discovery chance increases with each failed attempt
+- Configurable discovery probability and attempt bonuses
+
+**Use Cases**:
+- Crafting systems (weapons, potions, equipment)
+- Technology development (research + materials → new tech)
+- Cooking/alchemy systems with recipe discovery
+- Borderlands-style weapon generation (modular parts → unique weapons)
+- Any system combining components to create new things
+
+**80/20 Split**:
+- 80% Framework: Recipe system, dependency graph, time-based processing, discovery mechanics
+- 20% Game: Recipe definitions, material types, skill systems
+
+**Example**:
+```rust
+ModularSynthesisPlugin::new()
+    .with_config(
+        SynthesisConfig::default()
+            .with_discovery_chance(0.15)
+            .with_failure_consumption(0.3) // 30% materials lost on failure
+    )
+    .with_recipes(my_recipe_registry)
+```
+
+**Recipe Definition**:
+```rust
+RecipeDefinition {
+    id: "iron_sword",
+    ingredients: vec![
+        (IngredientType::Item("iron"), 3),
+        (IngredientType::Item("wood"), 1),
+    ],
+    results: vec![(ResultType::Item("iron_sword"), 1)],
+    time_cost: Duration::from_secs(60),
+    prerequisites: vec![TechType::Smithing],
+    base_success: 0.8,
+}
+```
 
 ---
 
@@ -504,19 +855,31 @@ Plugins that need `dependencies()` or async `initialize()` use manual implementa
 
 **Dungeon Crawlers**: DungeonPlugin, RoomBuffPlugin, CombatPlugin, InventoryPlugin
 
-**Strategy Games**: PolicyPlugin, FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin, **SubjectiveRealityPlugin**
+**Strategy Games**: PolicyPlugin, FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin, **SubjectiveRealityPlugin**, **ChainOfCommandPlugin**
 
-**4X Strategy Games**: FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin, **SubjectiveRealityPlugin** (Fog of War)
+**4X Strategy Games**: FactionPlugin, TerritoryPlugin, ResearchPlugin, EconomyPlugin, **SubjectiveRealityPlugin** (Fog of War), **MarketPlugin**, **ContagionPlugin** (Propaganda)
 
-**RPGs**: CombatPlugin, InventoryPlugin, LootPlugin, ReputationPlugin, SaveLoadPlugin
+**RPGs**: CombatPlugin, InventoryPlugin, LootPlugin, ReputationPlugin, SaveLoadPlugin, **ModularSynthesisPlugin** (Crafting)
 
-**Business Sims**: EconomyPlugin, PolicyPlugin, AccountingPlugin, SaveLoadPlugin
+**Business Sims**: EconomyPlugin, PolicyPlugin, AccountingPlugin, SaveLoadPlugin, **MarketPlugin**, **OrganizationSuitePlugin**
 
-**Plague/Pandemic Games**: **ContagionPlugin** (Disease spread), **SubjectiveRealityPlugin** (Perception), FactionPlugin, EconomyPlugin
+**Plague/Pandemic Games**: **ContagionPlugin** (Disease spread), **SubjectiveRealityPlugin** (Perception), FactionPlugin, EconomyPlugin, **MarketPlugin** (Scarcity)
 
-**Social Deduction Games**: **ContagionPlugin** (Rumor spread), **SubjectiveRealityPlugin** (Gossip), ReputationPlugin, FactionPlugin
+**Social Deduction Games**: **ContagionPlugin** (Rumor spread), **SubjectiveRealityPlugin** (Gossip), ReputationPlugin, FactionPlugin, **SocialPlugin**
 
-**Viral Marketing Sims**: **ContagionPlugin** (Trend propagation), EconomyPlugin, ReputationPlugin
+**Viral Marketing Sims**: **ContagionPlugin** (Trend propagation), EconomyPlugin, ReputationPlugin, **MarketPlugin**
+
+**Survival Games**: **EntropyPluginECS** (Decay), **MarketPlugin** (Scarcity), InventoryPlugin, **ModularSynthesisPlugin** (Crafting)
+
+**Post-Apocalyptic Games**: **EntropyPluginECS** (Decay), **MarketPlugin** (Volatile economy), **ContagionPlugin** (Disease/Rumors), **OrganizationSuitePlugin** (Faction evolution), **SubjectiveRealityPlugin**
+
+**Organization Management Games**: **ChainOfCommandPlugin** (Military/Corporate), **CulturePlugin** (Cult/Community), **SocialPlugin** (Politics), **HolacracyPlugin** (Startups/DAOs), **OrganizationSuitePlugin** (Dynamic transitions)
+
+**Military Strategy**: **ChainOfCommandPlugin**, FactionPlugin, TerritoryPlugin, **SubjectiveRealityPlugin** (Intelligence), **ContagionPlugin** (Propaganda)
+
+**Economic Warfare**: **MarketPlugin**, **ContagionPlugin** (Rumors to manipulate markets), **SubjectiveRealityPlugin** (Misinformation), EconomyPlugin
+
+**Borderlands-style Looter Shooters**: **ModularSynthesisPlugin** (Weapon generation), LootPlugin, InventoryPlugin, **MarketPlugin** (Vendor prices)
 
 ---
 
