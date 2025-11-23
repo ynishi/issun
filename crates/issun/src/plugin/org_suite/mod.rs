@@ -38,6 +38,8 @@ pub mod state;
 pub mod events;
 pub mod transition;
 pub mod service;
+pub mod hook;
+pub mod system;
 
 // Re-exports for convenience
 pub use types::{
@@ -51,6 +53,8 @@ pub use types::{
 pub use config::OrgSuiteConfig;
 pub use state::OrgSuiteState;
 pub use service::TransitionService;
+pub use hook::{OrgSuiteHook, DefaultOrgSuiteHook};
+pub use system::OrgSuiteSystem;
 
 pub use events::{
     // Command events
