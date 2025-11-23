@@ -42,6 +42,7 @@ pub mod subjective_reality;
 pub mod contagion;
 pub mod chain_of_command;
 pub mod market;
+pub mod modular_synthesis;
 pub mod territory;
 pub mod time;
 
@@ -549,6 +550,42 @@ pub use market::{
     MarketSystem,
     // Plugin (Phase 8) ✅
     MarketPlugin,
+};
+
+// ModularSynthesisPlugin exports (Phase 0-6 complete ✅)
+pub use modular_synthesis::{
+    // Types (Phase 1) ✅
+    SynthesisId,
+    // Note: RecipeId, EntityId not exported to avoid potential conflicts
+    // Note: ItemId not exported to avoid conflict with inventory::ItemId
+    // Use modular_synthesis::{RecipeId, EntityId, ItemId} instead
+    IngredientType,
+    Ingredient,
+    ResultType,
+    SynthesisResult,
+    CategoryId,
+    SynthesisStatus,
+    SynthesisOutcome,
+    SynthesisError,
+    // Config (Phase 2) ✅
+    SynthesisConfig,
+    // Recipe Registry (Phase 2) ✅
+    Recipe,
+    RecipeRegistry,
+    // State (Phase 3) ✅
+    Timestamp,
+    DiscoveryState,
+    ActiveSynthesis,
+    SynthesisState,
+    // Service (Phase 4) ✅
+    SynthesisService,
+    // Hook (Phase 5) ✅
+    SynthesisHook,
+    DefaultSynthesisHook,
+    // System (Phase 5) ✅
+    SynthesisSystem,
+    // Plugin (Phase 6) ✅
+    ModularSynthesisPlugin,
 };
 
 use crate::builder::RuntimeResourceEntry;

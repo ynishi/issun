@@ -25,6 +25,7 @@ crossterm = { workspace = true }
 rand = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+uuid = { workspace = true }
 figlet-rs = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
