@@ -71,6 +71,36 @@ impl GameSceneData {
                     }
                 }
 
+                // 2.4. Auto-spawn Rumor in Savior mode (AI opponent)
+                {
+                    let ctx = resources
+                        .get::<PlagueGameContext>()
+                        .await
+                        .expect("PlagueGameContext not found");
+
+                    if ctx.mode == GameMode::Savior {
+                        // 50% chance to spawn a rumor each turn
+                        if ctx.turn % 2 == 0 {
+                            let mut contagion_state = resources
+                                .get_mut::<ContagionState>()
+                                .await
+                                .expect("ContagionState not found");
+
+                            contagion_state.spawn_contagion(Contagion::new(
+                                format!("ai_rumor_{}", uuid::Uuid::new_v4()),
+                                ContagionContent::Political {
+                                    faction: "plague".to_string(),
+                                    claim: "The cure is dangerous!".to_string(),
+                                },
+                                "downtown",
+                                ctx.turn as u64,
+                            ));
+
+                            self.log_messages.insert(0, "⚠️  Enemy rumor detected!".into());
+                        }
+                    }
+                }
+
                 // 2.5. Update district statistics from ContagionState
                 {
                     use std::collections::HashSet;
