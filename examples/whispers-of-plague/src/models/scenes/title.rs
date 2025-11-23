@@ -1,5 +1,6 @@
 use crate::models::{GameMode, GameScene, PlagueGameContext};
 use issun::auto_pump;
+use issun::plugin::contagion::{Contagion, ContagionContent, ContagionState};
 use issun::prelude::*;
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -41,8 +42,28 @@ impl TitleSceneData {
                         ctx.turn = 1;
                     }
 
+                    // Savior mode: Spawn initial rumors in half of the districts
+                    if mode == GameMode::Savior {
+                        if let Some(mut contagion_state) = resources.get_mut::<ContagionState>().await {
+                            // Spawn rumors in 3 out of 5 districts
+                            let rumor_districts = vec!["industrial", "residential", "harbor"];
+
+                            for district in rumor_districts {
+                                contagion_state.spawn_contagion(Contagion::new(
+                                    format!("initial_rumor_{}", district),
+                                    ContagionContent::Political {
+                                        faction: "plague".to_string(),
+                                        claim: "The cure is dangerous!".to_string(),
+                                    },
+                                    district,
+                                    0,
+                                ));
+                            }
+                        }
+                    }
+
                     // Initial infection is already seeded in main.rs via ContagionState
-                    // No need to manually seed here
+                    // (Disease in downtown for both modes)
 
                     SceneTransition::Switch(GameScene::Game(super::GameSceneData::new()))
                 } else {

@@ -51,34 +51,6 @@ impl GameSceneData {
                     event_bus.publish(AdvanceTimeRequested);
                 }
 
-                // 1.5. Auto-spawn Rumor in Savior mode BEFORE propagation (AI opponent)
-                {
-                    let ctx = resources
-                        .get::<PlagueGameContext>()
-                        .await
-                        .expect("PlagueGameContext not found");
-
-                    if ctx.mode == GameMode::Savior && ctx.turn > 1 {
-                        // Spawn AI rumor every turn (except turn 1)
-                        let mut contagion_state = resources
-                            .get_mut::<ContagionState>()
-                            .await
-                            .expect("ContagionState not found");
-
-                        contagion_state.spawn_contagion(Contagion::new(
-                            format!("ai_rumor_{}", uuid::Uuid::new_v4()),
-                            ContagionContent::Political {
-                                faction: "plague".to_string(),
-                                claim: "The cure is dangerous!".to_string(),
-                            },
-                            "downtown",
-                            ctx.turn as u64,
-                        ));
-
-                        self.log_messages.insert(0, "📢 Enemy rumor spreading!".into());
-                    }
-                }
-
                 // 2. Propagate contagions (Scene orchestration)
                 // ContagionSystem doesn't implement System trait, so we call it directly
                 {
