@@ -55,3 +55,15 @@ pub use events::{
     TaskCancelledEvent,
     TaskCompletedEvent,
 };
+
+// Phase 4b: Hook
+mod hook;
+pub use hook::{DefaultHolacracyHook, HolacracyHook};
+
+// Phase 4c: System
+mod system;
+pub use system::HolacracySystem;
+
+// Phase 5: Plugin
+mod plugin;
+pub use plugin::HolacracyPlugin;

@@ -2,6 +2,7 @@
 //!
 //! Manages task pools, member assignments, circles, and organizational state.
 
+use crate::resources::Resource;
 use super::config::HolacracyConfig;
 use super::types::*;
 use serde::{Deserialize, Serialize};
@@ -401,6 +402,9 @@ impl Default for HolacracyState {
         Self::new()
     }
 }
+
+// Implement Resource trait for HolacracyState
+impl Resource for HolacracyState {}
 
 #[cfg(test)]
 mod tests {

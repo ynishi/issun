@@ -2,6 +2,7 @@
 //!
 //! Defines tunable parameters for task assignment, bidding, and self-organization.
 
+use crate::resources::Resource;
 use serde::{Deserialize, Serialize};
 
 /// Configuration for holacracy plugin
@@ -269,6 +270,9 @@ impl Default for BiddingConfig {
         }
     }
 }
+
+// Implement Resource trait for HolacracyConfig
+impl Resource for HolacracyConfig {}
 
 #[cfg(test)]
 mod tests {
