@@ -4,7 +4,7 @@ use crate::plugins::WinConditionPlugin;
 use issun::auto_pump;
 use issun::event::EventBus;
 use issun::plugin::contagion::{Contagion, ContagionContent, ContagionState, ContagionSystem};
-use issun::plugin::time::{AdvanceTimeRequested, DayChanged};
+use issun::plugin::time::AdvanceTimeRequested;
 use issun::prelude::*;
 use issun::ui::InputEvent;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,14 @@ impl GameSceneData {
             InputEvent::Char('n') | InputEvent::Char('N') => {
                 // === Next Turn (Event-driven + Scene orchestration) ===
 
-                // 1. Request time advancement (TurnBasedTimePlugin listens)
+                // 1. Increment turn counter (manual, since TimerSystem isn't called by GameRunner)
+                {
+                    if let Some(mut ctx) = resources.get_mut::<PlagueGameContext>().await {
+                        ctx.turn += 1;
+                    }
+                }
+
+                // 1.5. Request time advancement (for compatibility, though TimerSystem doesn't run)
                 {
                     let mut event_bus = resources
                         .get_mut::<EventBus>()
@@ -157,21 +164,10 @@ impl GameSceneData {
                     }
                 }
 
-                // 3. Check for DayChanged events and update turn counter
+                // 3. Log turn change
                 {
-                    let mut event_bus = resources
-                        .get_mut::<EventBus>()
-                        .await
-                        .expect("EventBus not found");
-                    let reader = event_bus.reader::<DayChanged>();
-
-                    for event in reader.iter() {
-                        self.log_messages.push(format!("=== Turn {} ===", event.day));
-
-                        // Update PlagueGameContext.turn to sync with TimePlugin
-                        if let Some(mut ctx) = resources.get_mut::<PlagueGameContext>().await {
-                            ctx.turn = event.day;
-                        }
+                    if let Some(ctx) = resources.get::<PlagueGameContext>().await {
+                        self.log_messages.push(format!("=== Turn {} ===", ctx.turn));
                     }
                 }
 
