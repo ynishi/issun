@@ -46,54 +46,41 @@ See [Architecture Guide](docs/ARCHITECTURE.md) for detailed guide and best pract
 
 ## 🎮 Built-in Plugins
 
-ISSUN provides production-ready plugins following the **80/20 pattern**:
-- Framework provides **80%** reusable logic
-- Games customize **20%** specific to their needs
+ISSUN provides a rich suite of production-ready plugins following the **80/20 pattern** (80% reusable logic, 20% game-specific customization).
 
-### ⚔️ CombatPlugin
-Turn-based combat with damage calculation and combat logging.
+#### **Core Gameplay**
+- **`CombatPlugin`**: Handles turn-based combat, including damage calculation and combat state.
+- **`InventoryPlugin`**: Provides generic item and inventory management for entities.
+- **`LootPlugin`**: Handles loot generation based on rarity, drop tables, and weighted randomness.
+- **`DungeonPlugin`**: Orchestrates dungeon progression, including floor advancement and room navigation.
+- **`RoomBuffPlugin`**: Manages the application and expiration of temporary buffs/debuffs within rooms or zones.
+- **`ActionPlugin`**: Provides a system for managing action points for characters or entities.
+- **`SaveLoadPlugin`**: Provides functionality for saving and loading the game state.
+- **`TimePlugin`**: Provides game time management, supporting both turn-based and continuous time.
 
-```rust
-GameBuilder::new()
-    .with_plugin(TurnBasedCombatPlugin::default())
-    .build()
-```
+#### **Strategy & Management**
+- **`EconomyPlugin`**: Simulates a resource-based economy with multiple currencies, wallets, and exchange rates.
+- **`MarketPlugin`**: Simulates a dynamic market with supply/demand, price changes, and market events.
+- **`PolicyPlugin`**: Implements a system of activatable policies, laws, or cards with various effects.
+- **`FactionPlugin`**: Manages factions, their relationships, and strategic operations.
+- **`TerritoryPlugin`**: Manages territory control, development, and their associated effects.
+- **`ResearchPlugin`**: Manages a technology tree, research projects, and progression.
+- **`ModularSynthesisPlugin`**: Manages a crafting or synthesis system based on recipes and ingredients.
 
-**Features**:
-- Turn counter and combat log
-- Damage calculation with defense
-- Score tracking
-- Trait-based combatants (`Combatant` trait)
+#### **Organizational & Social Simulation**
+- **`ChainOfCommandPlugin`**: Implements an organizational hierarchy with ranks, loyalty, and order-issuing.
+- **`CulturePlugin`**: Manages organizational culture, personality traits, and alignment.
+- **`ReputationPlugin`**: Tracks and manages reputation between different subjects or entities.
+- **`SocialPlugin`**: Models social interactions and relationships between entities.
+- **`HolacracyPlugin`**: Implements a holacratic organizational structure (a specific management system).
+- **`OrgSuitePlugin`**: A suite for modeling complex organizational archetypes and transitions.
 
-### 🎒 InventoryPlugin
-Generic item management system.
-
-```rust
-GameBuilder::new()
-    .with_plugin(InventoryPlugin::new())
-    .build()
-```
-
-**Features**:
-- Generic `Item` trait (works with any type)
-- Transfer items between inventories
-- Stack management
-- Remove/consume items
-
-### 🎁 LootPlugin
-Drop generation and rarity system.
-
-```rust
-GameBuilder::new()
-    .with_plugin(LootPlugin::new())
-    .build()
-```
-
-**Features**:
-- 5-tier rarity system (Common → Legendary)
-- Weighted random rarity selection
-- Configurable drop rates with multipliers
-- Multi-source drop counting
+#### **Utility & Advanced**
+- **`AccountingPlugin`**: Manages budgets, ledgers, and financial settlements between entities.
+- **`MetricsPlugin`**: A system for defining, recording, and reporting in-game metrics and analytics.
+- **`ContagionPlugin`**: Models the spread of effects or information through a network topology.
+- **`EntropyPlugin`**: A system for introducing decay or disorder into the game world.
+- **`SubjectiveRealityPlugin`**: A system for managing different perspectives or realities for entities.
 
 ## 🚀 Quick Start
 
