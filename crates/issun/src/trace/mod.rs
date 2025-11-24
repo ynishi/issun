@@ -19,6 +19,7 @@
 //! ```
 
 pub mod generator;
+pub mod macros;
 pub mod tracer;
 pub mod types;
 

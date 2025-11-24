@@ -36,6 +36,10 @@ pub struct EventBus {
 
     #[cfg(feature = "network")]
     network: Option<NetworkState>,
+
+    // Optional tracer for debugging event chains
+    tracer: Option<std::sync::Arc<std::sync::Mutex<crate::trace::EventChainTracer>>>,
+    current_frame: u64,
 }
 
 #[cfg(feature = "network")]
@@ -112,7 +116,37 @@ impl EventBus {
             channels: HashMap::new(),
             #[cfg(feature = "network")]
             network: None,
+            tracer: None,
+            current_frame: 0,
         }
+    }
+
+    /// Set a tracer for debugging event chains
+    pub fn set_tracer(
+        &mut self,
+        tracer: std::sync::Arc<std::sync::Mutex<crate::trace::EventChainTracer>>,
+    ) {
+        self.tracer = Some(tracer);
+    }
+
+    /// Clear the tracer
+    pub fn clear_tracer(&mut self) {
+        self.tracer = None;
+    }
+
+    /// Set the current frame number for tracing
+    pub fn set_frame(&mut self, frame: u64) {
+        self.current_frame = frame;
+        if let Some(ref tracer) = self.tracer {
+            if let Ok(mut t) = tracer.lock() {
+                t.set_frame(frame);
+            }
+        }
+    }
+
+    /// Get the current frame number
+    pub fn current_frame(&self) -> u64 {
+        self.current_frame
     }
 
     /// Publishes a new event.
@@ -126,6 +160,19 @@ impl EventBus {
     where
         E: Event + serde::Serialize,
     {
+        // Trace event publication
+        if let Some(ref tracer) = self.tracer {
+            if let Ok(mut t) = tracer.lock() {
+                t.record_simple(
+                    crate::trace::TraceEntryType::EventPublished {
+                        event_type: std::any::type_name::<E>().to_string(),
+                        event_id: format!("{}@{}", std::any::type_name::<E>(), self.current_frame),
+                    },
+                    "EventBus",
+                );
+            }
+        }
+
         // Always perform local dispatch
         let channel = self.channel_mut::<E>();
         channel.push(event.clone());
