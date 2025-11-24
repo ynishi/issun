@@ -312,7 +312,7 @@ impl<'a> Validator<'a> {
 
         for system in system_dependencies.keys() {
             if !visited.contains(system) {
-                if let Some(cycle) = self.detect_cycle_dfs(
+                if let Some(cycle) = Self::detect_cycle_dfs(
                     system,
                     &system_dependencies,
                     &mut visited,
@@ -327,7 +327,6 @@ impl<'a> Validator<'a> {
 
     /// DFS-based cycle detection
     fn detect_cycle_dfs(
-        &self,
         node: &str,
         graph: &HashMap<String, Vec<String>>,
         visited: &mut HashSet<String>,
@@ -342,7 +341,7 @@ impl<'a> Validator<'a> {
                 if !visited.contains(neighbor) {
                     path.push(neighbor.clone());
                     if let Some(cycle) =
-                        self.detect_cycle_dfs(neighbor, graph, visited, rec_stack, path)
+                        Self::detect_cycle_dfs(neighbor, graph, visited, rec_stack, path)
                     {
                         return Some(cycle);
                     }

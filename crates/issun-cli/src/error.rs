@@ -7,6 +7,7 @@ pub type Result<T> = std::result::Result<T, CliError>;
 
 /// CLI-specific errors
 #[derive(Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum CliError {
     /// Analyzer error
     #[error("Analysis error: {0}")]
