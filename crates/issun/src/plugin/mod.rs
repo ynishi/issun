@@ -36,6 +36,7 @@ pub mod entropy;
 pub mod faction;
 pub mod holacracy;
 pub mod inventory;
+pub mod logistics;
 pub mod loot;
 pub mod market;
 pub mod metrics;

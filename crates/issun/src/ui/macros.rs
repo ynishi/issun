@@ -154,6 +154,7 @@ mod tests {
     fn test_macro_compilation() {
         // This test ensures the macros compile correctly
         // Actual rendering would require a Frame and terminal setup
+        
         assert!(true);
     }
 }
