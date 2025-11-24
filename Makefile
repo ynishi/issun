@@ -172,7 +172,7 @@ release-patch: preflight
 	@echo "  - (Publish step is manual, see make publish)"
 	@echo ""
 	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	cargo release patch --execute --no-confirm
+	cargo release patch --execute --no-confirm --no-publish
 
 release-minor: preflight
 	@echo "🚀 Releasing MINOR version with cargo-release..."
@@ -183,7 +183,7 @@ release-minor: preflight
 	@echo "  - (Publish step is manual, see make publish)"
 	@echo ""
 	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	cargo release minor --execute --no-confirm
+	cargo release minor --execute --no-confirm --no-publish
 
 release: release-patch
 
