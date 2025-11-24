@@ -51,6 +51,7 @@ pub mod social;
 pub mod subjective_reality;
 pub mod territory;
 pub mod time;
+pub mod worldmap;
 
 // Re-exports for convenience
 pub use action::{
@@ -407,6 +408,58 @@ pub use time::{
     // Config
     TimeConfig,
     TurnBasedTimePlugin,
+};
+
+pub use worldmap::{
+    // Hook
+    DefaultWorldMapHook,
+    // Types
+    Encounter,
+    EncounterId,
+    // Events
+    EncounterResolvedEvent,
+    EncounterTriggeredEvent,
+    EntityPosition,
+    EntityPositionChangedEvent,
+    EntityTeleportRequested,
+    Location,
+    LocationDiscoverRequested,
+    LocationDiscoveredEvent,
+    LocationId,
+    LocationType,
+    Position,
+    Route,
+    RouteId,
+    TerrainType,
+    Travel,
+    TravelCancelRequested,
+    TravelCancelledEvent,
+    TravelCompleted,
+    TravelCompletedEvent,
+    TravelError,
+    TravelEvent,
+    TravelId,
+    TravelPauseRequested,
+    TravelPausedEvent,
+    TravelProgressEvent,
+    TravelResumeRequested,
+    TravelResumedEvent,
+    TravelStartRequested,
+    TravelStartedEvent,
+    TravelStatus,
+    // Config
+    WorldMapConfig,
+    WorldMapHook,
+    // Plugin
+    WorldMapPlugin,
+    // Registry
+    WorldMapRegistry,
+    // Service
+    WorldMapService,
+    // State
+    WorldMapState,
+    // System
+    WorldMapSystem,
 };
 
 pub use accounting::{
