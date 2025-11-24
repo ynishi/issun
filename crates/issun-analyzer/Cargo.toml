@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
+description = "Static analysis tools for ISSUN game framework code"
 
 [dependencies]
 # AST parsing

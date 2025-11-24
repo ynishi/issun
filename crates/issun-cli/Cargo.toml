@@ -5,6 +5,9 @@ edition = "2021"
 authors = ["ISSUN Contributors"]
 description = "Command-line interface for ISSUN game framework"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/ynishi/issun"
+homepage = "https://github.com/ynishi/issun"
+documentation = "https://docs.rs/issun"
 
 [[bin]]
 name = "issun"
