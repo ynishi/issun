@@ -18,5 +18,8 @@ Thumbs.db
 # Examples
 /examples/*/target/
 
+# Generated files
+*.mmd
+
 /workspace/
 certs/

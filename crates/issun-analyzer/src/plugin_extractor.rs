@@ -70,6 +70,7 @@ fn analyze_plugin_directory(dir: &Path) -> crate::Result<Option<PluginInfo>> {
         system: None,
         hooks: Vec::new(),
         events: Vec::new(),
+        hook_details: Vec::new(),
     };
 
     // Try to find system.rs
@@ -88,6 +89,11 @@ fn analyze_plugin_directory(dir: &Path) -> crate::Result<Option<PluginInfo>> {
     if hook_file.exists() {
         if let Ok(hooks) = extract_hook_traits(&hook_file) {
             plugin.hooks = hooks;
+        }
+
+        // Extract detailed hook information
+        if let Ok(hook_details) = extract_hook_details(&hook_file) {
+            plugin.hook_details = hook_details;
         }
     }
 
@@ -132,6 +138,29 @@ fn extract_hook_traits(hook_file: &Path) -> crate::Result<Vec<String>> {
     }
 
     Ok(hooks)
+}
+
+/// Extract detailed hook information from hook.rs
+fn extract_hook_details(hook_file: &Path) -> crate::Result<Vec<crate::types::HookInfo>> {
+    use syn::File;
+
+    let content = std::fs::read_to_string(hook_file).map_err(|e| {
+        crate::error::AnalyzerError::FileReadError {
+            path: hook_file.display().to_string(),
+            source: e,
+        }
+    })?;
+
+    let syntax_tree: File =
+        syn::parse_file(&content).map_err(|e| crate::error::AnalyzerError::ParseError {
+            path: hook_file.display().to_string(),
+            source: e,
+        })?;
+
+    let file_path = hook_file.display().to_string();
+    let hook_infos = crate::hook_extractor::extract_hook_traits(&file_path, &syntax_tree);
+
+    Ok(hook_infos)
 }
 
 /// Extract event type names from events.rs

@@ -58,6 +58,66 @@ pub struct SystemInfo {
     pub states: Vec<String>,
 }
 
+/// Hook method category based on naming convention
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum HookCategory {
+    /// Notification hooks: on_* methods (void return)
+    Notification,
+    /// Validation hooks: can_* methods (Result return)
+    Validation,
+    /// Lifecycle hooks: before_*/after_* methods
+    Lifecycle,
+    /// Calculation hooks: calculate_* methods
+    Calculation,
+    /// Generation hooks: generate_* methods
+    Generation,
+    /// Other/Unknown category
+    Other,
+}
+
+/// Hook method information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookMethod {
+    /// Method name
+    pub name: String,
+    /// Method category
+    pub category: HookCategory,
+    /// Parameter types (simplified representation)
+    pub params: Vec<String>,
+    /// Return type (simplified representation)
+    pub return_type: String,
+    /// Whether this method has a default implementation
+    pub has_default_impl: bool,
+}
+
+/// Hook trait information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookInfo {
+    /// Trait name
+    pub trait_name: String,
+    /// Module path
+    pub module_path: String,
+    /// Source file path
+    pub file_path: String,
+    /// Methods defined in this trait
+    pub methods: Vec<HookMethod>,
+}
+
+/// Hook call site information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookCall {
+    /// Hook trait being called
+    pub hook_trait: String,
+    /// Method name being called
+    pub method_name: String,
+    /// Caller (function/method name)
+    pub caller: String,
+    /// Source file path
+    pub file_path: String,
+    /// Line number (placeholder: 0)
+    pub line: usize,
+}
+
 /// Plugin information inferred from directory structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginInfo {
@@ -71,6 +131,8 @@ pub struct PluginInfo {
     pub hooks: Vec<String>,
     /// Event types defined in this plugin
     pub events: Vec<String>,
+    /// Detailed hook information (if analyzed)
+    pub hook_details: Vec<HookInfo>,
 }
 
 /// Complete analysis result for a project

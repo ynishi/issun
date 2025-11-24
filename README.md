@@ -104,6 +104,39 @@ replayer.replay_all(&mut bus)?;
 - Random-access and sequential replay modes
 - Useful for automated testing and bug reproduction
 
+### Static Analysis Tool (issun-analyzer)
+
+Analyze your plugin architecture at compile time with `issun-analyzer`:
+
+```rust
+use issun_analyzer::prelude::*;
+
+// Analyze plugin directory structure
+let plugins = infer_plugins_from_directory("crates/issun/src/plugin")?;
+let mut result = AnalysisResult::new();
+for plugin in plugins {
+    result.add_plugin(plugin);
+}
+
+// Generate event flow graph
+let graph_gen = EventFlowGraphGenerator::new(&result);
+std::fs::write("event_flow.mmd", graph_gen.generate())?;
+
+// Validate consistency
+let validator = Validator::new(&result);
+let validation = validator.validate();
+validation.print_report();
+```
+
+**Features**:
+- Extract event subscriptions and publications from source code
+- Analyze hook trait definitions and categorization
+- Generate Mermaid flowcharts for events and hooks
+- Validate event consistency (unused events, missing publishers, circular dependencies)
+- Perfect for understanding large codebases and onboarding new developers
+
+See [issun-analyzer README](crates/issun-analyzer/README.md) for detailed usage.
+
 ## 🎮 Built-in Plugins
 
 ISSUN provides a rich suite of production-ready plugins following the **80/20 pattern** (80% reusable logic, 20% game-specific customization).

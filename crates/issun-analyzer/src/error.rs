@@ -16,6 +16,14 @@ pub enum AnalyzerError {
         source: std::io::Error,
     },
 
+    /// Failed to write a file
+    #[error("Failed to write file: {path}")]
+    FileWriteError {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
+
     /// Failed to parse Rust code
     #[error("Failed to parse Rust code in {path}")]
     ParseError {
