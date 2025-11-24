@@ -4,6 +4,7 @@ members = [
     "crates/issun-macros",
     "crates/issun-server",
     "crates/issun-analyzer",
+    "crates/issun-cli",
 ]
 exclude = [
     "examples/*",

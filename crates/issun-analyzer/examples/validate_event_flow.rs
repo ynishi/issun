@@ -34,10 +34,10 @@ fn main() -> Result<()> {
         result
             .plugins
             .iter()
-            .filter(
-                |p| p.system.as_ref().is_some_and(|s| !s.subscribes.is_empty()
-                    || !s.publishes.is_empty())
-            )
+            .filter(|p| p
+                .system
+                .as_ref()
+                .is_some_and(|s| !s.subscribes.is_empty() || !s.publishes.is_empty()))
             .count()
     );
 

@@ -132,8 +132,7 @@ impl<'a> EventFlowGraphGenerator<'a> {
 
     /// Sanitize identifier for Mermaid (replace special chars)
     fn sanitize_id(&self, s: &str) -> String {
-        s.replace("::", "_")
-            .replace(['<', '>', ' '], "_")
+        s.replace("::", "_").replace(['<', '>', ' '], "_")
     }
 }
 
@@ -244,8 +243,7 @@ impl<'a> HookFlowGraphGenerator<'a> {
 
     /// Sanitize identifier for Mermaid
     fn sanitize_id(&self, s: &str) -> String {
-        s.replace("::", "_")
-            .replace(['<', '>', ' ', '-'], "_")
+        s.replace("::", "_").replace(['<', '>', ' ', '-'], "_")
     }
 }
 
@@ -351,8 +349,7 @@ impl<'a> CombinedFlowGraphGenerator<'a> {
     }
 
     fn sanitize_id(&self, s: &str) -> String {
-        s.replace("::", "_")
-            .replace(['<', '>', ' ', '-'], "_")
+        s.replace("::", "_").replace(['<', '>', ' ', '-'], "_")
     }
 }
 

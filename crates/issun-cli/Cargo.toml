@@ -1,0 +1,19 @@
+[package]
+name = "issun-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["ISSUN Contributors"]
+description = "Command-line interface for ISSUN game framework"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "issun"
+path = "src/main.rs"
+
+[dependencies]
+issun-analyzer = { path = "../issun-analyzer" }
+clap = { version = "4.5", features = ["derive", "cargo"] }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
