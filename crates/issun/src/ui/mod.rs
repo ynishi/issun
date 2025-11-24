@@ -9,30 +9,41 @@
 //! - `layer`: UI layout abstraction for composable layouts
 //! - `theme`: Theme system for consistent styling
 //! - `resource_guard`: Safe resource access wrapper
+//! - `macros`: Rendering macros for simplified component composition
 //!
 //! # Usage
 //!
 //! ```ignore
 //! use issun::ui::Tui;
-//! use issun::ui::ratatui::MenuWidget;
-//! use issun::ui::core::Widget;
-//! use issun::ui::layer::{UILayer, UILayoutPresets};
-//! use issun::ui::ResourceGuard;
+//! use issun::ui::ratatui::*;
+//! use issun::ui::core::{Component, Widget};
+//! use issun::ui::layer::UILayoutPresets;
+//! use issun::{drive, drive_to};
 //!
 //! let mut tui = Tui::new()?;
-//! let menu = MenuWidget::new(vec!["Start".into(), "Quit".into()]);
 //!
-//! // Use UILayer for layouts
-//! let layout = RatatuiLayer::three_panel();
-//! let chunks = layout.apply(area);
+//! // Use components with drive! macro for easy rendering
+//! fn render_game(frame: &mut Frame, resources: &ResourceContext, selected: usize) {
+//!     let header = HeaderComponent::<GameContext>::new();
+//!     let districts = DistrictsComponent::<CityMap>::new();
+//!     let log = LogComponent::<GameLog>::new();
 //!
-//! // Use ResourceGuard for safe resource access
-//! let ctx = ResourceGuard::new::<GameContext>(resources);
+//!     drive! {
+//!         frame: frame,
+//!         layout: RatatuiLayer::three_panel().apply(frame.area()),
+//!         [
+//!             header.render(resources),
+//!             districts.render_with_selection(resources, selected),
+//!             log.render_multi(resources),
+//!         ]
+//!     }
+//! }
 //! ```
 
 pub mod core;
 pub mod input;
 pub mod layer;
+pub mod macros;
 pub mod ratatui;
 pub mod resource_guard;
 pub mod theme;
