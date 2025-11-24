@@ -3,14 +3,18 @@
 //! This module provides concrete widget implementations using the ratatui TUI library.
 
 pub mod gauge;
+pub mod layer;
 pub mod menu;
 pub mod modal;
+pub mod theme;
 pub mod tui;
 // pub mod dialog;  // TODO: Migrate from old structure
 // pub mod stats_panel;  // TODO: Add
 // pub mod log_viewer;  // TODO: Add
 
 pub use gauge::{ratio_color, GaugeWidget};
+pub use layer::RatatuiLayer;
 pub use menu::MenuWidget;
 pub use modal::{centered_rect, ModalWidget};
+pub use theme::RatatuiTheme;
 pub use tui::Tui;
