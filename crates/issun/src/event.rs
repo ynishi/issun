@@ -39,6 +39,10 @@ pub struct EventBus {
 
     // Optional tracer for debugging event chains
     tracer: Option<std::sync::Arc<std::sync::Mutex<crate::trace::EventChainTracer>>>,
+
+    // Optional recorder for event replay
+    recorder: Option<std::sync::Arc<std::sync::Mutex<crate::replay::EventRecorder>>>,
+
     current_frame: u64,
 }
 
@@ -117,6 +121,7 @@ impl EventBus {
             #[cfg(feature = "network")]
             network: None,
             tracer: None,
+            recorder: None,
             current_frame: 0,
         }
     }
@@ -134,12 +139,34 @@ impl EventBus {
         self.tracer = None;
     }
 
-    /// Set the current frame number for tracing
+    /// Set a recorder for event replay
+    pub fn set_recorder(
+        &mut self,
+        recorder: std::sync::Arc<std::sync::Mutex<crate::replay::EventRecorder>>,
+    ) {
+        self.recorder = Some(recorder);
+    }
+
+    /// Clear the recorder
+    pub fn clear_recorder(&mut self) {
+        self.recorder = None;
+    }
+
+    /// Set the current frame number for tracing and recording
     pub fn set_frame(&mut self, frame: u64) {
         self.current_frame = frame;
+
+        // Update tracer
         if let Some(ref tracer) = self.tracer {
             if let Ok(mut t) = tracer.lock() {
                 t.set_frame(frame);
+            }
+        }
+
+        // Update recorder
+        if let Some(ref recorder) = self.recorder {
+            if let Ok(mut r) = recorder.lock() {
+                r.set_frame(frame);
             }
         }
     }
@@ -170,6 +197,13 @@ impl EventBus {
                     },
                     "EventBus",
                 );
+            }
+        }
+
+        // Record event for replay
+        if let Some(ref recorder) = self.recorder {
+            if let Ok(mut r) = recorder.lock() {
+                r.record(&event);
             }
         }
 

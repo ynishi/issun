@@ -42,6 +42,7 @@ pub mod entity;
 pub mod error;
 pub mod event;
 pub mod plugin;
+pub mod replay;
 pub mod resources;
 pub mod scene;
 pub mod service;
