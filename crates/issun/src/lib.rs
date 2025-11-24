@@ -49,6 +49,7 @@ pub mod state;
 pub mod storage;
 pub mod store;
 pub mod system;
+pub mod trace;
 pub mod ui;
 
 // Network module (optional)
