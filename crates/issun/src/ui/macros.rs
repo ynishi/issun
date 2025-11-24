@@ -147,14 +147,65 @@ macro_rules! drive_to {
 
 #[cfg(test)]
 mod tests {
-    // Note: These tests are compile-time checks more than runtime tests
-    // The macros expand to valid Rust code that uses the ratatui API
-
+    /// Build-time test to ensure macros expand to valid code
     #[test]
-    fn test_macro_compilation() {
-        // This test ensures the macros compile correctly
-        // Actual rendering would require a Frame and terminal setup
-        
-        assert!(true);
+    fn test_drive_macro_expands() {
+        // This test verifies that the drive! macro expands correctly
+        // by actually compiling the macro invocation
+        use ratatui::layout::Rect;
+        use ratatui::text::Text;
+        use ratatui::widgets::{Block, Borders, Paragraph};
+
+        // Mock frame - in real usage, this would be a ratatui Frame
+        struct MockFrame;
+        impl MockFrame {
+            fn render_widget<W>(&mut self, _widget: W, _area: Rect) {}
+        }
+        let mut frame = MockFrame;
+
+        let text = Text::from("test");
+        let block = Block::default().borders(Borders::ALL);
+        let widget1 = Some(Paragraph::new(text.clone()).block(block.clone()));
+        let widget2 = Some(Paragraph::new(text).block(block));
+        let chunks = vec![Rect::new(0, 0, 10, 10), Rect::new(0, 10, 10, 10)];
+
+        // If this compiles, the macro works correctly
+        drive! {
+            frame: frame,
+            layout: chunks,
+            [widget1, widget2]
+        };
+    }
+
+    /// Build-time test to ensure drive_to! macro expands correctly
+    #[test]
+    fn test_drive_to_macro_expands() {
+        // This test verifies that the drive_to! macro expands correctly
+        use ratatui::layout::Rect;
+        use ratatui::text::Text;
+        use ratatui::widgets::{Block, Borders, Paragraph};
+
+        // Mock frame - in real usage, this would be a ratatui Frame
+        struct MockFrame;
+        impl MockFrame {
+            fn render_widget<W>(&mut self, _widget: W, _area: Rect) {}
+        }
+        let mut frame = MockFrame;
+
+        let text = Text::from("test");
+        let block = Block::default().borders(Borders::ALL);
+        let widget = Some(Paragraph::new(text.clone()).block(block.clone()));
+        let fallback = Paragraph::new("fallback");
+        let area1 = Rect::new(0, 0, 10, 10);
+        let area2 = Rect::new(0, 10, 10, 10);
+
+        // If this compiles, the macro works correctly
+        drive_to! {
+            frame: frame,
+            [
+                (area1, widget, fallback),
+                (area2, None::<Paragraph>, Paragraph::new("empty")),
+            ]
+        };
     }
 }
