@@ -2,6 +2,7 @@
 //!
 //! This module provides concrete widget implementations using the ratatui TUI library.
 
+pub mod components;
 pub mod gauge;
 pub mod layer;
 pub mod menu;
@@ -12,6 +13,10 @@ pub mod tui;
 // pub mod stats_panel;  // TODO: Add
 // pub mod log_viewer;  // TODO: Add
 
+pub use components::{
+    DistrictData, DistrictsComponent, DistrictsProvider, HeaderComponent, HeaderContext,
+    LogComponent, LogProvider, StatisticsComponent, StatisticsProvider,
+};
 pub use gauge::{ratio_color, GaugeWidget};
 pub use layer::RatatuiLayer;
 pub use menu::MenuWidget;

@@ -39,7 +39,7 @@ pub mod theme;
 pub mod title;
 
 // Re-exports for convenience
-pub use core::{InputEvent, Widget};
+pub use core::{Component, InputEvent, MultiResourceComponent, Widget};
 pub use layer::{LayoutConstraint, LayoutDirection, UILayer, UILayoutPresets};
 pub use ratatui::Tui;
 pub use resource_guard::{ResourceError, ResourceGuard};

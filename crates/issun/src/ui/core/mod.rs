@@ -6,6 +6,7 @@
 //! # Structure
 //!
 //! - `widget`: Base Widget trait and InputEvent
+//! - `component`: Component trait for composable UI elements
 //! - `menu`: Menu widget trait
 //! - `dialog`: Dialog widget trait
 //! - `stats`: Stats panel widget trait
@@ -13,6 +14,7 @@
 //! - `gauge`: Gauge/progress bar widget trait
 //! - `modal`: Modal/popup widget trait
 
+pub mod component;
 pub mod dialog;
 pub mod gauge;
 pub mod log;
@@ -22,6 +24,7 @@ pub mod stats;
 pub mod widget;
 
 // Re-exports for convenience
+pub use component::{Component, MultiResourceComponent};
 pub use dialog::Dialog;
 pub use gauge::Gauge;
 pub use log::LogViewer;
