@@ -139,8 +139,8 @@ fn render_with_fallback(frame: &mut Frame, resources: &ResourceContext) {
     let header = HeaderComponent::<GameContext>::new();
 
     // Provide fallback widget when component returns None
-    let fallback = Paragraph::new("Loading...")
-        .block(Block::default().borders(Borders::ALL).title("Status"));
+    let fallback =
+        Paragraph::new("Loading...").block(Block::default().borders(Borders::ALL).title("Status"));
 
     drive_to! {
         frame: frame,

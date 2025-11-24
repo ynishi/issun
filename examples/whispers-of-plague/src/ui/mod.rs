@@ -1,11 +1,17 @@
+mod components;
+
 use crate::models::{
     CityMap, GameMode, GameScene, GameSceneData, PlagueGameContext, ResultSceneData,
     TitleSceneData, VictoryResult,
 };
+use components::{contagion_info_lines, statistics_lines};
 use issun::plugin::contagion::ContagionState;
 use issun::prelude::ResourceContext;
+use issun::ui::core::{Component, MultiResourceComponent};
+use issun::ui::layer::{UILayer, UILayoutPresets};
+use issun::ui::ratatui::{DistrictsComponent, HeaderComponent, LogComponent, RatatuiLayer};
+use issun::drive_to;
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -15,17 +21,7 @@ use ratatui::{
 pub fn render_scene(frame: &mut Frame, scene: &GameScene, resources: &ResourceContext) {
     match scene {
         GameScene::Title(data) => render_title(frame, data),
-        GameScene::Game(data) => {
-            let ctx_guard = resources.try_get::<PlagueGameContext>();
-            let city_guard = resources.try_get::<CityMap>();
-            let contagion_guard = resources.try_get::<ContagionState>();
-
-            let ctx = ctx_guard.as_deref();
-            let city = city_guard.as_deref();
-            let contagion_state = contagion_guard.as_deref();
-
-            render_game(frame, ctx, city, contagion_state, data);
-        }
+        GameScene::Game(data) => render_game(frame, resources, data),
         GameScene::Result(data) => render_result(frame, data),
     }
 }
@@ -77,156 +73,82 @@ fn render_title(frame: &mut Frame, data: &TitleSceneData) {
     frame.render_widget(paragraph, area);
 }
 
-fn render_game(
-    frame: &mut Frame,
-    ctx: Option<&PlagueGameContext>,
-    city: Option<&CityMap>,
-    contagion_state: Option<&ContagionState>,
-    data: &GameSceneData,
-) {
+fn render_game(frame: &mut Frame, resources: &ResourceContext, data: &GameSceneData) {
     let area = frame.area();
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(10),
-            Constraint::Length(12),
-        ])
-        .split(area);
+    // Get optional resource guards for fallback rendering
+    let ctx = resources.try_get::<PlagueGameContext>();
+    let contagion_state = resources.try_get::<ContagionState>();
 
-    // Header
-    let header_text = if let Some(ctx) = ctx {
-        format!("Turn {}/{} | Mode: {:?}", ctx.turn, ctx.max_turns, ctx.mode)
+    // Create layout
+    let main_layout = RatatuiLayer::three_panel().apply(area);
+
+    // Create components
+    let header = HeaderComponent::<PlagueGameContext>::new();
+    let districts = DistrictsComponent::<CityMap>::new();
+
+    // Render header using drive_to! with fallback
+    let header_fallback =
+        Paragraph::new("Loading...").block(Block::default().borders(Borders::ALL).title("Status"));
+
+    drive_to! {
+        frame: frame,
+        [
+            (main_layout[0], header.render(resources), header_fallback),
+        ]
+    }
+
+    // Main area: Districts + Right panel
+    let main_chunks = RatatuiLayer::two_column(60).apply(main_layout[1]);
+
+    // Render districts list
+    if let Some(widget) = districts.render_with_selection(resources, data.selected_district) {
+        frame.render_widget(widget, main_chunks[0]);
     } else {
-        "Loading...".into()
-    };
-    let header =
-        Paragraph::new(header_text).block(Block::default().borders(Borders::ALL).title("Status"));
-    frame.render_widget(header, chunks[0]);
-
-    // Main area: Districts + Virus/Rumors info
-    let main_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(chunks[1]);
-
-    // Districts list
-    let districts_items: Vec<ListItem> = if let Some(city) = city {
-        city.districts
-            .iter()
-            .enumerate()
-            .map(|(i, d)| {
-                let style = if i == data.selected_district {
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                };
-
-                // Map district ID to emoji
-                let emoji = match d.id.as_str() {
-                    "downtown" => "🏙️",
-                    "industrial" => "🏭",
-                    "residential" => "🏘️",
-                    "suburbs" => "🏡",
-                    "harbor" => "⚓",
-                    _ => "📍",
-                };
-
-                // Generate panic bar
-                let panic_pct = (d.panic_level * 100.0) as u32;
-                let panic_bars = (d.panic_level * 10.0) as usize;
-                let panic_bar = "█".repeat(panic_bars) + &"░".repeat(10 - panic_bars);
-
-                let text = format!(
-                    "{} {}: {} infected, {} dead | Panic: {} {}%",
-                    emoji, d.name, d.infected, d.dead, panic_bar, panic_pct
-                );
-                ListItem::new(text).style(style)
-            })
-            .collect()
-    } else {
-        vec![ListItem::new("No data")]
-    };
-
-    let districts_list =
-        List::new(districts_items).block(Block::default().borders(Borders::ALL).title("Districts"));
-    frame.render_widget(districts_list, main_chunks[0]);
+        let fallback = List::new(vec![ListItem::new("No data")])
+            .block(Block::default().borders(Borders::ALL).title("Districts"));
+        frame.render_widget(fallback, main_chunks[0]);
+    }
 
     // Right panel: Statistics + Contagions
-    let right_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(10), Constraint::Min(5)])
-        .split(main_chunks[1]);
-
-    // Statistics panel
-    let stats_text = if let (Some(ctx), Some(city)) = (ctx, city) {
-        let total_pop: u32 = city.districts.iter().map(|d| d.population).sum();
-        let total_infected: u32 = city.districts.iter().map(|d| d.infected).sum();
-        let infection_rate = if total_pop > 0 {
-            (total_infected as f32 / total_pop as f32) * 100.0
-        } else {
-            0.0
-        };
-
+    let right_layout = RatatuiLayer::new(
+        "right_panel",
+        issun::ui::layer::LayoutDirection::Vertical,
         vec![
-            Line::from(format!("Turn: {}/{}", ctx.turn, ctx.max_turns)),
-            Line::from(format!("Mode: {:?}", ctx.mode)),
-            Line::from(""),
-            Line::from(format!("Total Pop: {}", total_pop)),
-            Line::from(format!("Infected: {} ({:.1}%)", total_infected, infection_rate)),
-            Line::from(""),
-            Line::from(match ctx.mode {
-                GameMode::Plague => format!("Goal: 70% (now {:.1}%)", infection_rate),
-                GameMode::Savior => format!("Survive: >60% (now {:.1}%)", 100.0 - infection_rate),
-            }),
-        ]
+            issun::ui::layer::LayoutConstraint::Length(10),
+            issun::ui::layer::LayoutConstraint::Min(5),
+        ],
+    )
+    .apply(main_chunks[1]);
+
+    // Render statistics (using helper function)
+    let stats_text = if let Some(ctx) = ctx.as_deref() {
+        if let Some(city) = resources.try_get::<CityMap>().as_deref() {
+            statistics_lines(ctx, city)
+        } else {
+            vec![Line::from("Loading...")]
+        }
     } else {
         vec![Line::from("Loading...")]
     };
 
     let stats_block = Paragraph::new(stats_text)
         .block(Block::default().borders(Borders::ALL).title("Statistics"));
-    frame.render_widget(stats_block, right_chunks[0]);
+    frame.render_widget(stats_block, right_layout[0]);
 
-    // Contagion info with details
-    let contagion_text = if let Some(state) = contagion_state {
-        let all_contagions: Vec<_> = state.all_contagions().collect();
-        let disease_count = all_contagions
-            .iter()
-            .filter(|(_, c)| matches!(c.content, issun::plugin::contagion::ContagionContent::Disease { .. }))
-            .count();
-        let rumor_count = all_contagions
-            .iter()
-            .filter(|(_, c)| matches!(c.content, issun::plugin::contagion::ContagionContent::Political { .. }))
-            .count();
-
-        vec![
-            Line::from(format!("Active Contagions: {}", all_contagions.len())),
-            Line::from(format!("  🦠 Disease: {}", disease_count)),
-            Line::from(format!("  📢 Rumors: {}", rumor_count)),
-            Line::from(""),
-            Line::from("(Spreading via topology)"),
-        ]
+    // Render contagions info
+    let contagion_text = if let Some(state) = contagion_state.as_deref() {
+        contagion_info_lines(state)
     } else {
         vec![Line::from("No contagion data")]
     };
 
     let contagion_block = Paragraph::new(contagion_text)
         .block(Block::default().borders(Borders::ALL).title("Contagions"));
-    frame.render_widget(contagion_block, right_chunks[1]);
-
-    // Log messages
-    let log_items: Vec<ListItem> = data
-        .log_messages
-        .iter()
-        .map(|msg| ListItem::new(msg.as_str()))
-        .collect();
+    frame.render_widget(contagion_block, right_layout[1]);
 
     // Build control help text based on game mode with action usage
-    let controls = if let Some(ctx) = ctx {
+    let controls = if let Some(ctx) = ctx.as_deref() {
         match ctx.mode {
             GameMode::Plague => {
                 format!(
@@ -245,12 +167,15 @@ fn render_game(
         "Log | [N] Next Turn | [Q] Quit".to_string()
     };
 
-    let log_list = List::new(log_items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(controls),
-    );
-    frame.render_widget(log_list, chunks[2]);
+    // Render log
+    let log = LogComponent::<GameSceneData>::with_title(controls);
+    if let Some(widget) = log.render_multi(resources) {
+        frame.render_widget(widget, main_layout[2]);
+    } else {
+        let fallback = List::new(Vec::<ListItem>::new())
+            .block(Block::default().borders(Borders::ALL).title("Log"));
+        frame.render_widget(fallback, main_layout[2]);
+    }
 }
 
 fn render_result(frame: &mut Frame, data: &ResultSceneData) {
