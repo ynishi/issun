@@ -7,9 +7,9 @@ use crate::models::{
 use components::{contagion_info_lines, statistics_lines};
 use issun::plugin::contagion::ContagionState;
 use issun::prelude::ResourceContext;
-use issun::ui::core::{Component, MultiResourceComponent};
+use issun::ui::core::Component;
 use issun::ui::layer::{UILayer, UILayoutPresets};
-use issun::ui::ratatui::{DistrictsComponent, HeaderComponent, LogComponent, RatatuiLayer};
+use issun::ui::ratatui::{DistrictsComponent, HeaderComponent, RatatuiLayer};
 use issun::drive_to;
 use ratatui::{
     style::{Color, Modifier, Style},
@@ -167,15 +167,19 @@ fn render_game(frame: &mut Frame, resources: &ResourceContext, data: &GameSceneD
         "Log | [N] Next Turn | [Q] Quit".to_string()
     };
 
-    // Render log
-    let log = LogComponent::<GameSceneData>::with_title(controls);
-    if let Some(widget) = log.render_multi(resources) {
-        frame.render_widget(widget, main_layout[2]);
-    } else {
-        let fallback = List::new(Vec::<ListItem>::new())
-            .block(Block::default().borders(Borders::ALL).title("Log"));
-        frame.render_widget(fallback, main_layout[2]);
-    }
+    // Render log with controls help text
+    let log_items: Vec<ListItem> = data
+        .log_messages
+        .iter()
+        .map(|msg| ListItem::new(msg.as_str()))
+        .collect();
+
+    let log_list = List::new(log_items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(controls),
+    );
+    frame.render_widget(log_list, main_layout[2]);
 }
 
 fn render_result(frame: &mut Frame, data: &ResultSceneData) {
