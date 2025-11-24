@@ -26,6 +26,8 @@ ISSUN is designed for developers who want to:
 - 🛠️ **Derive Macros** - Less boilerplate, more game logic (`#[derive(Service)]`, `#[derive(System)]`)
 - 📦 **Service Registry** - Access framework services from game code
 - 🚀 **Production-Ready Relay Server** - QUIC-based multiplayer with Docker/Kubernetes support
+- 🔍 **Event Chain Tracing** - Visualize Event→Hook call chains with Mermaid/Graphviz graphs
+- 🎬 **Event Replay System** - Record and deterministically replay gameplay for debugging
 
 ## 🏗️ Architecture
 
@@ -43,6 +45,64 @@ ISSUN provides traits and macros for clean, DDD-inspired architecture:
 - **System** = Stateful, orchestrates services (like a conductor)
 
 See [Architecture Guide](docs/ARCHITECTURE.md) for detailed guide and best practices.
+
+## 🔍 Debugging & Testing Tools
+
+ISSUN provides powerful tools for understanding and debugging complex event-driven game logic:
+
+### Event Chain Tracer
+
+Visualize how events flow through your game systems with automatically generated graphs:
+
+```rust
+use issun::trace::EventChainTracer;
+
+let mut tracer = EventChainTracer::new();
+tracer.enable();
+bus.set_tracer(Arc::new(Mutex::new(tracer.clone())));
+
+// ... run game ...
+
+// Generate Mermaid flowchart
+let mermaid = tracer.lock().unwrap().generate_mermaid_graph();
+std::fs::write("event_chain.mmd", mermaid)?;
+```
+
+**Features**:
+- Trace Event→Hook call chains across plugins
+- Generate Mermaid and Graphviz visualizations
+- Frame-by-frame analysis
+- Hook execution timing and results
+- Zero overhead when disabled
+
+### Event Replay System
+
+Record gameplay and replay it deterministically for debugging and testing:
+
+```rust
+use issun::replay::{EventRecorder, EventReplayer};
+
+// Recording
+let mut recorder = EventRecorder::new();
+recorder.start();
+bus.set_recorder(Arc::new(Mutex::new(recorder.clone())));
+
+// ... play game ...
+
+recorder.save("gameplay.replay")?;
+
+// Replay
+let mut replayer = EventReplayer::load("gameplay.replay")?;
+replayer.register_deserializer::<MyEvent>();
+replayer.replay_all(&mut bus)?;
+```
+
+**Features**:
+- Deterministic event reproduction
+- Binary serialization with bincode
+- Frame-accurate playback
+- Random-access and sequential replay modes
+- Useful for automated testing and bug reproduction
 
 ## 🎮 Built-in Plugins
 

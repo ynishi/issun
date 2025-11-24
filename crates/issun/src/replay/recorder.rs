@@ -93,7 +93,11 @@ impl EventRecorder {
         let mut stats = RecordingStats::new();
 
         for recording in &self.recordings {
-            stats.add_event(&recording.event_type, recording.frame, recording.timestamp_ms);
+            stats.add_event(
+                &recording.event_type,
+                recording.frame,
+                recording.timestamp_ms,
+            );
         }
 
         stats
