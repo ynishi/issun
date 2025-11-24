@@ -1,5 +1,6 @@
 //! Garden resource - holds the simulation state
 
+use crate::event_log::EventLog;
 use crate::hooks::{GardenEntropyHook, GardenGenerationHook};
 use crate::models::PlantSpecies;
 use hecs::Entity;
@@ -85,16 +86,65 @@ impl Garden {
         self.plants.push((gen_entity, species));
     }
 
-    pub async fn update_tick(&mut self, delta_time: f32) {
+    pub async fn update_tick(&mut self, delta_time: f32, event_log: &mut EventLog) {
+        // Track previous states for event detection
+        let mut prev_states: Vec<(bool, bool)> = Vec::new();
+        for (entity, _species) in &self.plants {
+            let was_ready = if let Ok(gen) = self.generation_state.world.get::<&Generation>(*entity)
+            {
+                gen.progress_ratio() >= 1.0
+            } else {
+                false
+            };
+
+            let was_dying = if let Ok(dur) = self.entropy_state.world.get::<&Durability>(*entity) {
+                dur.current / dur.max < 0.2
+            } else {
+                false
+            };
+
+            prev_states.push((was_ready, was_dying));
+        }
+
         // Update generation (plants grow)
         self.generation_system
-            .update_generation(&mut self.generation_state, &self.generation_config, delta_time)
+            .update_generation(
+                &mut self.generation_state,
+                &self.generation_config,
+                delta_time,
+            )
             .await;
 
         // Update entropy (plants decay)
         self.entropy_system
             .update_decay(&mut self.entropy_state, &self.entropy_config, delta_time)
             .await;
+
+        // Detect and log events
+        for (idx, (entity, species)) in self.plants.iter().enumerate() {
+            let (was_ready, was_dying) = prev_states[idx];
+
+            // Check if plant just became ready to harvest
+            if let Ok(gen) = self.generation_state.world.get::<&Generation>(*entity) {
+                let is_ready = gen.progress_ratio() >= 1.0;
+                if is_ready && !was_ready {
+                    event_log.log(format!("🌟 {} is ready to harvest!", species.name()));
+                }
+            }
+
+            // Check if plant is dying
+            if let Ok(dur) = self.entropy_state.world.get::<&Durability>(*entity) {
+                let ratio = dur.current / dur.max;
+                let is_dying = ratio < 0.2;
+                if is_dying && !was_dying {
+                    event_log.log(format!(
+                        "⚠️ {} is dying (health: {:.1}%)",
+                        species.name(),
+                        ratio * 100.0
+                    ));
+                }
+            }
+        }
 
         // Cleanup
         self.generation_system

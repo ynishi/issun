@@ -19,6 +19,7 @@ pub struct SimulationSceneData {
     pub paused: bool,
     pub tick_count: u64,
     pub plants: Vec<PlantSpecies>,
+    pub scroll_offset: usize,
 }
 
 impl SimulationSceneData {
@@ -33,6 +34,7 @@ impl SimulationSceneData {
                 PlantSpecies::Wheat,
                 PlantSpecies::Sunflower,
             ],
+            scroll_offset: 0,
         }
     }
 
@@ -40,7 +42,7 @@ impl SimulationSceneData {
         &mut self,
         _services: &ServiceContext,
         _systems: &mut SystemContext,
-        _resources: &mut ResourceContext,
+        resources: &mut ResourceContext,
         input: InputEvent,
     ) -> SceneTransition<GameScene> {
         match input {
@@ -48,6 +50,23 @@ impl SimulationSceneData {
             InputEvent::Char(' ') => {
                 // Toggle pause with Space
                 self.paused = !self.paused;
+                SceneTransition::Stay
+            }
+            InputEvent::Up => {
+                // Scroll up
+                if self.scroll_offset > 0 {
+                    self.scroll_offset -= 1;
+                }
+                SceneTransition::Stay
+            }
+            InputEvent::Down => {
+                // Scroll down (will be clamped in UI rendering)
+                if let Some(garden) = resources.try_get::<crate::garden::Garden>() {
+                    let max_offset = garden.plants.len().saturating_sub(1);
+                    if self.scroll_offset < max_offset {
+                        self.scroll_offset += 1;
+                    }
+                }
                 SceneTransition::Stay
             }
             _ => SceneTransition::Stay,

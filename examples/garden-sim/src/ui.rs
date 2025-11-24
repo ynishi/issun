@@ -1,5 +1,6 @@
 //! UI rendering for Garden Simulator
 
+use crate::event_log::EventLog;
 use crate::garden::Garden;
 use crate::models::{GrowthStage, PlantHealth};
 use crate::scene::SimulationSceneData;
@@ -13,34 +14,47 @@ use ratatui::{
     Frame,
 };
 
-pub fn render_simulation(frame: &mut Frame, data: &SimulationSceneData, garden: &Garden) {
+pub fn render_simulation(
+    frame: &mut Frame,
+    data: &SimulationSceneData,
+    garden: &Garden,
+    event_log: &EventLog,
+) {
     let area = frame.area();
 
-    // Split into header, plant list, metrics, and footer
+    // Split into header, plant list, event log, metrics, and footer
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // Header
             Constraint::Min(10),   // Plant list
+            Constraint::Length(8), // Event log
             Constraint::Length(5), // Metrics
             Constraint::Length(3), // Footer
         ])
         .split(area);
 
     render_header(frame, chunks[0], data);
-    render_plants(frame, chunks[1], garden);
-    render_metrics(frame, chunks[2], garden);
-    render_footer(frame, chunks[3], data);
+    render_plants(frame, chunks[1], data, garden);
+    render_event_log(frame, chunks[2], event_log);
+    render_metrics(frame, chunks[3], garden);
+    render_footer(frame, chunks[4], data);
 }
 
 fn render_header(frame: &mut Frame, area: ratatui::layout::Rect, data: &SimulationSceneData) {
     let status = if data.paused { "PAUSED" } else { "RUNNING" };
-    let status_color = if data.paused { Color::Yellow } else { Color::Green };
+    let status_color = if data.paused {
+        Color::Yellow
+    } else {
+        Color::Green
+    };
 
     let header = Paragraph::new(Line::from(vec![
         Span::styled(
             "🌻 Garden Simulator",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" | "),
         Span::styled(
@@ -56,7 +70,12 @@ fn render_header(frame: &mut Frame, area: ratatui::layout::Rect, data: &Simulati
     frame.render_widget(header, area);
 }
 
-fn render_plants(frame: &mut Frame, area: ratatui::layout::Rect, garden: &Garden) {
+fn render_plants(
+    frame: &mut Frame,
+    area: ratatui::layout::Rect,
+    data: &SimulationSceneData,
+    garden: &Garden,
+) {
     let mut lines = vec![Line::from(Span::styled(
         "Plants:",
         Style::default()
@@ -64,7 +83,18 @@ fn render_plants(frame: &mut Frame, area: ratatui::layout::Rect, garden: &Garden
             .add_modifier(Modifier::BOLD),
     ))];
 
-    for (idx, (entity, species)) in garden.plants.iter().enumerate() {
+    // Calculate how many plants we can display
+    let available_height = area.height.saturating_sub(3) as usize; // Account for border and header
+    let total_plants = garden.plants.len();
+    let scroll_offset = data
+        .scroll_offset
+        .min(total_plants.saturating_sub(available_height));
+
+    // Display scrolled subset of plants
+    let visible_range = scroll_offset..(scroll_offset + available_height).min(total_plants);
+
+    for idx in visible_range {
+        let (entity, species) = &garden.plants[idx];
         // Get generation status
         if let Ok(generation) = garden.generation_state.world.get::<&Generation>(*entity) {
             let progress = generation.progress_ratio();
@@ -97,10 +127,7 @@ fn render_plants(frame: &mut Frame, area: ratatui::layout::Rect, garden: &Garden
                     Style::default().fg(Color::Cyan),
                 ),
                 Span::raw(" | Health: "),
-                Span::styled(
-                    format!("{:?}", health),
-                    Style::default().fg(health_color),
-                ),
+                Span::styled(format!("{:?}", health), Style::default().fg(health_color)),
                 Span::raw(" "),
                 Span::styled(
                     format!("{:.1}%", durability_ratio * 100.0),
@@ -110,8 +137,8 @@ fn render_plants(frame: &mut Frame, area: ratatui::layout::Rect, garden: &Garden
         }
     }
 
-    let plant_list = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title("Garden"));
+    let plant_list =
+        Paragraph::new(lines).block(Block::default().borders(Borders::ALL).title("Garden"));
 
     frame.render_widget(plant_list, area);
 }
@@ -160,11 +187,26 @@ fn render_metrics(frame: &mut Frame, area: ratatui::layout::Rect, garden: &Garde
     frame.render_widget(metrics, area);
 }
 
+fn render_event_log(frame: &mut Frame, area: ratatui::layout::Rect, event_log: &EventLog) {
+    // Get last 6 entries (most recent at bottom)
+    let entries = event_log.last_n(6);
+    let lines: Vec<Line> = entries.iter().map(|msg| Line::from(msg.as_str())).collect();
+
+    let log_widget = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Event Log")
+            .style(Style::default().fg(Color::Cyan)),
+    );
+
+    frame.render_widget(log_widget, area);
+}
+
 fn render_footer(frame: &mut Frame, area: ratatui::layout::Rect, data: &SimulationSceneData) {
     let instruction = if data.paused {
-        "Space: Resume | Q: Quit"
+        "↑/↓: Scroll | Space: Resume | Q: Quit"
     } else {
-        "Space: Pause | Q: Quit"
+        "↑/↓: Scroll | Space: Pause | Q: Quit"
     };
 
     let footer = Paragraph::new(instruction)

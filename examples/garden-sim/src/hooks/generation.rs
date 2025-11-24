@@ -16,16 +16,12 @@ impl GenerationHookECS for GardenGenerationHook {
         }
     }
 
-    async fn on_generation_completed(&self, entity: Entity, _state: &GenerationStateECS) {
+    async fn on_generation_completed(&self, _entity: Entity, _state: &GenerationStateECS) {
         // Plant has reached full growth
-        println!("🌟 Plant {:?} is ready to harvest!", entity);
+        // Log is now handled by Garden resource
     }
 
-    async fn should_generate(
-        &self,
-        entity: Entity,
-        state: &GenerationStateECS,
-    ) -> bool {
+    async fn should_generate(&self, entity: Entity, state: &GenerationStateECS) -> bool {
         // Check if plant is still alive (has durability)
         // In a real implementation, we would query Durability component
         // For now, always allow generation
@@ -47,11 +43,11 @@ impl GenerationHookECS for GardenGenerationHook {
         base_rate
     }
 
-    async fn on_generation_paused(&self, entity: Entity) {
-        println!("⏸️ Plant {:?} growth paused", entity);
+    async fn on_generation_paused(&self, _entity: Entity) {
+        // Log is now handled by Garden resource
     }
 
-    async fn on_generation_resumed(&self, entity: Entity) {
-        println!("▶️ Plant {:?} growth resumed", entity);
+    async fn on_generation_resumed(&self, _entity: Entity) {
+        // Log is now handled by Garden resource
     }
 }

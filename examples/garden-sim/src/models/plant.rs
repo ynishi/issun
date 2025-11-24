@@ -39,10 +39,10 @@ impl PlantSpecies {
     pub fn growth_rate(&self) -> f32 {
         match self {
             PlantSpecies::Tomato => 2.0,
-            PlantSpecies::Lettuce => 5.0,    // Fast growing
+            PlantSpecies::Lettuce => 5.0, // Fast growing
             PlantSpecies::Carrot => 3.0,
             PlantSpecies::Wheat => 4.0,
-            PlantSpecies::Sunflower => 1.5,  // Slow but valuable
+            PlantSpecies::Sunflower => 1.5, // Slow but valuable
         }
     }
 
@@ -50,10 +50,10 @@ impl PlantSpecies {
     pub fn decay_rate(&self) -> f32 {
         match self {
             PlantSpecies::Tomato => 0.3,
-            PlantSpecies::Lettuce => 0.5,    // Fragile
-            PlantSpecies::Carrot => 0.2,     // Hardy
+            PlantSpecies::Lettuce => 0.5, // Fragile
+            PlantSpecies::Carrot => 0.2,  // Hardy
             PlantSpecies::Wheat => 0.3,
-            PlantSpecies::Sunflower => 0.1,  // Very hardy
+            PlantSpecies::Sunflower => 0.1, // Very hardy
         }
     }
 
@@ -66,8 +66,8 @@ impl PlantSpecies {
     pub fn max_durability(&self) -> f32 {
         match self {
             PlantSpecies::Tomato => 100.0,
-            PlantSpecies::Lettuce => 80.0,   // Fragile
-            PlantSpecies::Carrot => 120.0,   // Hardy
+            PlantSpecies::Lettuce => 80.0, // Fragile
+            PlantSpecies::Carrot => 120.0, // Hardy
             PlantSpecies::Wheat => 100.0,
             PlantSpecies::Sunflower => 150.0, // Very hardy
         }
@@ -77,11 +77,11 @@ impl PlantSpecies {
 /// Plant growth stage based on generation progress
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GrowthStage {
-    Seed,       // 0-20%
-    Seedling,   // 20-60%
-    Growing,    // 60-90%
-    Mature,     // 90-100%
-    Ready,      // 100% - ready to harvest
+    Seed,     // 0-20%
+    Seedling, // 20-60%
+    Growing,  // 60-90%
+    Mature,   // 90-100%
+    Ready,    // 100% - ready to harvest
 }
 
 impl GrowthStage {
@@ -113,11 +113,11 @@ impl GrowthStage {
 /// Plant health based on durability
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PlantHealth {
-    Healthy,   // 80-100%
-    Good,      // 50-80%
-    Stressed,  // 20-50%
-    Dying,     // 0-20%
-    Dead,      // 0%
+    Healthy,  // 80-100%
+    Good,     // 50-80%
+    Stressed, // 20-50%
+    Dying,    // 0-20%
+    Dead,     // 0%
 }
 
 impl PlantHealth {
