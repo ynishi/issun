@@ -1,7 +1,9 @@
 [workspace]
 members = [
     "crates/issun",
-    "crates/issun-macros", "crates/issun-server",
+    "crates/issun-macros",
+    "crates/issun-server",
+    "crates/issun-analyzer",
 ]
 exclude = [
     "examples/*",
