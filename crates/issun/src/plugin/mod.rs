@@ -34,6 +34,7 @@ pub mod dungeon;
 pub mod economy;
 pub mod entropy;
 pub mod faction;
+pub mod generation;
 pub mod holacracy;
 pub mod inventory;
 pub mod logistics;
