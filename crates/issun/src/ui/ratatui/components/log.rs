@@ -86,9 +86,7 @@ impl<T: LogProvider> LogComponent<T> {
             .map(|msg| ListItem::new(msg.clone()))
             .collect();
 
-        Some(
-            List::new(items).block(Block::default().borders(Borders::ALL).title(title)),
-        )
+        Some(List::new(items).block(Block::default().borders(Borders::ALL).title(title)))
     }
 }
 
