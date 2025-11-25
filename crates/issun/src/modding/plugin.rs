@@ -4,7 +4,7 @@ use crate::modding::{ModLoader, ModHandle, PluginAction, ModEventSystem};
 use crate::modding::events::*;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use crate::system::System;
-use crate::context::Context;
+use crate::context::{Context, ResourceContext};
 use crate::event::EventBus;
 use crate::engine::ModBridgeSystem;
 use async_trait::async_trait;
@@ -99,17 +99,14 @@ pub struct ModLoaderState {
 /// delegates to the configured `ModLoader`, and publishes result events.
 struct ModLoadSystem;
 
-#[async_trait]
-impl System for ModLoadSystem {
-    fn name(&self) -> &'static str {
-        "mod_load_system"
-    }
-
-    async fn update(&mut self, ctx: &mut Context) {
-        // Get EventBus via string key (legacy Context API)
+impl ModLoadSystem {
+    /// Update method using ResourceContext (Modern API)
+    ///
+    /// This method is the recommended way to update the system.
+    pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
         // Step 1: Collect load requests
         let load_requests: Vec<ModLoadRequested> = {
-            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+            if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
                 event_bus.reader::<ModLoadRequested>()
                     .iter()
                     .cloned()
@@ -121,7 +118,7 @@ impl System for ModLoadSystem {
 
         // Step 2: Collect unload requests
         let unload_requests: Vec<ModUnloadRequested> = {
-            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+            if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
                 event_bus.reader::<ModUnloadRequested>()
                     .iter()
                     .cloned()
@@ -134,7 +131,7 @@ impl System for ModLoadSystem {
         // Step 3: Process load requests
         let mut load_results = Vec::new();
         if !load_requests.is_empty() {
-            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+            if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
                 for request in load_requests {
                     match loader_state.loader.load(&request.path) {
                         Ok(handle) => {
@@ -152,7 +149,7 @@ impl System for ModLoadSystem {
         }
 
         // Publish load results
-        if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+        if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
             for result in load_results {
                 match result {
                     Ok(handle) => {
@@ -168,7 +165,7 @@ impl System for ModLoadSystem {
         // Step 4: Process unload requests
         let mut unload_results: Vec<Result<String, ()>> = Vec::new();
         if !unload_requests.is_empty() {
-            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+            if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
                 for request in unload_requests {
                     // Find the MOD handle
                     if let Some(pos) = loader_state.loaded_mods.iter().position(|h| h.id == request.mod_id) {
@@ -193,13 +190,25 @@ impl System for ModLoadSystem {
         }
 
         // Publish unload results
-        if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+        if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
             for result in unload_results {
                 if let Ok(mod_id) = result {
                     event_bus.publish(ModUnloadedEvent { mod_id });
                 }
             }
         }
+    }
+}
+
+#[async_trait]
+impl System for ModLoadSystem {
+    fn name(&self) -> &'static str {
+        "mod_load_system"
+    }
+
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Legacy Context support (deprecated path)
+        // Modern usage should call update_resources() directly
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -217,16 +226,14 @@ impl System for ModLoadSystem {
 /// and then publishes specific events for each action type.
 struct PluginControlSystem;
 
-#[async_trait]
-impl System for PluginControlSystem {
-    fn name(&self) -> &'static str {
-        "plugin_control_system"
-    }
-
-    async fn update(&mut self, ctx: &mut Context) {
+impl PluginControlSystem {
+    /// Update method using ResourceContext (Modern API)
+    ///
+    /// This method is the recommended way to update the system.
+    pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
         // Step 1: Drain commands from loader
         let commands = {
-            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+            if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
                 loader_state.loader.drain_commands()
             } else {
                 Vec::new()
@@ -238,7 +245,7 @@ impl System for PluginControlSystem {
         }
 
         // Step 2 & 3: Publish all events
-        if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+        if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
             // Publish PluginControlRequested events
             for command in &commands {
                 event_bus.publish(PluginControlRequested {
@@ -281,6 +288,18 @@ impl System for PluginControlSystem {
                 }
             }
         }
+    }
+}
+
+#[async_trait]
+impl System for PluginControlSystem {
+    fn name(&self) -> &'static str {
+        "plugin_control_system"
+    }
+
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Legacy Context support (deprecated path)
+        // Modern usage should call update_resources() directly
     }
 
     fn as_any(&self) -> &dyn Any {
