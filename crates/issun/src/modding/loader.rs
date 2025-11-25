@@ -94,6 +94,21 @@ pub trait ModLoader: Send + Sync {
         Vec::new() // Default: no events
     }
 
+    /// Dispatch an event to subscribers
+    ///
+    /// This is called by `ModEventSystem` to deliver DynamicEvents
+    /// to MODs that have subscribed via `subscribe_event()`.
+    ///
+    /// # Arguments
+    /// * `event_type` - The event type identifier
+    /// * `event_data` - The event data as JSON
+    ///
+    /// Returns the number of subscribers that were notified.
+    fn dispatch_event(&mut self, event_type: &str, event_data: &serde_json::Value) -> usize {
+        let _ = (event_type, event_data);
+        0 // Default: no subscribers
+    }
+
     /// Clone this loader (for dynamic dispatch)
     fn clone_box(&self) -> Box<dyn ModLoader>;
 }

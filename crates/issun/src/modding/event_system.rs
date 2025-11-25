@@ -22,6 +22,58 @@ impl ModEventSystem {
     pub fn new() -> Self {
         Self
     }
+
+    /// Update method using ResourceContext (Modern API)
+    ///
+    /// This method is the recommended way to update the system.
+    pub async fn update_resources(&mut self, resources: &mut crate::context::ResourceContext) {
+        // Step 1: Drain events from MOD loader and publish to EventBus
+        let events_to_publish = {
+            if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
+                loader_state.loader.drain_events()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Publish drained events as DynamicEvent to EventBus
+        if !events_to_publish.is_empty() {
+            if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
+                for (event_type, data) in events_to_publish {
+                    event_bus.publish(DynamicEvent {
+                        event_type: event_type.clone(),
+                        data,
+                    });
+                }
+                // Dispatch so events are available for reading
+                event_bus.dispatch();
+            }
+        }
+
+        // Step 2: Collect DynamicEvents from EventBus and dispatch to subscribers
+        let dynamic_events: Vec<DynamicEvent> = {
+            if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
+                event_bus.reader::<DynamicEvent>()
+                    .iter()
+                    .cloned()
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Step 3: Dispatch events to MOD subscribers
+        if !dynamic_events.is_empty() {
+            if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
+                for event in &dynamic_events {
+                    let count = loader_state.loader.dispatch_event(&event.event_type, &event.data);
+                    if count > 0 {
+                        println!("[ModEventSystem] Dispatched event '{}' to {} subscriber(s)", event.event_type, count);
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -31,6 +83,7 @@ impl System for ModEventSystem {
     }
 
     async fn update(&mut self, ctx: &mut Context) {
+        // Legacy Context API (string keys)
         // Step 1: Drain events from MOD loader and publish to EventBus
         let events_to_publish = {
             if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
@@ -52,11 +105,29 @@ impl System for ModEventSystem {
             }
         }
 
-        // TODO: Step 2: Collect DynamicEvents from EventBus and dispatch to subscribers
-        // This will require:
-        // 1. Reading DynamicEvent from EventBus
-        // 2. Matching event_type against MOD subscriptions
-        // 3. Calling RhaiLoader::call_event_callback() for each matching subscription
+        // Step 2: Collect DynamicEvents from EventBus and dispatch to subscribers
+        let dynamic_events: Vec<DynamicEvent> = {
+            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+                event_bus.reader::<DynamicEvent>()
+                    .iter()
+                    .cloned()
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Step 3: Dispatch events to MOD subscribers
+        if !dynamic_events.is_empty() {
+            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+                for event in &dynamic_events {
+                    let count = loader_state.loader.dispatch_event(&event.event_type, &event.data);
+                    if count > 0 {
+                        println!("[ModEventSystem] Dispatched event '{}' to {} subscriber(s)", event.event_type, count);
+                    }
+                }
+            }
+        }
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -358,6 +358,31 @@ impl ModLoader for RhaiLoader {
         }
     }
 
+    fn dispatch_event(&mut self, event_type: &str, event_data: &serde_json::Value) -> usize {
+        let subscriptions = self.get_all_subscriptions();
+        let mut count = 0;
+
+        // Iterate through all MODs and their subscriptions
+        for (mod_id, mod_subscriptions) in subscriptions {
+            for subscription in mod_subscriptions {
+                // Check if this subscription matches the event type
+                if subscription.event_type == event_type {
+                    // Call the callback
+                    match self.call_event_callback(&mod_id, &subscription.callback, event_data) {
+                        Ok(_) => {
+                            count += 1;
+                        }
+                        Err(e) => {
+                            eprintln!("[RhaiLoader] Failed to call event callback for MOD '{}': {}", mod_id, e);
+                        }
+                    }
+                }
+            }
+        }
+
+        count
+    }
+
     fn clone_box(&self) -> Box<dyn ModLoader> {
         Box::new(Self::new())
     }
