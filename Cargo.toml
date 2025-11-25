@@ -5,6 +5,8 @@ members = [
     "crates/issun-server",
     "crates/issun-analyzer",
     "crates/issun-cli",
+    "crates/issun-mod-rhai",
+    "crates/issun-mod-wasm",
 ]
 exclude = [
     "examples/*",
@@ -57,3 +59,7 @@ proc-macro2 = "1.0"
 
 # Title screen
 figlet-rs = "0.1"
+
+# MOD system
+rhai = { version = "1.20", features = ["sync", "serde", "metadata"] }
+notify = "6.1"

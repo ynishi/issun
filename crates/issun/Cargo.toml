@@ -35,6 +35,12 @@ chrono = { version = "0.4", features = ["serde"] }
 quinn = { workspace = true, optional = true }
 rustls = { workspace = true, optional = true }
 
+# MOD system (optional backends)
+# Note: Backend crates are independent and not dependencies of issun core
+# Users import them separately (e.g., `use issun_mod_rhai::RhaiLoader`)
+# issun-mod-rhai = { path = "../issun-mod-rhai", version = "0.1.0", optional = true }
+# issun-mod-wasm = { path = "../issun-mod-wasm", version = "0.1.0", optional = true }
+
 [dev-dependencies]
 tempfile = "3.8"
 
@@ -43,5 +49,6 @@ default = ["ui", "storage"]
 ui = []           # TUI support
 storage = []      # Save/Load support
 network = ["quinn", "rustls"]  # Network support
+# MOD system features (backends are separate crates, not features)
 full = ["ui", "storage", "network"]
 tty_tests = []    # Enable TTY-dependent tests

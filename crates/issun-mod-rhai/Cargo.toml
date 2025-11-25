@@ -1,0 +1,29 @@
+[package]
+name = "issun-mod-rhai"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yutaka Nishimura <ytk.nishimura@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ynishi/issun"
+description = "Rhai scripting backend for ISSUN MOD system"
+
+[dependencies]
+issun = { path = "../issun", version = "0.6.0", default-features = false, features = [] }
+
+# Rhai scripting engine
+rhai = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }
+
+# File watching for hot reload (optional)
+notify = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tempfile = "3.8"
+
+[features]
+default = []
+hot-reload = ["notify"]

@@ -57,6 +57,9 @@ pub mod ui;
 #[cfg(feature = "network")]
 pub mod network;
 
+// MOD system
+pub mod modding;
+
 // Prelude for convenient imports
 pub mod prelude {
     pub use crate::asset::Asset;
@@ -127,6 +130,12 @@ pub mod prelude {
     pub use crate::state::{State, States};
     pub use crate::store::{EntityStore, Store};
     pub use crate::system::System;
+    // MOD system
+    pub use crate::modding::{
+        ModLoader, ModHandle, ModMetadata, ModBackend,
+        PluginControl, PluginAction,
+        ModSystemPlugin, ModSystemConfig,
+    };
     // Re-export proc macros (note: traits come from their respective modules above)
     pub use issun_macros::Plugin as DerivePlugin;
     pub use issun_macros::Service as DeriveService;

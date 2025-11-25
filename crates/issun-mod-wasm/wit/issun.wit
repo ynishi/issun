@@ -1,0 +1,61 @@
+// WIT (WebAssembly Interface Types) definition for ISSUN MOD API
+// This defines the contract between the host (ISSUN engine) and guest (MOD)
+
+package issun:mod;
+
+/// Host API provided by ISSUN engine to MODs
+interface api {
+    /// Log a message to the console
+    log: func(message: string);
+
+    /// Enable a plugin by name
+    enable-plugin: func(name: string);
+
+    /// Disable a plugin by name
+    disable-plugin: func(name: string);
+
+    /// Set a plugin parameter
+    /// JSON value is passed as string for simplicity
+    set-plugin-param: func(plugin: string, key: string, value: string);
+
+    /// Get a random number between 0.0 and 1.0
+    random: func() -> float32;
+}
+
+/// Guest interface that MODs must implement
+world mod-guest {
+    /// Import host API
+    import api;
+
+    /// MOD metadata
+    record metadata {
+        name: string,
+        version: string,
+        author: option<string>,
+        description: option<string>,
+    }
+
+    /// Plugin action types
+    variant plugin-action {
+        enable,
+        disable,
+        set-parameter(tuple<string, string>),  // (key, value)
+        trigger-hook(tuple<string, string>),   // (hook_name, data)
+    }
+
+    /// Get MOD metadata
+    export get-metadata: func() -> metadata;
+
+    /// Called when MOD is loaded
+    export on-init: func();
+
+    /// Called when MOD is unloaded
+    export on-shutdown: func();
+
+    /// Called when plugin control is requested
+    export on-control-plugin: func(plugin-name: string, action: string);
+
+    /// Custom function calls (optional)
+    /// Returns JSON string result
+    export call-custom: func(fn-name: string, args: list<string>) -> string;
+}

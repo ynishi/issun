@@ -1,0 +1,33 @@
+[package]
+name = "issun-mod-wasm"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yutaka Nishimura <ytk.nishimura@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ynishi/issun"
+description = "WebAssembly Component Model backend for ISSUN MOD system"
+
+[dependencies]
+issun = { path = "../issun", version = "0.6.0", default-features = false }
+
+# Wasmtime for running Wasm components
+wasmtime = { version = "26.0", features = ["component-model"] }
+wasmtime-wasi = "26.0"
+
+# WIT bindgen for generating host bindings
+wit-bindgen = "0.33.0"
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tempfile = "3.8"
+
+[build-dependencies]
+wit-bindgen = "0.33.0"
+
+[features]
+default = []
