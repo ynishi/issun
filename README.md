@@ -25,6 +25,7 @@ ISSUN is designed for developers who want to:
 - 💾 **Async Runtime** - Tokio-powered for networking support
 - 🛠️ **Derive Macros** - Less boilerplate, more game logic (`#[derive(Service)]`, `#[derive(System)]`)
 - 📦 **Service Registry** - Access framework services from game code
+- 🔧 **MOD System** - Runtime plugin control via Rhai scripts and WebAssembly
 - 🚀 **Production-Ready Relay Server** - QUIC-based multiplayer with Docker/Kubernetes support
 - 🔍 **Event Chain Tracing** - Visualize Event→Hook call chains with Mermaid/Graphviz graphs
 - 🎬 **Event Replay System** - Record and deterministically replay gameplay for debugging
@@ -136,6 +137,123 @@ validation.print_report();
 - Perfect for understanding large codebases and onboarding new developers
 
 See [issun-analyzer README](crates/issun-analyzer/README.md) for detailed usage.
+
+## 🔧 MOD System
+
+ISSUN provides a powerful MOD system that allows runtime modification of game behavior through scripting (Rhai) and compiled modules (WebAssembly).
+
+### Key Features
+
+- **Backend-Agnostic**: Support for Rhai scripts and WebAssembly modules
+- **Runtime Plugin Control**: Enable/disable plugins and modify parameters at runtime
+- **Type-Safe API**: Strong typing through Rust traits and event system
+- **Sandboxed Execution**: Safe execution of user-provided scripts
+- **Event-Driven**: Seamless integration with ISSUN's event bus
+
+### Quick Example
+
+**Write a MOD** (`mods/gameplay_tweaks.rhai`):
+```rhai
+// MOD metadata
+fn get_metadata() {
+    #{
+        name: "Gameplay Tweaks",
+        version: "1.0.0",
+        author: "YourName",
+        description: "Customize combat and inventory settings"
+    }
+}
+
+// Called when MOD is loaded
+fn on_init() {
+    log("Gameplay Tweaks MOD loaded!");
+
+    // Enable combat plugin
+    enable_plugin("combat");
+
+    // Customize combat parameters
+    set_plugin_param("combat", "max_hp", 150);
+    set_plugin_param("combat", "difficulty", 2.0);
+
+    // Configure inventory
+    enable_plugin("inventory");
+    set_plugin_param("inventory", "max_slots", 30);
+
+    log("Gameplay tweaks applied!");
+}
+
+// Called when MOD is unloaded
+fn on_shutdown() {
+    log("Gameplay Tweaks MOD unloaded");
+}
+```
+
+**Load the MOD in your game**:
+```rust
+use issun::prelude::*;
+use issun::modding::ModSystemPlugin;
+use issun_mod_rhai::RhaiLoader;
+
+let game = GameBuilder::new()
+    // Register MOD system with Rhai backend
+    .with_plugin(ModSystemPlugin::new().with_loader(RhaiLoader::new()))?
+    .with_plugin(CombatPlugin::default())?
+    .with_plugin(InventoryPlugin::default())?
+    .build()
+    .await?;
+
+// MODs can be loaded through events or directly
+// The MOD system automatically bridges plugin control to configurations
+```
+
+### Available MOD APIs
+
+#### Logging
+```rhai
+log("Your message here");
+```
+
+#### Plugin Control
+```rhai
+enable_plugin("plugin_name");    // Enable a plugin
+disable_plugin("plugin_name");   // Disable a plugin
+set_plugin_param("plugin_name", "param_key", value);  // Set plugin parameter
+trigger_hook("plugin_name", "hook_name", data);       // Trigger plugin hook
+```
+
+### Supported Plugins
+
+Currently, the following plugins support MOD control:
+
+- **`combat`** / **`issun:combat`**
+  - `enabled: bool` - Enable/disable combat system
+  - `max_hp: u32` - Default maximum HP for combatants
+  - `difficulty: f32` - Difficulty multiplier
+
+- **`inventory`** / **`issun:inventory`**
+  - `enabled: bool` - Enable/disable inventory system
+  - `max_slots: usize` - Maximum inventory capacity
+  - `allow_stacking: bool` - Allow item stacking
+
+### Architecture
+
+The MOD system uses an event-driven architecture:
+
+```
+MOD Script → enable_plugin("economy") → Command Queue
+    ↓
+PluginControlSystem → Convert to Events
+    ↓
+EventBus → PluginEnabledEvent → ModBridgeSystem
+    ↓
+Update Plugin Config → Effect in Game
+```
+
+### Learn More
+
+- [MOD System User Guide](docs/mod-system-user-guide.md) - Complete guide for MOD authors
+- [MOD System Architecture](docs/architecture/mod-system-architecture.md) - Technical architecture details
+- [Example MODs](mods/) - Sample MOD scripts
 
 ## 🎮 Built-in Plugins
 
@@ -347,6 +465,8 @@ cargo run -p multiplayer-pong -- --server 127.0.0.1:5000
 ## 📚 Documentation
 
 - [Architecture Guide](docs/ARCHITECTURE.md) - Service/System/Scene/Plugin patterns
+- [MOD System User Guide](docs/mod-system-user-guide.md) - Complete guide for MOD authors
+- [MOD System Architecture](docs/architecture/mod-system-architecture.md) - Technical architecture details
 - [Network EventBus](docs/design/network-eventbus.md) - Network-transparent event system
 - [Relay Server](docs/design/relay-server.md) - QUIC relay server design and deployment
 - [Deployment Guide](deploy/README.md) - Docker, Kubernetes, and cloud deployment
@@ -354,6 +474,8 @@ cargo run -p multiplayer-pong -- --server 127.0.0.1:5000
 - Example games:
   - `examples/junk-bot-game/` - Complete single-player roguelike
   - `examples/multiplayer-pong/` - Network multiplayer demo
+- Example MODs:
+  - `mods/example_mod.rhai` - Sample MOD demonstrating plugin control
 
 ## 🤝 Contributing
 

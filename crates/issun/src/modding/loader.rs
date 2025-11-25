@@ -17,7 +17,7 @@ pub struct ModMetadata {
 }
 
 /// Handle to a loaded MOD
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ModHandle {
     pub id: String,
     pub metadata: ModMetadata,
@@ -74,6 +74,24 @@ pub trait ModLoader: Send + Sync {
         // Default: no-op (backends can override)
         let _ = (handle, fn_name, args);
         Ok(serde_json::Value::Null)
+    }
+
+    /// Drain queued plugin control commands
+    ///
+    /// This is called by `PluginControlSystem` to retrieve commands
+    /// that were queued by MOD scripts during execution.
+    fn drain_commands(&mut self) -> Vec<PluginControl> {
+        Vec::new() // Default: no commands
+    }
+
+    /// Drain queued events to publish
+    ///
+    /// This is called by `ModEventSystem` to retrieve events
+    /// that were queued by MOD scripts via `publish_event()`.
+    ///
+    /// Returns a vector of (event_type, event_data) tuples.
+    fn drain_events(&mut self) -> Vec<(String, serde_json::Value)> {
+        Vec::new() // Default: no events
     }
 
     /// Clone this loader (for dynamic dispatch)

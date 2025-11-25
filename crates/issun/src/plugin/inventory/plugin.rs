@@ -193,6 +193,7 @@ mod tests {
     #[test]
     fn test_plugin_with_custom_config() {
         let config = InventoryConfig {
+            enabled: true,
             default_capacity: 20,
             allow_stacking: false,
             max_stack_size: 1,

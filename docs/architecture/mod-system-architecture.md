@@ -1,7 +1,7 @@
 # MOD System Architecture
 
 **Version**: 0.7.0
-**Status**: Phase 1-2 Implemented, Phase 3 Concept
+**Status**: Phase 1-3 Implemented, Phase 4 Complete (ModBridgeSystem)
 **Last Updated**: 2025-11-25
 
 ---
@@ -588,9 +588,131 @@ fn bench_rhai_function_call(b: &mut Bencher) {
 
 ---
 
+## ✅ Implementation Phases (Completed)
+
+### Phase 1-2: Core Infrastructure
+
+**Implemented**: `crates/issun/src/modding/`, `crates/issun-mod-rhai/`, `crates/issun-mod-wasm/`
+
+- ✅ `ModLoader` trait - Backend-agnostic interface
+- ✅ `RhaiLoader` - Rhai scripting backend with API functions
+- ✅ `WasmLoader` - WebAssembly component model backend
+- ✅ `ModSystemPlugin` - Plugin registration system
+- ✅ Event infrastructure for MOD lifecycle
+
+### Phase 3: Runtime Plugin Control System
+
+**Implemented**: Event-driven plugin control flow
+
+**Components**:
+
+1. **Event Types** (`crates/issun/src/modding/events.rs`)
+   ```rust
+   - ModLoadRequested       // Request to load a MOD file
+   - ModLoadedEvent         // MOD successfully loaded
+   - ModUnloadRequested     // Request to unload a MOD
+   - PluginEnabledEvent     // Plugin was enabled
+   - PluginDisabledEvent    // Plugin was disabled
+   - PluginParameterChangedEvent  // Plugin parameter changed
+   - PluginHookTriggeredEvent     // Plugin hook triggered
+   ```
+
+2. **ModLoadSystem** (`crates/issun/src/modding/plugin.rs`)
+   - Processes `ModLoadRequested` events
+   - Calls `ModLoader::load()` for each request
+   - Publishes `ModLoadedEvent` on success
+   - Handles errors gracefully
+
+3. **PluginControlSystem** (`crates/issun/src/modding/plugin.rs`)
+   - Drains commands from `ModLoader::drain_commands()`
+   - Converts `PluginControl` commands to events
+   - Publishes `PluginEnabledEvent`, `PluginDisabledEvent`, `PluginParameterChangedEvent`
+
+4. **Rhai API Bridge** (`crates/issun-mod-rhai/src/lib.rs`)
+   - Thread-safe command queue: `Arc<Mutex<Vec<PluginControl>>>`
+   - API functions queue commands instead of printing
+   - `enable_plugin()`, `disable_plugin()`, `set_plugin_param()`, `trigger_hook()`
+   - `drain_commands()` method to extract queued commands
+
+**Control Flow**:
+```
+MOD Script → enable_plugin("economy") → Command Queue
+    ↓
+PluginControlSystem → drain_commands() → Convert to Events
+    ↓
+EventBus → PluginEnabledEvent → ModBridgeSystem
+    ↓
+Update CombatConfig.enabled = true
+```
+
+### Phase 4: ModBridgeSystem (Plugin Config Integration)
+
+**Implemented**: `crates/issun/src/engine/mod_bridge_system.rs`
+
+**Purpose**: Bridge MOD events to Plugin configurations centrally
+
+**Design**: Approach A from `docs/design/mod-aware-plugin-design.md`
+- Centralized system handles all plugin config updates
+- No changes required to individual plugins
+- Extensible for future plugins
+
+**Implementation**:
+```rust
+pub struct ModBridgeSystem;
+
+impl System for ModBridgeSystem {
+    async fn update(&mut self, ctx: &mut Context) {
+        // Step 1: Collect events
+        let enabled_events = /* collect PluginEnabledEvent */;
+        let disabled_events = /* collect PluginDisabledEvent */;
+        let param_events = /* collect PluginParameterChangedEvent */;
+
+        // Step 2: Process enable/disable
+        for event in enabled_events {
+            match normalize_plugin_name(&event.plugin_name) {
+                "combat" => config.enabled = true,
+                "inventory" => config.enabled = true,
+                // ...
+            }
+        }
+
+        // Step 3: Process parameter changes
+        for event in param_events {
+            match plugin_name {
+                "combat" => apply_combat_param(key, value),
+                "inventory" => apply_inventory_param(key, value),
+                // ...
+            }
+        }
+    }
+}
+```
+
+**Supported Plugins**:
+- `combat` / `issun:combat`
+  - `enabled: bool`
+  - `max_hp: u32`
+  - `difficulty: f32`
+
+- `inventory` / `issun:inventory`
+  - `enabled: bool`
+  - `max_slots: usize`
+  - `allow_stacking: bool`
+
+**Registration**: Auto-registered by `ModSystemPlugin`
+
+**Testing**: 10 unit tests + 4 integration tests covering:
+- Enable/disable functionality
+- Parameter changes
+- Namespaced plugin names
+- Multiple events in single update
+- Unknown plugin/parameter handling
+
+---
+
 ## 🔮 Future Architecture Evolution
 
-### Phase 4: Hot Reload (Rhai)
+### Phase 5: Hot Reload (Rhai)
 ```rust
 pub struct HotReloadWatcher {
     watcher: notify::RecommendedWatcher,
@@ -604,7 +726,7 @@ impl HotReloadWatcher {
 }
 ```
 
-### Phase 5: MOD Marketplace
+### Phase 6: MOD Marketplace
 ```rust
 pub struct ModMarketplace {
     registry: ModRegistry,
@@ -618,7 +740,7 @@ impl ModMarketplace {
 }
 ```
 
-### Phase 6: Visual MOD Editor
+### Phase 7: Visual MOD Editor
 ```
 ┌─────────────────────────────────┐
 │  Visual MOD Editor (Web UI)     │
@@ -642,6 +764,6 @@ impl ModMarketplace {
 
 ---
 
-**Architecture Version**: 1.0
-**Implementation Status**: Phase 1-2 Complete, Phase 3 Concept
+**Architecture Version**: 2.0
+**Implementation Status**: Phase 1-4 Complete (Full Runtime Plugin Control)
 **Last Reviewed**: 2025-11-25

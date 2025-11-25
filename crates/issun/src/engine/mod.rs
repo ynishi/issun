@@ -3,10 +3,12 @@
 pub mod game_loop;
 pub mod headless_runner;
 pub mod input;
+pub mod mod_bridge_system;
 pub mod rng;
 pub mod runner;
 
 pub use headless_runner::{ChannelHeadlessRunner, HeadlessRunner};
 pub use input::InputMapper;
+pub use mod_bridge_system::ModBridgeSystem;
 pub use rng::GameRng;
 pub use runner::GameRunner;

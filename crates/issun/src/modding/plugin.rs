@@ -1,9 +1,12 @@
 //! MOD System Plugin for ISSUN integration
 
-use crate::modding::{ModLoader, ModHandle};
+use crate::modding::{ModLoader, ModHandle, PluginAction, ModEventSystem};
+use crate::modding::events::*;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use crate::system::System;
 use crate::context::Context;
+use crate::event::EventBus;
+use crate::engine::ModBridgeSystem;
 use async_trait::async_trait;
 use std::any::Any;
 
@@ -15,7 +18,8 @@ use std::any::Any;
 ///
 /// ```ignore
 /// use issun::prelude::*;
-/// use issun::modding::{ModSystemPlugin, RhaiLoader};
+/// use issun::modding::{ModSystemPlugin};
+/// use issun_mod_rhai::RhaiLoader;
 ///
 /// let game = GameBuilder::new()
 ///     .with_plugin(ModSystemPlugin::new().with_loader(RhaiLoader::new()))?
@@ -55,7 +59,11 @@ impl Plugin for ModSystemPlugin {
             });
         }
 
+        // Register all four systems
         builder.register_system(Box::new(ModLoadSystem));
+        builder.register_system(Box::new(PluginControlSystem));
+        builder.register_system(Box::new(ModEventSystem::new()));
+        builder.register_system(Box::new(ModBridgeSystem::new()));
     }
 }
 
@@ -86,6 +94,9 @@ pub struct ModLoaderState {
 }
 
 /// System for loading and managing MODs
+///
+/// Processes `ModLoadRequested` and `ModUnloadRequested` events,
+/// delegates to the configured `ModLoader`, and publishes result events.
 struct ModLoadSystem;
 
 #[async_trait]
@@ -94,9 +105,182 @@ impl System for ModLoadSystem {
         "mod_load_system"
     }
 
-    async fn update(&mut self, _ctx: &mut Context) {
-        // TODO: Implementation will poll for ModLoadRequested events
-        // and call loader.load() for each request
+    async fn update(&mut self, ctx: &mut Context) {
+        // Get EventBus via string key (legacy Context API)
+        // Step 1: Collect load requests
+        let load_requests: Vec<ModLoadRequested> = {
+            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+                event_bus.reader::<ModLoadRequested>()
+                    .iter()
+                    .cloned()
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Step 2: Collect unload requests
+        let unload_requests: Vec<ModUnloadRequested> = {
+            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+                event_bus.reader::<ModUnloadRequested>()
+                    .iter()
+                    .cloned()
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Step 3: Process load requests
+        let mut load_results = Vec::new();
+        if !load_requests.is_empty() {
+            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+                for request in load_requests {
+                    match loader_state.loader.load(&request.path) {
+                        Ok(handle) => {
+                            println!("[MOD System] Loaded MOD: {} v{}", handle.metadata.name, handle.metadata.version);
+                            loader_state.loaded_mods.push(handle.clone());
+                            load_results.push(Ok(handle));
+                        }
+                        Err(e) => {
+                            eprintln!("[MOD System] Failed to load MOD {:?}: {}", request.path, e);
+                            load_results.push(Err((request.path, e.to_string())));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Publish load results
+        if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+            for result in load_results {
+                match result {
+                    Ok(handle) => {
+                        event_bus.publish(ModLoadedEvent { handle });
+                    }
+                    Err((path, error)) => {
+                        event_bus.publish(ModLoadFailedEvent { path, error });
+                    }
+                }
+            }
+        }
+
+        // Step 4: Process unload requests
+        let mut unload_results: Vec<Result<String, ()>> = Vec::new();
+        if !unload_requests.is_empty() {
+            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+                for request in unload_requests {
+                    // Find the MOD handle
+                    if let Some(pos) = loader_state.loaded_mods.iter().position(|h| h.id == request.mod_id) {
+                        let handle = loader_state.loaded_mods.remove(pos);
+
+                        match loader_state.loader.unload(&handle) {
+                            Ok(_) => {
+                                println!("[MOD System] Unloaded MOD: {}", request.mod_id);
+                                unload_results.push(Ok(request.mod_id));
+                            }
+                            Err(e) => {
+                                eprintln!("[MOD System] Failed to unload MOD {}: {}", request.mod_id, e);
+                                // Re-add to list on failure
+                                loader_state.loaded_mods.push(handle);
+                            }
+                        }
+                    } else {
+                        eprintln!("[MOD System] MOD '{}' not found", request.mod_id);
+                    }
+                }
+            }
+        }
+
+        // Publish unload results
+        if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+            for result in unload_results {
+                if let Ok(mod_id) = result {
+                    event_bus.publish(ModUnloadedEvent { mod_id });
+                }
+            }
+        }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+/// System for processing plugin control commands from MODs
+///
+/// Drains commands from `ModLoader`, publishes `PluginControlRequested` events,
+/// and then publishes specific events for each action type.
+struct PluginControlSystem;
+
+#[async_trait]
+impl System for PluginControlSystem {
+    fn name(&self) -> &'static str {
+        "plugin_control_system"
+    }
+
+    async fn update(&mut self, ctx: &mut Context) {
+        // Step 1: Drain commands from loader
+        let commands = {
+            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
+                loader_state.loader.drain_commands()
+            } else {
+                Vec::new()
+            }
+        };
+
+        if commands.is_empty() {
+            return;
+        }
+
+        // Step 2 & 3: Publish all events
+        if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+            // Publish PluginControlRequested events
+            for command in &commands {
+                event_bus.publish(PluginControlRequested {
+                    control: command.clone(),
+                    source_mod: None, // TODO: Track source MOD
+                });
+            }
+
+            // Publish specific action events
+            for command in commands {
+                match &command.action {
+                    PluginAction::Enable => {
+                        println!("[MOD System] Enabling plugin: {}", command.plugin_name);
+                        event_bus.publish(PluginEnabledEvent {
+                            plugin_name: command.plugin_name.clone(),
+                        });
+                    }
+                    PluginAction::Disable => {
+                        println!("[MOD System] Disabling plugin: {}", command.plugin_name);
+                        event_bus.publish(PluginDisabledEvent {
+                            plugin_name: command.plugin_name.clone(),
+                        });
+                    }
+                    PluginAction::SetParameter { key, value } => {
+                        println!("[MOD System] Setting {}.{} = {:?}", command.plugin_name, key, value);
+                        event_bus.publish(PluginParameterChangedEvent {
+                            plugin_name: command.plugin_name.clone(),
+                            key: key.clone(),
+                            value: value.clone(),
+                        });
+                    }
+                    PluginAction::TriggerHook { hook_name, data } => {
+                        println!("[MOD System] Triggering hook: {}.{}", command.plugin_name, hook_name);
+                        event_bus.publish(PluginHookTriggeredEvent {
+                            plugin_name: command.plugin_name.clone(),
+                            hook_name: hook_name.clone(),
+                            data: data.clone(),
+                        });
+                    }
+                }
+            }
+        }
     }
 
     fn as_any(&self) -> &dyn Any {

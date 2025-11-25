@@ -188,6 +188,9 @@ mod tests {
     #[test]
     fn test_plugin_with_custom_config() {
         let config = CombatConfig {
+            enabled: true,
+            default_max_hp: 100,
+            difficulty_multiplier: 1.0,
             enable_log: false,
             max_log_entries: 50,
             score_per_enemy: 20,

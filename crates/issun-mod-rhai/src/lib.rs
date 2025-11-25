@@ -19,9 +19,17 @@ use issun::modding::{
     ModLoader, ModHandle, ModMetadata, ModBackend,
     PluginControl, PluginAction, ModError, ModResult,
 };
-use rhai::{Engine, AST, Scope, Dynamic};
+use rhai::{Engine, AST, Scope, Dynamic, FnPtr};
 use std::path::Path;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+/// Event subscription from a MOD script
+#[derive(Clone)]
+pub struct EventSubscription {
+    pub event_type: String,
+    pub callback: FnPtr,
+}
 
 /// Rhai-based MOD loader
 ///
@@ -29,55 +37,128 @@ use std::collections::HashMap;
 pub struct RhaiLoader {
     engine: Engine,
     scripts: HashMap<String, LoadedScript>,
+    command_queue: Arc<Mutex<Vec<PluginControl>>>,
+    event_subscriptions: Arc<Mutex<HashMap<String, Vec<EventSubscription>>>>, // mod_id -> subscriptions
+    event_publish_queue: Arc<Mutex<Vec<(String, serde_json::Value)>>>,         // (event_type, data)
 }
 
 struct LoadedScript {
     ast: AST,
     scope: Scope<'static>,
+    mod_id: String, // Store MOD ID for event callbacks
 }
 
 impl RhaiLoader {
     /// Create a new RhaiLoader with default ISSUN API bindings
     pub fn new() -> Self {
+        let command_queue = Arc::new(Mutex::new(Vec::new()));
+        let event_subscriptions = Arc::new(Mutex::new(HashMap::new()));
+        let event_publish_queue = Arc::new(Mutex::new(Vec::new()));
         let mut engine = Engine::new();
 
         // Register ISSUN API functions
-        Self::register_api(&mut engine);
+        Self::register_api(
+            &mut engine,
+            command_queue.clone(),
+            event_subscriptions.clone(),
+            event_publish_queue.clone(),
+        );
 
         Self {
             engine,
             scripts: HashMap::new(),
+            command_queue,
+            event_subscriptions,
+            event_publish_queue,
         }
     }
 
     /// Register ISSUN API functions that scripts can call
-    fn register_api(engine: &mut Engine) {
+    fn register_api(
+        engine: &mut Engine,
+        queue: Arc<Mutex<Vec<PluginControl>>>,
+        subscriptions: Arc<Mutex<HashMap<String, Vec<EventSubscription>>>>,
+        publish_queue: Arc<Mutex<Vec<(String, serde_json::Value)>>>,
+    ) {
         // Logging API
         engine.register_fn("log", |msg: &str| {
             println!("[MOD] {}", msg);
         });
 
-        // Plugin control API
-        engine.register_fn("enable_plugin", |name: &str| {
-            println!("[MOD API] Enable plugin: {}", name);
-        });
+        // Plugin control API - Enable
+        {
+            let q = queue.clone();
+            engine.register_fn("enable_plugin", move |name: &str| {
+                let control = PluginControl::enable(name);
+                if let Ok(mut queue) = q.lock() {
+                    queue.push(control);
+                }
+            });
+        }
 
-        engine.register_fn("disable_plugin", |name: &str| {
-            println!("[MOD API] Disable plugin: {}", name);
-        });
+        // Plugin control API - Disable
+        {
+            let q = queue.clone();
+            engine.register_fn("disable_plugin", move |name: &str| {
+                let control = PluginControl::disable(name);
+                if let Ok(mut queue) = q.lock() {
+                    queue.push(control);
+                }
+            });
+        }
 
-        engine.register_fn("set_plugin_param", |plugin: &str, key: &str, value: Dynamic| {
-            println!("[MOD API] Set {}.{} = {:?}", plugin, key, value);
-        });
+        // Plugin control API - Set Parameter
+        {
+            let q = queue.clone();
+            engine.register_fn("set_plugin_param", move |plugin: &str, key: &str, value: Dynamic| {
+                let json_value = dynamic_to_json(value);
+                let control = PluginControl::set_param(plugin, key, json_value);
+                if let Ok(mut queue) = q.lock() {
+                    queue.push(control);
+                }
+            });
+        }
 
         // Random number generation
         engine.register_fn("random", || -> f64 {
             rand::random()
         });
 
+        // Event subscription API
+        {
+            let subs = subscriptions.clone();
+            engine.register_fn("subscribe_event", move |event_type: &str, callback: FnPtr| {
+                // Get MOD_ID from current scope
+                // Note: This is a limitation - we can't access scope here
+                // We'll need to handle this in ModEventSystem by using a thread-local or similar
+                // For now, we store with a placeholder and update it when we know the mod_id
+                if let Ok(mut subscriptions) = subs.lock() {
+                    subscriptions
+                        .entry("__current__".to_string())
+                        .or_default()
+                        .push(EventSubscription {
+                            event_type: event_type.to_string(),
+                            callback,
+                        });
+                }
+            });
+        }
+
+        // Event publish API
+        {
+            let pq = publish_queue.clone();
+            engine.register_fn("publish_event", move |event_type: &str, data: Dynamic| {
+                // Convert Dynamic to JSON
+                let json_data = dynamic_to_json(data);
+                if let Ok(mut queue) = pq.lock() {
+                    queue.push((event_type.to_string(), json_data));
+                }
+            });
+        }
+
         // TODO: Add more ISSUN API functions as needed
+        // - hook_into()
         // - get_plugin_state()
-        // - trigger_event()
         // - query_entities()
         // etc.
     }
@@ -145,11 +226,25 @@ impl ModLoader for RhaiLoader {
             .ok_or_else(|| ModError::InvalidFormat("Invalid filename".to_string()))?
             .to_string();
 
+        // Inject MOD_ID into scope for API functions to access
+        scope.push("MOD_ID", id.clone());
+
         // Call on_init() if it exists
         let _ = self.engine.call_fn::<()>(&mut scope, &ast, "on_init", ());
 
+        // Move subscriptions from "__current__" to actual mod_id
+        if let Ok(mut subscriptions) = self.event_subscriptions.lock() {
+            if let Some(current_subs) = subscriptions.remove("__current__") {
+                subscriptions.insert(id.clone(), current_subs);
+            }
+        }
+
         // Store loaded script
-        self.scripts.insert(id.clone(), LoadedScript { ast, scope });
+        self.scripts.insert(id.clone(), LoadedScript {
+            ast,
+            scope,
+            mod_id: id.clone(),
+        });
 
         Ok(ModHandle {
             id,
@@ -247,8 +342,123 @@ impl ModLoader for RhaiLoader {
         Ok(json_result)
     }
 
+    fn drain_commands(&mut self) -> Vec<PluginControl> {
+        if let Ok(mut queue) = self.command_queue.lock() {
+            queue.drain(..).collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn drain_events(&mut self) -> Vec<(String, serde_json::Value)> {
+        if let Ok(mut queue) = self.event_publish_queue.lock() {
+            queue.drain(..).collect()
+        } else {
+            Vec::new()
+        }
+    }
+
     fn clone_box(&self) -> Box<dyn ModLoader> {
         Box::new(Self::new())
+    }
+}
+
+impl RhaiLoader {
+    /// Get all event subscriptions for all loaded MODs
+    pub fn get_all_subscriptions(&self) -> HashMap<String, Vec<EventSubscription>> {
+        if let Ok(subscriptions) = self.event_subscriptions.lock() {
+            subscriptions.clone()
+        } else {
+            HashMap::new()
+        }
+    }
+
+    /// Get event subscriptions for a specific MOD
+    pub fn get_subscriptions(&self, mod_id: &str) -> Vec<EventSubscription> {
+        if let Ok(subscriptions) = self.event_subscriptions.lock() {
+            subscriptions.get(mod_id).cloned().unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Call a Rhai callback with JSON event data
+    pub fn call_event_callback(
+        &mut self,
+        mod_id: &str,
+        callback: &FnPtr,
+        event_data: &serde_json::Value,
+    ) -> Result<(), String> {
+        if let Some(script) = self.scripts.get_mut(mod_id) {
+            // Convert JSON to Rhai Dynamic
+            let rhai_data = json_to_dynamic(event_data);
+
+            // Call the callback
+            let _ = callback
+                .call::<Dynamic>(&self.engine, &script.ast, (rhai_data,))
+                .map_err(|e| format!("Callback error: {}", e))?;
+            Ok(())
+        } else {
+            Err(format!("MOD '{}' not found", mod_id))
+        }
+    }
+}
+
+/// Helper function to convert Rhai Dynamic to JSON
+fn dynamic_to_json(value: Dynamic) -> serde_json::Value {
+    if value.is::<i64>() {
+        serde_json::json!(value.cast::<i64>())
+    } else if value.is::<f64>() {
+        serde_json::json!(value.cast::<f64>())
+    } else if value.is::<bool>() {
+        serde_json::json!(value.cast::<bool>())
+    } else if value.is::<String>() {
+        serde_json::json!(value.cast::<String>())
+    } else if value.is::<rhai::Map>() {
+        // Convert Rhai Map to JSON Object
+        let map = value.cast::<rhai::Map>();
+        let mut json_map = serde_json::Map::new();
+        for (k, v) in map {
+            json_map.insert(k.to_string(), dynamic_to_json(v));
+        }
+        serde_json::Value::Object(json_map)
+    } else if value.is::<rhai::Array>() {
+        // Convert Rhai Array to JSON Array
+        let arr = value.cast::<rhai::Array>();
+        let json_arr: Vec<serde_json::Value> = arr.into_iter().map(dynamic_to_json).collect();
+        serde_json::Value::Array(json_arr)
+    } else {
+        serde_json::json!(value.to_string())
+    }
+}
+
+/// Helper function to convert JSON to Rhai Dynamic
+fn json_to_dynamic(value: &serde_json::Value) -> Dynamic {
+    use serde_json::Value;
+    match value {
+        Value::Null => Dynamic::UNIT,
+        Value::Bool(b) => Dynamic::from(*b),
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Dynamic::from(i)
+            } else if let Some(f) = n.as_f64() {
+                Dynamic::from(f)
+            } else {
+                Dynamic::from(n.to_string())
+            }
+        }
+        Value::String(s) => Dynamic::from(s.clone()),
+        Value::Array(arr) => {
+            let rhai_arr: Vec<Dynamic> = arr.iter().map(json_to_dynamic).collect();
+            Dynamic::from(rhai_arr)
+        }
+        Value::Object(obj) => {
+            let mut map = rhai::Map::new();
+            for (k, v) in obj {
+                map.insert(k.clone().into(), json_to_dynamic(v));
+            }
+            Dynamic::from(map)
+        }
     }
 }
 
@@ -360,4 +570,154 @@ fn on_control_plugin(plugin_name, action) {{
         // Should not error
         loader.control_plugin(&handle, &control).unwrap();
     }
+
+    #[test]
+    fn test_command_queue() {
+        let mut loader = RhaiLoader::new();
+
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"
+fn on_init() {{
+    log("Initializing mod");
+    enable_plugin("combat");
+    disable_plugin("economy");
+    set_plugin_param("combat", "max_hp", 100);
+}}
+"#).unwrap();
+
+        let _handle = loader.load(file.path()).unwrap();
+
+        // Drain commands
+        let commands = loader.drain_commands();
+
+        // Should have 3 commands queued during on_init()
+        assert_eq!(commands.len(), 3);
+
+        // Verify command types
+        assert!(matches!(commands[0].action, PluginAction::Enable));
+        assert_eq!(commands[0].plugin_name, "combat");
+
+        assert!(matches!(commands[1].action, PluginAction::Disable));
+        assert_eq!(commands[1].plugin_name, "economy");
+
+        assert!(matches!(commands[2].action, PluginAction::SetParameter { .. }));
+        assert_eq!(commands[2].plugin_name, "combat");
+
+        // Draining again should return empty
+        let commands2 = loader.drain_commands();
+        assert_eq!(commands2.len(), 0);
+    }
+
+    #[test]
+    fn test_subscribe_event() {
+        let mut loader = RhaiLoader::new();
+
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"
+fn on_init() {{
+    log("Setting up event subscriptions");
+
+    subscribe_event("PlayerDamaged", |event| {{
+        log("Player took damage: " + event.amount);
+    }});
+
+    subscribe_event("EnemyDefeated", |event| {{
+        log("Enemy defeated!");
+    }});
+}}
+"#).unwrap();
+
+        let handle = loader.load(file.path()).unwrap();
+
+        // Get subscriptions for the loaded MOD
+        let subscriptions = loader.get_subscriptions(&handle.id);
+
+        // Should have 2 event subscriptions
+        assert_eq!(subscriptions.len(), 2);
+
+        // Verify event types
+        assert_eq!(subscriptions[0].event_type, "PlayerDamaged");
+        assert_eq!(subscriptions[1].event_type, "EnemyDefeated");
+    }
+
+    #[test]
+    fn test_call_event_callback() {
+        let mut loader = RhaiLoader::new();
+
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"
+let message = "";
+
+fn on_init() {{
+    subscribe_event("TestEvent", |event| {{
+        log("Event received: " + event.message);
+    }});
+}}
+"#).unwrap();
+
+        let handle = loader.load(file.path()).unwrap();
+
+        // Get subscriptions
+        let subscriptions = loader.get_subscriptions(&handle.id);
+        assert_eq!(subscriptions.len(), 1);
+
+        // Prepare event data
+        let event_data = serde_json::json!({
+            "message": "Hello from test",
+            "value": 42
+        });
+
+        // Call the callback
+        let result = loader.call_event_callback(
+            &handle.id,
+            &subscriptions[0].callback,
+            &event_data,
+        );
+
+        // Should succeed
+        assert!(result.is_ok(), "Callback failed: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_publish_event() {
+        let mut loader = RhaiLoader::new();
+
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"
+fn on_init() {{
+    log("Publishing events");
+
+    publish_event("CustomEvent1", #{{
+        message: "Hello",
+        value: 42
+    }});
+
+    publish_event("CustomEvent2", #{{
+        data: "World"
+    }});
+}}
+"#).unwrap();
+
+        let _handle = loader.load(file.path()).unwrap();
+
+        // Drain published events
+        let events = loader.drain_events();
+
+        // Should have 2 published events
+        assert_eq!(events.len(), 2);
+
+        // Verify event types and data
+        assert_eq!(events[0].0, "CustomEvent1");
+        assert_eq!(events[0].1["message"], "Hello");
+        assert_eq!(events[0].1["value"], 42);
+
+        assert_eq!(events[1].0, "CustomEvent2");
+        assert_eq!(events[1].1["data"], "World");
+
+        // Draining again should return empty
+        let events2 = loader.drain_events();
+        assert_eq!(events2.len(), 0);
+    }
 }
+
+
