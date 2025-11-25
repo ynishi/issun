@@ -627,9 +627,191 @@ for policy in policies {
 
 ---
 
+## 🔧 System Implementation Best Practices
+
+### Modern Context Pattern (Recommended)
+
+**Always use ResourceContext/ServiceContext** instead of Legacy Context:
+
+✅ **Good - Modern Pattern**:
+```rust
+pub struct MySystem;
+
+impl MySystem {
+    /// Update method using ResourceContext (Modern API)
+    pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
+        // Type-safe access via TypeId
+        if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
+            // Process events
+        }
+    }
+}
+
+#[async_trait]
+impl System for MySystem {
+    fn name(&self) -> &'static str {
+        "my_system"
+    }
+
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Empty - deprecated path
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+```
+
+❌ **Bad - Legacy Pattern (Deprecated)**:
+```rust
+async fn update(&mut self, ctx: &mut Context) {
+    // String-keyed access - typo-prone, runtime errors
+    if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
+        // ...
+    }
+}
+```
+
+### Why Modern Context?
+
+**Benefits**:
+- ✅ **Type-safe**: Compile-time checking, no typos
+- ✅ **Concurrent**: Multiple readers via `Arc<RwLock<>>`
+- ✅ **Clear**: Explicit context separation
+- ✅ **Refactor-friendly**: IDEs can help with renames
+
+**Migration Status**: All 9 core systems migrated as of 2025-11-25
+
+See: [Context System Architecture](./architecture/context-system.md) for full details
+
+### Lock Management Best Practices
+
+**❌ Don't hold locks unnecessarily**:
+```rust
+// BAD: Holding lock during computation
+let mut event_bus = resources.get_mut::<EventBus>().await?;
+let events = event_bus.reader::<MyEvent>().iter().collect();
+for event in events {
+    expensive_computation(&event);  // Lock held!
+}
+event_bus.publish(result);
+```
+
+**✅ Do release locks between operations**:
+```rust
+// GOOD: Release lock, compute, re-acquire
+let events = {
+    if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+        bus.reader::<MyEvent>().iter().cloned().collect()
+    } else {
+        Vec::new()
+    }
+};  // Lock released here
+
+// Compute without holding lock
+let results: Vec<_> = events.iter()
+    .map(|e| expensive_computation(e))
+    .collect();
+
+// Re-acquire to publish
+if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+    for result in results {
+        bus.publish(result);
+    }
+}
+```
+
+### System Update Patterns
+
+**Pattern 1: Simple Event Processing**
+```rust
+pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
+    // 1. Collect events
+    let events = {
+        if let Some(mut bus) = resources.get_mut::<EventBus>().await {
+            bus.reader::<MyEvent>().iter().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    };
+
+    // 2. Process
+    for event in events {
+        self.process(event, resources).await;
+    }
+}
+```
+
+**Pattern 2: State Mutation**
+```rust
+pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
+    // 1. Read current state
+    let current_value = {
+        if let Some(state) = resources.get::<MyState>().await {
+            state.value
+        } else {
+            return;
+        }
+    };
+
+    // 2. Compute new value
+    let new_value = self.calculate(current_value);
+
+    // 3. Write back
+    if let Some(mut state) = resources.get_mut::<MyState>().await {
+        state.value = new_value;
+    }
+}
+```
+
+**Pattern 3: Service Integration**
+```rust
+pub async fn process_events(
+    &mut self,
+    services: &ServiceContext,
+    resources: &mut ResourceContext,
+) {
+    // Get service
+    let calculator = services.get_as::<DamageCalculator>("damage_calculator");
+
+    // Process with service
+    let events = collect_events(resources).await;
+    for event in events {
+        let damage = calculator.calculate(&event);
+        apply_damage(damage, resources).await;
+    }
+}
+```
+
+### Custom Method Names
+
+Systems can define their own update signatures:
+
+```rust
+// Option 1: Generic name
+pub async fn update_resources(&mut self, resources: &mut ResourceContext)
+
+// Option 2: Specific name
+pub async fn process_events(&mut self, services: &ServiceContext, resources: &mut ResourceContext)
+
+// Option 3: Multiple methods
+pub async fn process_launches(&mut self, resources: &mut ResourceContext)
+pub async fn process_resolutions(&mut self, resources: &mut ResourceContext)
+```
+
+Choose names that make the system's purpose clear.
+
+---
+
 ## 📖 See Also
 
 - `AGENT.md` - VibeCoding philosophy
 - `docs/PLUGIN_LIST.md` - All built-in plugins
 - `docs/ARCHITECTURE.md` - Architecture deep dive
+- `docs/architecture/context-system.md` - Context System deep dive
 - `examples/` - Complete game examples
