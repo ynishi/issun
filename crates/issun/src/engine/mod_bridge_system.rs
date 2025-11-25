@@ -3,7 +3,7 @@
 //! This system bridges MOD events to Plugin configurations, enabling runtime control
 //! of plugins through MOD scripts.
 
-use crate::context::{Context, ResourceContext};
+use crate::context::ResourceContext;
 use crate::event::EventBus;
 use crate::modding::events::*;
 use crate::system::System;
@@ -252,11 +252,6 @@ impl Default for ModBridgeSystem {
 impl System for ModBridgeSystem {
     fn name(&self) -> &'static str {
         "mod_bridge_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern usage should call update_resources() directly
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -1,6 +1,6 @@
 //! Action points management systems
 
-use crate::context::{Context, ResourceContext, ServiceContext};
+use crate::context::{ResourceContext, ServiceContext};
 use crate::event::EventBus;
 use crate::plugin::time::{AdvanceTimeRequested, DayChanged};
 use crate::system::System;
@@ -73,11 +73,6 @@ impl System for ActionSystem {
         "action_system"
     }
 
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern systems should use the async ResourceContext/ServiceContext pattern
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -145,10 +140,6 @@ impl System for ActionResetSystem {
         "action_reset"
     }
 
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern systems should use the async ResourceContext/ServiceContext pattern
-    }
 
     fn as_any(&self) -> &dyn Any {
         self

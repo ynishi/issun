@@ -4,7 +4,7 @@ use crate::modding::{ModLoader, ModHandle, PluginAction, ModEventSystem};
 use crate::modding::events::*;
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use crate::system::System;
-use crate::context::{Context, ResourceContext};
+use crate::context::ResourceContext;
 use crate::event::EventBus;
 use crate::engine::ModBridgeSystem;
 use async_trait::async_trait;
@@ -103,6 +103,7 @@ impl ModLoadSystem {
     /// Update method using ResourceContext (Modern API)
     ///
     /// This method is the recommended way to update the system.
+    #[allow(dead_code)]
     pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
         // Step 1: Collect load requests
         let load_requests: Vec<ModLoadRequested> = {
@@ -206,11 +207,6 @@ impl System for ModLoadSystem {
         "mod_load_system"
     }
 
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern usage should call update_resources() directly
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -230,6 +226,7 @@ impl PluginControlSystem {
     /// Update method using ResourceContext (Modern API)
     ///
     /// This method is the recommended way to update the system.
+    #[allow(dead_code)]
     pub async fn update_resources(&mut self, resources: &mut ResourceContext) {
         // Step 1: Drain commands from loader
         let commands = {
@@ -295,11 +292,6 @@ impl PluginControlSystem {
 impl System for PluginControlSystem {
     fn name(&self) -> &'static str {
         "plugin_control_system"
-    }
-
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern usage should call update_resources() directly
     }
 
     fn as_any(&self) -> &dyn Any {

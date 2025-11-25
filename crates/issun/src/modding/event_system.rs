@@ -2,7 +2,6 @@
 //!
 //! Processes event subscriptions from MODs and dispatches events to them.
 
-use crate::context::Context;
 use crate::event::EventBus;
 use crate::modding::{ModLoaderState, DynamicEvent};
 use crate::system::System;
@@ -82,10 +81,6 @@ impl System for ModEventSystem {
         "mod_event_system"
     }
 
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern usage should call update_resources() directly
-    }
 
     fn as_any(&self) -> &dyn Any {
         self

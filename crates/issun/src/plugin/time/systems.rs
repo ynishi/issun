@@ -1,6 +1,6 @@
 //! Time management systems
 
-use crate::context::{Context, ResourceContext, ServiceContext};
+use crate::context::{ResourceContext, ServiceContext};
 use crate::event::EventBus;
 use crate::system::System;
 use async_trait::async_trait;
@@ -56,10 +56,6 @@ impl System for TimerSystem {
         "timer"
     }
 
-    async fn update(&mut self, _ctx: &mut Context) {
-        // Legacy Context support (deprecated path)
-        // Modern systems should use the async ResourceContext/ServiceContext pattern
-    }
 
     fn as_any(&self) -> &dyn Any {
         self
