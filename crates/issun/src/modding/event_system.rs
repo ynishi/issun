@@ -82,52 +82,9 @@ impl System for ModEventSystem {
         "mod_event_system"
     }
 
-    async fn update(&mut self, ctx: &mut Context) {
-        // Legacy Context API (string keys)
-        // Step 1: Drain events from MOD loader and publish to EventBus
-        let events_to_publish = {
-            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
-                loader_state.loader.drain_events()
-            } else {
-                Vec::new()
-            }
-        };
-
-        // Publish drained events as DynamicEvent to EventBus
-        if !events_to_publish.is_empty() {
-            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
-                for (event_type, data) in events_to_publish {
-                    event_bus.publish(DynamicEvent {
-                        event_type: event_type.clone(),
-                        data,
-                    });
-                }
-            }
-        }
-
-        // Step 2: Collect DynamicEvents from EventBus and dispatch to subscribers
-        let dynamic_events: Vec<DynamicEvent> = {
-            if let Some(event_bus) = ctx.get_mut::<EventBus>("event_bus") {
-                event_bus.reader::<DynamicEvent>()
-                    .iter()
-                    .cloned()
-                    .collect()
-            } else {
-                Vec::new()
-            }
-        };
-
-        // Step 3: Dispatch events to MOD subscribers
-        if !dynamic_events.is_empty() {
-            if let Some(loader_state) = ctx.get_mut::<ModLoaderState>("mod_loader_state") {
-                for event in &dynamic_events {
-                    let count = loader_state.loader.dispatch_event(&event.event_type, &event.data);
-                    if count > 0 {
-                        println!("[ModEventSystem] Dispatched event '{}' to {} subscriber(s)", event.event_type, count);
-                    }
-                }
-            }
-        }
+    async fn update(&mut self, _ctx: &mut Context) {
+        // Legacy Context support (deprecated path)
+        // Modern usage should call update_resources() directly
     }
 
     fn as_any(&self) -> &dyn Any {
