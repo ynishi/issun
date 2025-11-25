@@ -6,7 +6,7 @@ pub mod input;
 pub mod rng;
 pub mod runner;
 
-pub use headless_runner::HeadlessRunner;
+pub use headless_runner::{ChannelHeadlessRunner, HeadlessRunner};
 pub use input::InputMapper;
 pub use rng::GameRng;
 pub use runner::GameRunner;

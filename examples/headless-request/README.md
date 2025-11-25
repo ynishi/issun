@@ -165,12 +165,35 @@ struct AppState {
 | Pattern | Complexity | Performance | Use Case |
 |---------|-----------|-------------|----------|
 | **Pattern 1** (This) | ⭐⭐ Simple | ⭐⭐⭐ Fast | Single simulation |
-| Pattern 2 (Channel in Runner) | ⭐⭐⭐ Medium | ⭐⭐⭐ Fast | Extensible |
+| **Pattern 2** | ⭐⭐⭐ Medium | ⭐⭐⭐ Faster | Extensible/Reusable |
 | Pattern 3 (QUIC) | ⭐⭐⭐⭐ Complex | ⭐⭐ Network | Distributed |
+
+### Pattern 1 vs Pattern 2 Details
+
+| Aspect | **Pattern 1** (This) | **Pattern 2** |
+|--------|---------------------|---------------|
+| **Channel Owner** | Scene | ChannelHeadlessRunner |
+| **Command Processing** | Polling (`try_recv()`) | Event-driven (`tokio::select!`) |
+| **Latency** | ~25ms average (50ms tick / 2) | <1ms (immediate) |
+| **Integration** | Direct resource updates | EventBus events |
+| **Reusability** | Scene-specific | Any Scene can subscribe |
+| **Standard Pattern** | No | ✅ Yes (EventBus) |
+
+**When to use Pattern 1:**
+- ✅ Simplicity is more important than latency
+- ✅ Commands are specific to one Scene
+- ✅ 25ms latency is acceptable
+
+**When to use Pattern 2:**
+- ✅ Need low-latency command processing (<1ms)
+- ✅ Multiple scenes might process the same commands
+- ✅ Want to follow ISSUN's standard EventBus pattern
+- ✅ Plan to extend with more command types
 
 ## Related Examples
 
 - `headless-sim` - Basic headless simulation
+- `headless-request-v2` - Pattern 2 (ChannelHeadlessRunner with EventBus)
 - `multiplayer-pong` - QUIC network pattern (Pattern 3)
 
 ## License
