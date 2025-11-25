@@ -54,6 +54,28 @@ pub trait System: Send + Sync + 'static {
     async fn initialize(&mut self, _ctx: &mut Context) {}
 
     /// Optional: Called each frame if system needs to update
+    ///
+    /// # Deprecation Notice
+    ///
+    /// This method is deprecated in favor of custom update methods that use
+    /// `ResourceContext`, `ServiceContext`, and `SystemContext` directly.
+    ///
+    /// Modern systems should implement their own update methods with appropriate
+    /// context parameters instead of relying on the legacy `Context` type.
+    ///
+    /// # Example (Modern Pattern)
+    ///
+    /// ```ignore
+    /// impl MySystem {
+    ///     pub async fn update(&mut self, services: &ServiceContext, resources: &mut ResourceContext) {
+    ///         // Use type-safe ResourceContext instead of string-keyed Context
+    ///     }
+    /// }
+    /// ```
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use custom update methods with ResourceContext/ServiceContext instead"
+    )]
     async fn update(&mut self, _ctx: &mut Context) {}
 
     /// Optional: Shutdown cleanup
