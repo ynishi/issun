@@ -9,6 +9,7 @@ use crate::IssunSet;
 use super::{
     api_bindings,
     backend::ScriptingBackend,
+    commands::{LuaCommand, LuaCommandQueue},
     components::LuaScript,
     mlua_backend::MluaBackend,
 };
@@ -28,10 +29,17 @@ impl Plugin for ScriptingPlugin {
         app
             // Register types
             .register_type::<LuaScript>()
-            // Add MluaBackend as NonSend resource (Lua is not Send+Sync)
+            .register_type::<LuaCommandQueue>()
+            // Add resources
             .insert_non_send_resource(backend)
+            .init_resource::<LuaCommandQueue>()
             // Add systems
-            .add_systems(Update, load_scripts.in_set(IssunSet::Logic));
+            .add_systems(
+                Update,
+                (load_scripts, execute_lua_commands)
+                    .chain()
+                    .in_set(IssunSet::Logic),
+            );
     }
 }
 
@@ -56,6 +64,82 @@ fn load_scripts(
                 Err(e) => {
                     error!("Failed to load script '{}': {:?}", script.path, e);
                 }
+            }
+        }
+    }
+}
+
+/// System to execute queued Lua commands
+///
+/// Drains the command queue and executes each command with entity safety validation.
+/// Uses Query<Entity> for entity existence checks (avoids &World parameter conflict).
+fn execute_lua_commands(
+    mut commands: Commands,
+    mut queue: ResMut<LuaCommandQueue>,
+    entities: Query<Entity>,
+) {
+    let queued_commands = queue.drain();
+
+    if !queued_commands.is_empty() {
+        info!("Executing {} Lua command(s)", queued_commands.len());
+    }
+
+    for command in queued_commands {
+        match command {
+            LuaCommand::SpawnEntity { scene_path } => {
+                // TODO: Load DynamicScene and spawn
+                warn!(
+                    "SpawnEntity('{}') not yet implemented - requires DynamicScene loading",
+                    scene_path
+                );
+            }
+
+            LuaCommand::DespawnEntity { entity } => {
+                // Check if entity exists using Query
+                if entities.get(entity).is_ok() {
+                    commands.entity(entity).despawn();
+                    info!("Despawned entity {:?}", entity);
+                } else {
+                    warn!("Cannot despawn entity {:?} - already despawned", entity);
+                }
+            }
+
+            LuaCommand::InsertComponent {
+                entity,
+                type_name,
+                data,
+            } => {
+                // Check if entity exists using Query
+                if entities.get(entity).is_err() {
+                    warn!(
+                        "Cannot insert component '{}' on entity {:?} - entity despawned",
+                        type_name, entity
+                    );
+                    continue;
+                }
+
+                // TODO: Reflect-based component insertion
+                warn!(
+                    "InsertComponent('{}', {:?}) on entity {:?} not yet implemented - requires Reflection",
+                    type_name, data, entity
+                );
+            }
+
+            LuaCommand::RemoveComponent { entity, type_name } => {
+                // Check if entity exists using Query
+                if entities.get(entity).is_err() {
+                    warn!(
+                        "Cannot remove component '{}' from entity {:?} - entity despawned",
+                        type_name, entity
+                    );
+                    continue;
+                }
+
+                // TODO: Reflect-based component removal
+                warn!(
+                    "RemoveComponent('{}') from entity {:?} not yet implemented - requires Reflection",
+                    type_name, entity
+                );
             }
         }
     }

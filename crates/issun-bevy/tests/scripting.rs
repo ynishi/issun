@@ -546,3 +546,60 @@ fn test_multiple_event_handlers() {
     assert!(handler1_called);
     assert!(handler2_called);
 }
+
+#[test]
+fn test_command_execution_despawn() {
+    // Test that DespawnEntity command executes properly
+
+    use bevy::prelude::*;
+    use issun_bevy::plugins::scripting::{LuaCommand, LuaCommandQueue, ScriptingPlugin};
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(ScriptingPlugin);
+
+    // Spawn a test entity
+    let entity = app.world_mut().spawn_empty().id();
+
+    // Verify entity exists
+    assert!(app.world().get_entity(entity).is_ok());
+
+    // Queue despawn command
+    app.world_mut()
+        .resource_mut::<LuaCommandQueue>()
+        .push(LuaCommand::DespawnEntity { entity });
+
+    // Run update to execute commands
+    app.update();
+
+    // Verify entity was despawned
+    assert!(app.world().get_entity(entity).is_err());
+}
+
+#[test]
+fn test_command_execution_despawn_already_despawned() {
+    // Test that DespawnEntity handles already-despawned entities gracefully
+
+    use bevy::prelude::*;
+    use issun_bevy::plugins::scripting::{LuaCommand, LuaCommandQueue, ScriptingPlugin};
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(ScriptingPlugin);
+
+    // Create entity and immediately despawn it
+    let entity = app.world_mut().spawn_empty().id();
+    app.world_mut().despawn(entity);
+
+    // Verify entity is despawned
+    assert!(app.world().get_entity(entity).is_err());
+
+    // Queue despawn command for already-despawned entity
+    app.world_mut()
+        .resource_mut::<LuaCommandQueue>()
+        .push(LuaCommand::DespawnEntity { entity });
+
+    // Run update - should not crash
+    app.update();
+
+    // Still despawned (no error)
+    assert!(app.world().get_entity(entity).is_err());
+}
