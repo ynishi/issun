@@ -393,3 +393,156 @@ end
     let name = app.world().get::<Name>(entity).unwrap();
     assert_eq!(name.as_str(), "Goblin Warrior");
 }
+
+#[test]
+fn test_event_subscription() {
+    // Test event subscription and triggering
+
+    use issun_bevy::plugins::scripting::MluaBackend;
+    use std::fs;
+    use tempfile::TempDir;
+
+    let mut backend = MluaBackend::new().unwrap();
+
+    // Register utility APIs
+    issun_bevy::plugins::scripting::register_all_apis(backend.lua()).unwrap();
+
+    // Create script with event handler
+    let temp_dir = TempDir::new().unwrap();
+    let script_path = temp_dir.path().join("events.lua");
+
+    let script_content = r#"
+-- Track event calls
+event_log = {}
+
+function on_damage(event)
+    log(string.format("Damage event: %d damage to entity %s",
+        event.amount, event.target))
+    table.insert(event_log, {type = "damage", amount = event.amount})
+end
+
+function on_heal(event)
+    log_warn(string.format("Heal event: %d healing", event.amount))
+    table.insert(event_log, {type = "heal", amount = event.amount})
+end
+
+function get_event_count()
+    return #event_log
+end
+"#;
+
+    fs::write(&script_path, script_content).unwrap();
+
+    // Load script
+    let _handle = backend
+        .load_script(script_path.to_str().unwrap())
+        .unwrap();
+
+    // Subscribe to events by function name
+    backend
+        .subscribe_event("DamageTaken".to_string(), "on_damage")
+        .unwrap();
+
+    backend
+        .subscribe_event("HealthRestored".to_string(), "on_heal")
+        .unwrap();
+
+    // Trigger damage event
+    let damage_event = backend
+        .lua()
+        .load(
+            r#"
+        return {
+            amount = 25,
+            target = "Goblin"
+        }
+    "#,
+        )
+        .eval()
+        .unwrap();
+
+    backend.trigger_event("DamageTaken", damage_event).unwrap();
+
+    // Trigger heal event
+    let heal_event = backend
+        .lua()
+        .load(
+            r#"
+        return {
+            amount = 10
+        }
+    "#,
+        )
+        .eval()
+        .unwrap();
+
+    backend
+        .trigger_event("HealthRestored", heal_event)
+        .unwrap();
+
+    // Verify events were logged
+    use mlua::TableExt;
+    let event_count: i32 = backend
+        .lua()
+        .globals()
+        .call_function("get_event_count", ())
+        .unwrap();
+    assert_eq!(event_count, 2);
+}
+
+#[test]
+fn test_multiple_event_handlers() {
+    // Test that multiple handlers can be registered for same event
+
+    use issun_bevy::plugins::scripting::MluaBackend;
+
+    let mut backend = MluaBackend::new().unwrap();
+
+    // Register utility APIs
+    issun_bevy::plugins::scripting::register_all_apis(backend.lua()).unwrap();
+
+    // Create two handlers
+    backend
+        .execute_chunk(
+            r#"
+        handler1_called = false
+        handler2_called = false
+
+        function handler1(event)
+            log("Handler 1: " .. event.message)
+            handler1_called = true
+        end
+
+        function handler2(event)
+            log("Handler 2: " .. event.message)
+            handler2_called = true
+        end
+    "#,
+        )
+        .unwrap();
+
+    // Subscribe handlers by function name
+    backend
+        .subscribe_event("TestEvent".to_string(), "handler1")
+        .unwrap();
+
+    backend
+        .subscribe_event("TestEvent".to_string(), "handler2")
+        .unwrap();
+
+    // Trigger event
+    let event_data = backend
+        .lua()
+        .load(r#"return { message = "test" }"#)
+        .eval()
+        .unwrap();
+
+    backend.trigger_event("TestEvent", event_data).unwrap();
+
+    // Verify both handlers were called
+    let handler1_called: bool = backend.lua().globals().get("handler1_called").unwrap();
+    let handler2_called: bool = backend.lua().globals().get("handler2_called").unwrap();
+
+    assert!(handler1_called);
+    assert!(handler2_called);
+}

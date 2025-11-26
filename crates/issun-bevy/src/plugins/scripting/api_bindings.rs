@@ -11,10 +11,13 @@
 use mlua::{Lua, Result as LuaResult};
 
 /// Register all Lua APIs
+///
+/// Note: Event APIs are NOT registered here because they need mutable access to backend.
+/// Use register_event_apis_with_backend() separately.
 pub fn register_all_apis(lua: &Lua) -> LuaResult<()> {
     register_utility_apis(lua)?;
+    // Event APIs: see register_event_apis_with_backend()
     // TODO: register_entity_apis(lua, world)?;
-    // TODO: register_event_apis(lua)?;
     // TODO: register_query_apis(lua, world)?;
     // TODO: register_commands_apis(lua)?;
     // TODO: register_resource_apis(lua, world)?;

@@ -4,6 +4,7 @@
 
 pub mod api_bindings;
 pub mod backend;
+pub mod commands;
 pub mod components;
 pub mod entity_safety;
 pub mod lua_entity;
@@ -13,6 +14,7 @@ pub mod plugin;
 // Re-export main types
 pub use api_bindings::register_all_apis;
 pub use backend::{ScriptError, ScriptHandle, ScriptingBackend};
+pub use commands::{LuaCommand, LuaCommandQueue, LuaCommands, LuaValue};
 pub use components::LuaScript;
 pub use entity_safety::{entity_from_bits_safe, SafeEntityRef};
 pub use lua_entity::LuaEntity;

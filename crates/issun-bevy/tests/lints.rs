@@ -463,6 +463,11 @@ fn check_entity_from_bits_violations(target_dir: &str) -> Vec<String> {
             if path.file_name().is_some_and(|name| name == "entity_safety.rs") {
                 continue;
             }
+            // Skip commands.rs - entity IDs are queued, not directly accessed
+            // Safety checks happen during command execution with SafeEntityRef
+            if path.file_name().is_some_and(|name| name == "commands.rs") {
+                continue;
+            }
 
             visitor.current_file = path.display().to_string();
             let content = fs::read_to_string(path).unwrap();

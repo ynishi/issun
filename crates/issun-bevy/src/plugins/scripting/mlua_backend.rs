@@ -3,14 +3,15 @@
 //! Provides Lua 5.4 scripting support using the mlua crate.
 
 use super::backend::{ScriptError, ScriptHandle, ScriptingBackend};
-use mlua::{Lua, StdLib};
+use mlua::{Lua, RegistryKey, StdLib};
 use std::collections::HashMap;
 use std::fs;
 
 /// MLua-based scripting backend
 pub struct MluaBackend {
     lua: Lua,
-    scripts: HashMap<u64, String>, // handle_id -> script_path
+    scripts: HashMap<u64, String>,                      // handle_id -> script_path
+    event_callbacks: HashMap<String, Vec<RegistryKey>>, // event_name -> [callback_refs]
     next_handle_id: u64,
 }
 
@@ -28,6 +29,7 @@ impl MluaBackend {
         Ok(Self {
             lua,
             scripts: HashMap::new(),
+            event_callbacks: HashMap::new(),
             next_handle_id: 1,
         })
     }
@@ -40,6 +42,7 @@ impl MluaBackend {
         Ok(Self {
             lua,
             scripts: HashMap::new(),
+            event_callbacks: HashMap::new(),
             next_handle_id: 1,
         })
     }
@@ -47,6 +50,67 @@ impl MluaBackend {
     /// Get reference to Lua instance (for API registration)
     pub fn lua(&self) -> &Lua {
         &self.lua
+    }
+
+    /// Subscribe a Lua function to an event by name
+    ///
+    /// Looks up the function in the global scope and stores it in the registry.
+    pub fn subscribe_event(
+        &mut self,
+        event_name: String,
+        function_name: &str,
+    ) -> Result<(), ScriptError> {
+        // Get function from global scope
+        let callback: mlua::Function = self
+            .lua
+            .globals()
+            .get(function_name)
+            .map_err(|_| ScriptError::FunctionNotFound(function_name.to_string()))?;
+
+        // Store callback in Lua registry to prevent garbage collection
+        let callback_ref = self
+            .lua
+            .create_registry_value(callback)
+            .map_err(|e| ScriptError::RuntimeError(format!("Failed to register callback: {}", e)))?;
+
+        // Add to callbacks list for this event
+        self.event_callbacks
+            .entry(event_name)
+            .or_insert_with(Vec::new)
+            .push(callback_ref);
+
+        Ok(())
+    }
+
+    /// Trigger an event and call all registered callbacks
+    pub fn trigger_event(
+        &self,
+        event_name: &str,
+        event_data: mlua::Value,
+    ) -> Result<(), ScriptError> {
+        if let Some(callbacks) = self.event_callbacks.get(event_name) {
+            for callback_ref in callbacks {
+                // Get callback from registry
+                let callback: mlua::Function = self
+                    .lua
+                    .registry_value(callback_ref)
+                    .map_err(|e| {
+                        ScriptError::RuntimeError(format!("Failed to get callback: {}", e))
+                    })?;
+
+                // Call callback with event data
+                callback
+                    .call::<_, ()>(event_data.clone())
+                    .map_err(|e| {
+                        ScriptError::RuntimeError(format!(
+                            "Error calling event handler for '{}': {}",
+                            event_name, e
+                        ))
+                    })?;
+            }
+        }
+
+        Ok(())
     }
 }
 
