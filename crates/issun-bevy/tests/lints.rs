@@ -1,6 +1,7 @@
+// cSpell:ignore issun walkdir
 //! Linting Tests for issun-bevy Best Practices
 //!
-//! This module enforces coding standards via static analysis:
+//! Enforces coding standards via static analysis:
 //! 1. Reflect attributes on Bevy types
 //! 2. Entity query safety (no .unwrap() on queries)
 //! 3. Config resource Default implementation
