@@ -28,3 +28,4 @@ notify = "6.0"
 syn = { version = "2.0", features = ["full", "visit"] }
 walkdir = "2.4"
 quote = "1.0"
+tempfile = "3.0"

@@ -2,16 +2,15 @@
 
 use bevy::prelude::*;
 use std::fs;
-use std::path::Path;
 
-use super::components::{DiscoveredMods, LoadedModScenes};
+use super::components::{DiscoveredMods, LoadedModScenes, ModdingConfig};
 
-/// Discover mods in the mods/ directory
+/// Discover mods in the configured mods directory
 ///
 /// Scans for .ron files and registers them in DiscoveredMods resource.
-/// If mods/ directory doesn't exist, silently skips (no error).
-pub fn discover_mods(mut discovered: ResMut<DiscoveredMods>) {
-    let mods_dir = Path::new("mods");
+/// If mods directory doesn't exist, silently skips (no error).
+pub fn discover_mods(config: Res<ModdingConfig>, mut discovered: ResMut<DiscoveredMods>) {
+    let mods_dir = &config.mods_directory;
 
     // Clear previous discoveries
     discovered.clear();

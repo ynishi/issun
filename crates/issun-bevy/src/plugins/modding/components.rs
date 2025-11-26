@@ -3,6 +3,31 @@
 use bevy::prelude::*;
 use std::path::PathBuf;
 
+/// Configuration for modding system
+#[derive(Resource, Reflect, Debug, Clone)]
+#[reflect(Resource)]
+pub struct ModdingConfig {
+    /// Path to mods directory (default: "mods")
+    pub mods_directory: PathBuf,
+}
+
+impl Default for ModdingConfig {
+    fn default() -> Self {
+        Self {
+            mods_directory: PathBuf::from("mods"),
+        }
+    }
+}
+
+impl ModdingConfig {
+    /// Create config with custom mods directory
+    pub fn with_directory(path: impl Into<PathBuf>) -> Self {
+        Self {
+            mods_directory: path.into(),
+        }
+    }
+}
+
 /// Resource tracking discovered mod files
 #[derive(Resource, Reflect, Debug, Default)]
 #[reflect(Resource)]

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use crate::IssunSet;
 
-use super::components::{DiscoveredMods, LoadedModScenes};
+use super::components::{DiscoveredMods, LoadedModScenes, ModdingConfig};
 use super::systems::{apply_mod_scenes, discover_mods, load_mod_scenes};
 
 /// Plugin for modding system support
@@ -16,9 +16,11 @@ impl Plugin for ModdingPlugin {
     fn build(&self, app: &mut App) {
         app
             // Register types
+            .register_type::<ModdingConfig>()
             .register_type::<DiscoveredMods>()
             .register_type::<LoadedModScenes>()
             // Initialize resources
+            .init_resource::<ModdingConfig>()
             .init_resource::<DiscoveredMods>()
             .init_resource::<LoadedModScenes>()
             // Add systems
