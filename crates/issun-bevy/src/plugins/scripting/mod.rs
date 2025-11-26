@@ -6,6 +6,7 @@ pub mod api_bindings;
 pub mod backend;
 pub mod components;
 pub mod entity_safety;
+pub mod lua_entity;
 pub mod mlua_backend;
 pub mod plugin;
 
@@ -14,5 +15,6 @@ pub use api_bindings::register_all_apis;
 pub use backend::{ScriptError, ScriptHandle, ScriptingBackend};
 pub use components::LuaScript;
 pub use entity_safety::{entity_from_bits_safe, SafeEntityRef};
+pub use lua_entity::LuaEntity;
 pub use mlua_backend::MluaBackend;
 pub use plugin::ScriptingPlugin;
