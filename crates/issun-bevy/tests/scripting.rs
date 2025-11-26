@@ -269,3 +269,127 @@ fn test_utility_apis_available() {
     // If assertions in Lua pass, test passes
     assert!(result == ());
 }
+
+#[test]
+fn test_combat_ai_script() {
+    // Test realistic Combat AI script usage
+
+    use issun_bevy::plugins::scripting::MluaBackend;
+    use issun_bevy::plugins::scripting::ScriptingBackend;
+    use std::fs;
+    use tempfile::TempDir;
+
+    let mut backend = MluaBackend::new().unwrap();
+
+    // Register APIs
+    issun_bevy::plugins::scripting::register_all_apis(backend.lua()).unwrap();
+
+    // Create temporary script file
+    let temp_dir = TempDir::new().unwrap();
+    let script_path = temp_dir.path().join("combat_ai.lua");
+
+    let script_content = r#"
+-- Simple Combat AI Script
+attack_count = 0
+
+function on_init()
+    log("Combat AI initialized!")
+end
+
+function decide_action()
+    local rand = random()
+    if rand < 0.3 then
+        log("AI Decision: ATTACK")
+        attack_count = attack_count + 1
+        return "attack"
+    elseif rand < 0.6 then
+        log("AI Decision: DEFEND")
+        return "defend"
+    else
+        log_warn("AI Decision: FLEE")
+        return "flee"
+    end
+end
+
+function calculate_damage()
+    local base_damage = 10
+    local variance = random_range(-2.0, 5.0)
+    local damage = base_damage + variance
+    log(string.format("Calculated damage: %.1f", damage))
+    return damage
+end
+
+function get_stats()
+    return {
+        attacks = attack_count,
+        version = "1.0"
+    }
+end
+"#;
+
+    fs::write(&script_path, script_content).unwrap();
+
+    // Load the combat AI script
+    let handle = backend
+        .load_script(script_path.to_str().unwrap())
+        .unwrap();
+
+    // Test on_init function
+    backend.call_function(handle, "on_init").unwrap();
+
+    // Test decide_action function (should return string)
+    backend.call_function(handle, "decide_action").unwrap();
+    backend.call_function(handle, "decide_action").unwrap();
+    backend.call_function(handle, "decide_action").unwrap();
+
+    // Test calculate_damage function
+    backend.call_function(handle, "calculate_damage").unwrap();
+
+    // Test that stats tracking works
+    backend.call_function(handle, "get_stats").unwrap();
+}
+
+#[test]
+fn test_combat_ai_script_with_bevy() {
+    // Test Combat AI script integrated with Bevy
+
+    use bevy::prelude::*;
+    use issun_bevy::plugins::scripting::{LuaScript, ScriptingPlugin};
+    use std::fs;
+    use tempfile::TempDir;
+
+    // Create temporary script file
+    let temp_dir = TempDir::new().unwrap();
+    let script_path = temp_dir.path().join("combat_ai.lua");
+
+    let script_content = r#"
+function on_init()
+    log("Combat AI for Goblin Warrior initialized!")
+end
+"#;
+
+    fs::write(&script_path, script_content).unwrap();
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(ScriptingPlugin);
+
+    // Create a combat entity with AI script
+    let entity = app
+        .world_mut()
+        .spawn((
+            Name::new("Goblin Warrior"),
+            LuaScript::new(script_path.to_str().unwrap()),
+        ))
+        .id();
+
+    // Update to trigger script loading
+    app.update();
+
+    // Verify script was loaded
+    let script = app.world().get::<LuaScript>(entity).unwrap();
+    assert!(script.is_loaded(), "Script should be loaded");
+
+    // Verify entity has name
+    let name = app.world().get::<Name>(entity).unwrap();
+    assert_eq!(name.as_str(), "Goblin Warrior");
+}
