@@ -235,3 +235,37 @@ fn test_lua_script_attached_to_entity() {
     assert!(script.is_some());
     assert_eq!(script.unwrap().path, "test.lua");
 }
+
+#[test]
+fn test_utility_apis_available() {
+    // Test that utility APIs are available in Lua
+
+    use issun_bevy::plugins::scripting::MluaBackend;
+    use issun_bevy::plugins::scripting::ScriptingBackend;
+
+    let mut backend = MluaBackend::new().unwrap();
+
+    // Register APIs
+    issun_bevy::plugins::scripting::register_all_apis(backend.lua()).unwrap();
+
+    // Test log functions
+    backend.execute_chunk(r#"log("test")"#).unwrap();
+    backend.execute_chunk(r#"log_warn("warning")"#).unwrap();
+    backend.execute_chunk(r#"log_error("error")"#).unwrap();
+
+    // Test random functions
+    let result = backend
+        .execute_chunk(
+            r#"
+        local r = random()
+        assert(r >= 0.0 and r < 1.0, "random() out of range")
+
+        local rr = random_range(10.0, 20.0)
+        assert(rr >= 10.0 and rr < 20.0, "random_range() out of range")
+    "#,
+        )
+        .unwrap();
+
+    // If assertions in Lua pass, test passes
+    assert!(result == ());
+}

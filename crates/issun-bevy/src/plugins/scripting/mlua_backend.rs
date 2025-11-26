@@ -43,6 +43,11 @@ impl MluaBackend {
             next_handle_id: 1,
         })
     }
+
+    /// Get reference to Lua instance (for API registration)
+    pub fn lua(&self) -> &Lua {
+        &self.lua
+    }
 }
 
 impl Default for MluaBackend {
