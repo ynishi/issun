@@ -1,0 +1,24 @@
+[package]
+name = "issun-bevy"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "ISSUN plugins for Bevy ECS"
+keywords = ["bevy", "game", "plugin", "ecs"]
+categories = ["game-engines"]
+
+[dependencies]
+bevy = { version = "0.17", default-features = false, features = [
+    "bevy_state",
+    "multi_threaded",
+    "bevy_log",
+] }
+
+[dev-dependencies]
+syn = { version = "2.0", features = ["full", "visit"] }
+walkdir = "2.4"
+quote = "1.0"

@@ -1,4 +1,4 @@
-.PHONY: help preflight publish test check build clean doc release-check release release-patch release-minor
+.PHONY: help preflight preflight-bevy publish test check build clean doc release-check release release-patch release-minor
 .PHONY: fmt-examples clippy-examples check-examples test-examples build-examples clean-examples
 .PHONY: server server-dev certs test-network pong
 .PHONY: docker-build docker-up docker-down docker-logs
@@ -15,6 +15,7 @@ help:
 	@echo "  make doc            - Generate documentation"
 	@echo "  make clean          - Clean build artifacts (workspace + examples)"
 	@echo "  make preflight      - Run all checks before publishing"
+	@echo "  make preflight-bevy - Run all checks for issun-bevy (fmt + clippy + tests + lints)"
 	@echo ""
 	@echo "Server targets:"
 	@echo "  make server         - Run relay server (release mode)"
@@ -153,6 +154,32 @@ preflight:
 	@$(MAKE) test-examples
 	@echo ""
 	@echo "✅ All preflight checks passed!"
+
+preflight-bevy:
+	@echo "🚦 Running preflight checks for issun-bevy..."
+	@echo ""
+	@echo "1️⃣  Formatting code (issun-bevy)..."
+	cargo fmt -p issun-bevy
+	@echo ""
+	@echo "2️⃣  Running clippy (issun-bevy)..."
+	cargo clippy -p issun-bevy --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+	@echo ""
+	@echo "3️⃣  Running unit tests (issun-bevy)..."
+	cargo test -p issun-bevy --lib
+	@echo ""
+	@echo "4️⃣  Running integration tests (issun-bevy)..."
+	cargo test -p issun-bevy --test '*'
+	@echo ""
+	@echo "5️⃣  Running Reflect lint meta-tests..."
+	cargo test -p issun-bevy --test lints
+	@echo ""
+	@echo "✅ All issun-bevy preflight checks passed!"
+	@echo "📊 Summary:"
+	@echo "  - Code formatted ✓"
+	@echo "  - Clippy warnings fixed ✓"
+	@echo "  - Unit tests passed ✓"
+	@echo "  - Integration tests passed ✓"
+	@echo "  - Reflect lints enforced ✓"
 
 release-check:
 	@echo "🔍 Dry-run release with cargo-release..."
