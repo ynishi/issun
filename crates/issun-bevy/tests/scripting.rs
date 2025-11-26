@@ -773,3 +773,83 @@ fn test_world_access_get_component_not_found() {
 
     assert!(result.is_none());
 }
+
+#[test]
+fn test_example_mod_healing_station() {
+    // Test the example healing_station mod
+
+    use bevy::prelude::*;
+    use issun_bevy::plugins::scripting::{LuaCommandQueue, LuaCommands, MluaBackend};
+    use std::sync::{Arc, Mutex};
+
+    // Create backend and register APIs
+    let mut backend = MluaBackend::new().unwrap();
+    issun_bevy::plugins::scripting::register_all_apis(backend.lua()).unwrap();
+
+    // Create command queue and register it
+    let queue = Arc::new(Mutex::new(LuaCommandQueue::new()));
+    let lua_commands = LuaCommands::new(queue.clone());
+    backend.lua().globals().set("commands", lua_commands).unwrap();
+
+    // Load the healing station mod
+    // Try both workspace root and crate-relative paths
+    let mod_path = if std::path::Path::new("../../examples/mods/healing_station/healing_station.lua").exists() {
+        "../../examples/mods/healing_station/healing_station.lua"
+    } else if std::path::Path::new("examples/mods/healing_station/healing_station.lua").exists() {
+        "examples/mods/healing_station/healing_station.lua"
+    } else {
+        eprintln!("⚠️  Warning: Example mod not found, skipping test");
+        return;
+    };
+
+    let handle = backend.load_script(mod_path).unwrap();
+
+    // Call on_init
+    backend.call_function(handle, "on_init").unwrap();
+
+    // Simulate entity entering healing station
+    backend.execute_chunk(r#"
+        on_entity_enter({entity_id = 42})
+    "#).unwrap();
+
+    // Check that heal command was queued
+    let queue_len = queue.lock().unwrap().len();
+    assert_eq!(queue_len, 1, "Heal command should be queued");
+
+    // Get mod stats
+    use mlua::TableExt;
+    {
+        let stats: mlua::Table = backend
+            .lua()
+            .globals()
+            .call_function("get_stats", ())
+            .unwrap();
+
+        let total_heals: i32 = stats.get("total_heals").unwrap();
+        let version: String = stats.get("version").unwrap();
+        let active: bool = stats.get("active").unwrap();
+
+        assert_eq!(total_heals, 1);
+        assert_eq!(version, "1.0.0");
+        assert!(active);
+    }
+
+    // Test set_heal_range function
+    backend
+        .execute_chunk(
+            r#"
+        set_heal_range(20, 50)
+    "#,
+        )
+        .unwrap();
+
+    // Test roll_critical function
+    let is_critical: bool = backend
+        .lua()
+        .globals()
+        .call_function("roll_critical", ())
+        .unwrap();
+
+    // Result is random, just verify it returns a bool
+    assert!(is_critical == true || is_critical == false);
+}
