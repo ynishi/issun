@@ -1,6 +1,7 @@
 //! ISSUN Bevy Plugins
 
 pub mod accounting;
+pub mod action;
 pub mod combat;
 pub mod metrics;
 pub mod modding;
