@@ -1,6 +1,7 @@
 //! Scripting Plugin Tests
 
-use issun_bevy::plugins::scripting::{MluaBackend, ScriptingBackend};
+use bevy::prelude::*;
+use issun_bevy::plugins::scripting::{LuaScript, MluaBackend, ScriptingBackend, ScriptingPlugin};
 use std::fs;
 use tempfile::TempDir;
 
@@ -173,4 +174,64 @@ fn test_sandbox_allows_safe_operations() {
     // Table operations should work
     let result = backend.execute_chunk("t = {1, 2, 3}; table.insert(t, 4)");
     assert!(result.is_ok(), "Table operations should be allowed");
+}
+
+#[test]
+fn test_lua_script_component_creation() {
+    // Test that LuaScript component can be created
+
+    let script = LuaScript::new("test.lua");
+
+    assert_eq!(script.path, "test.lua");
+    assert!(!script.is_loaded());
+}
+
+#[test]
+fn test_lua_script_component_lifecycle() {
+    // Test LuaScript lifecycle (unloaded -> loaded -> unloaded)
+
+    let mut script = LuaScript::new("test.lua");
+    assert!(!script.is_loaded());
+
+    // Simulate loading
+    let handle = issun_bevy::plugins::scripting::ScriptHandle::new(42);
+    script.set_loaded(handle);
+    assert!(script.is_loaded());
+
+    // Simulate unloading
+    script.set_unloaded();
+    assert!(!script.is_loaded());
+}
+
+#[test]
+fn test_scripting_plugin_builds() {
+    // Test that ScriptingPlugin can be added to an app
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(ScriptingPlugin);
+
+    app.update();
+
+    // If we get here without panic, test passes
+}
+
+#[test]
+fn test_lua_script_attached_to_entity() {
+    // Test that LuaScript can be attached to entities
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(ScriptingPlugin);
+
+    // Spawn entity with LuaScript
+    let entity = app
+        .world_mut()
+        .spawn(LuaScript::new("test.lua"))
+        .id();
+
+    app.update();
+
+    // Verify component exists
+    let script = app.world().get::<LuaScript>(entity);
+    assert!(script.is_some());
+    assert_eq!(script.unwrap().path, "test.lua");
 }

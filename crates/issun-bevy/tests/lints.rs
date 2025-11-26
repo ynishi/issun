@@ -435,6 +435,91 @@ impl<'ast> Visit<'ast> for SystemParamVisitor {
 
 //
 // ═══════════════════════════════════════════════════════════════════════════
+// Entity::from_bits Safety Lint (P0)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+
+struct EntityFromBitsSafetyVisitor {
+    errors: Vec<String>,
+    current_file: String,
+    in_test_code: bool,
+}
+
+fn check_entity_from_bits_violations(target_dir: &str) -> Vec<String> {
+    let mut visitor = EntityFromBitsSafetyVisitor {
+        errors: Vec::new(),
+        current_file: String::new(),
+        in_test_code: false,
+    };
+
+    if !Path::new(target_dir).exists() {
+        return Vec::new();
+    }
+
+    for entry in WalkDir::new(target_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "rs") {
+            // Skip entity_safety.rs - that's where the safe wrappers are defined
+            if path.file_name().is_some_and(|name| name == "entity_safety.rs") {
+                continue;
+            }
+
+            visitor.current_file = path.display().to_string();
+            let content = fs::read_to_string(path).unwrap();
+            if let Ok(file) = syn::parse_file(&content) {
+                visitor.visit_file(&file);
+            }
+        }
+    }
+
+    visitor.errors
+}
+
+impl<'ast> Visit<'ast> for EntityFromBitsSafetyVisitor {
+    fn visit_item_fn(&mut self, node: &'ast ItemFn) {
+        // Check if this is a test function
+        let was_in_test = self.in_test_code;
+        let is_test = node
+            .attrs
+            .iter()
+            .any(|attr| attr.path().is_ident("test") || attr.path().is_ident("cfg"));
+
+        if is_test {
+            self.in_test_code = true;
+        }
+
+        syn::visit::visit_item_fn(self, node);
+
+        self.in_test_code = was_in_test;
+    }
+
+    fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+        use quote::ToTokens;
+
+        // Skip if we're in test code
+        if !self.in_test_code {
+            // Check for Entity::from_bits() calls
+            // This is an associated function call like Entity::from_bits(12345)
+            let func_str = node.func.to_token_stream().to_string();
+
+            if func_str.contains("Entity") && func_str.contains("from_bits") {
+                // ⚠️ P0 VIOLATION: Entity::from_bits() must be wrapped in SafeEntityRef
+                // The only safe usage is: SafeEntityRef::new(Entity::from_bits(...), world)
+                // or via entity_from_bits_safe() helper
+                self.errors.push(format!(
+                    "{} - Unsafe Entity::from_bits() call. Use entity_from_bits_safe() or SafeEntityRef::new() instead. \
+                    ⚠️ CRITICAL P0: Entity::from_bits() creates entities that may be despawned, causing crashes!",
+                    self.current_file
+                ));
+            }
+        }
+
+        syn::visit::visit_expr_call(self, node);
+    }
+}
+
+//
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Lint Tests
 // ═══════════════════════════════════════════════════════════════════════════
 //
@@ -524,6 +609,25 @@ fn enforce_system_params() {
         "\n\n❌ System Parameter Lint Errors:\n\n{}\n\n\
         💡 Fix: Remove &World parameter and use Query results for entity validation\n\
         Example: if let Ok(component) = query.get(entity) {{ /* safe */ }}\n",
+        errors.join("\n")
+    );
+}
+
+#[test]
+fn enforce_entity_from_bits_safety() {
+    let errors = check_entity_from_bits_violations("src/plugins");
+
+    if errors.is_empty() && !Path::new("src/plugins").exists() {
+        eprintln!("⚠️  Warning: src/plugins not found, skipping Entity::from_bits Safety lint check");
+        return;
+    }
+
+    assert!(
+        errors.is_empty(),
+        "\n\n❌ Entity::from_bits Safety Lint Errors (P0):\n\n{}\n\n\
+        💡 Fix: Use entity_from_bits_safe() or SafeEntityRef::new() wrapper\n\
+        Example: let safe_entity = entity_from_bits_safe(bits, &world);\n\
+        ⚠️  CRITICAL P0: Entity::from_bits() without safety checks causes crashes when entities are despawned!\n",
         errors.join("\n")
     );
 }
@@ -1114,6 +1218,112 @@ pub fn good_system(
         assert!(
             errors.is_empty(),
             "Expected no errors for safe system params, got: {:?}",
+            errors
+        );
+    }
+
+    /// Test Entity::from_bits Safety: Detects unsafe usage
+    #[test]
+    fn test_entity_from_bits_detects_unsafe_usage() {
+        let test_dir = "tests/lints_fixtures/entity_from_bits_unsafe";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/test.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+pub fn bad_system(world: &World) {{
+    let entity = Entity::from_bits(12345);  // ❌ Unsafe!
+    // This entity might be despawned, causing crashes
+}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_entity_from_bits_violations(test_dir);
+
+        // Cleanup
+        fs::remove_dir_all(test_dir).unwrap();
+
+        // Assert: Should detect 1 error
+        assert!(!errors.is_empty(), "Expected errors, got none");
+        assert!(
+            errors[0].contains("Unsafe Entity::from_bits()"),
+            "Expected error about unsafe Entity::from_bits(), got: {}",
+            errors[0]
+        );
+    }
+
+    /// Test Entity::from_bits Safety: Accepts safe wrapper
+    #[test]
+    fn test_entity_from_bits_accepts_safe_wrapper() {
+        let test_dir = "tests/lints_fixtures/entity_from_bits_safe";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/test.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+pub fn good_system(world: &World) {{
+    // ✅ Safe: uses helper function
+    let safe_entity = entity_from_bits_safe(12345, world);
+    if safe_entity.exists() {{
+        // safe to use
+    }}
+}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_entity_from_bits_violations(test_dir);
+
+        // Cleanup
+        fs::remove_dir_all(test_dir).unwrap();
+
+        // Assert: No errors (using safe wrapper)
+        assert!(
+            errors.is_empty(),
+            "Expected no errors for safe wrapper usage, got: {:?}",
+            errors
+        );
+    }
+
+    /// Test Entity::from_bits Safety: Allows in test code
+    #[test]
+    fn test_entity_from_bits_allows_in_tests() {
+        let test_dir = "tests/lints_fixtures/entity_from_bits_test";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/test.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+#[test]
+fn test_something() {{
+    let entity = Entity::from_bits(12345);  // ✅ OK in tests
+}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_entity_from_bits_violations(test_dir);
+
+        // Cleanup
+        fs::remove_dir_all(test_dir).unwrap();
+
+        // Assert: No errors (test code exempted)
+        assert!(
+            errors.is_empty(),
+            "Expected no errors in test code, got: {:?}",
             errors
         );
     }
