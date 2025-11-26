@@ -706,3 +706,70 @@ fn test_lua_commands_integration() {
     let bevy_queue = app.world().resource::<LuaCommandQueue>();
     assert_eq!(bevy_queue.len(), 1);
 }
+
+#[test]
+fn test_world_access_get_health_component() {
+    // Test reading Health component from World via Lua
+
+    use bevy::prelude::*;
+    use issun_bevy::plugins::combat::components::Health;
+    use issun_bevy::plugins::scripting::{get_component_as_lua_table, MluaBackend};
+
+    // Create World and spawn entity with Health
+    let mut world = World::new();
+    let entity = world.spawn(Health::new(80)).id();
+
+    // Create Lua backend
+    let backend = MluaBackend::new().unwrap();
+    issun_bevy::plugins::scripting::register_all_apis(backend.lua()).unwrap();
+
+    // Get Health component as Lua table
+    let health_table = get_component_as_lua_table(backend.lua(), &world, entity, "Health")
+        .unwrap()
+        .expect("Health component should exist");
+
+    // Register table as global so Lua can access it
+    backend
+        .lua()
+        .globals()
+        .set("health_data", health_table)
+        .unwrap();
+
+    // Lua script reads and validates the data
+    let result: bool = backend
+        .lua()
+        .load(
+            r#"
+        -- Verify health data
+        assert(health_data.current == 80, "current should be 80")
+        assert(health_data.max == 80, "max should be 80")
+
+        log(string.format("Read Health: %d/%d", health_data.current, health_data.max))
+        return true
+    "#,
+        )
+        .eval()
+        .unwrap();
+
+    assert!(result);
+}
+
+#[test]
+fn test_world_access_get_component_not_found() {
+    // Test reading non-existent component returns None
+
+    use bevy::prelude::*;
+    use issun_bevy::plugins::scripting::{get_component_as_lua_table, MluaBackend};
+
+    // Create World with entity (no Health)
+    let mut world = World::new();
+    let entity = world.spawn_empty().id();
+
+    // Create Lua backend
+    let backend = MluaBackend::new().unwrap();
+
+    // Try to get Health component (should be None)
+    let result = get_component_as_lua_table(backend.lua(), &world, entity, "Health").unwrap();
+
+    assert!(result.is_none());
+}
