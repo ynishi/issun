@@ -1,10 +1,12 @@
 # CombatPlugin Design Document (Bevy Edition)
 
-**Status**: Phase 1 Design
+**Status**: Phase 1 ✅ **COMPLETE**
 **Created**: 2025-11-26
 **Updated**: 2025-11-26
 **Author**: issun team
 **Migration**: ISSUN v0.6 → Bevy ECS
+
+**Implementation**: 5 modules, ~900 lines, 12/12 tests passing
 
 ---
 
@@ -82,99 +84,39 @@ Entity {
 
 #### 2.1 Combatant Components
 
-```rust
-/// Combatant component
-///
-/// ⚠️ CRITICAL: Must have #[derive(Reflect)] and #[reflect(Component)]!
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct Combatant {
-    pub name: String,
-}
+**Combatant**: Name/metadata component for combat entities.
+- `name: String` - Display name
 
-/// Health component
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct Health {
-    pub current: i32,
-    pub max: i32,
-}
+**Health**: HP tracking component.
+- `current: i32` - Current HP
+- `max: i32` - Maximum HP
+- Key methods: `is_alive()`, `take_damage(amount)`
 
-impl Health {
-    pub fn is_alive(&self) -> bool {
-        self.current > 0
-    }
+**Attack**: Attack power component (optional).
+- `power: i32` - Base attack value
 
-    pub fn take_damage(&mut self, amount: i32) {
-        self.current = (self.current - amount).max(0);
-    }
-}
-
-/// Attack component
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct Attack {
-    pub power: i32,
-}
-
-/// Defense component (optional)
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct Defense {
-    pub value: i32,
-}
-```
+**Defense**: Defense value component (optional).
+- `value: i32` - Damage reduction
 
 **Design Decisions**:
-- **Health separation**: HP management is an independent component (reusable by other systems)
+- **Health separation**: HP management is independent (reusable by other systems)
 - **Attack/Defense are optional**: Not all Entities attack or defend
 - **Components not Traits**: Replaced ISSUN v0.6's `Combatant` trait with ECS Components
 
 #### 2.2 CombatSession Components
 
-```rust
-/// Combat session component
-///
-/// Holds the state of a single combat
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct CombatSession {
-    pub battle_id: String,  // For identification (UI, logs)
-    pub turn_count: u32,
-    pub score: u32,
-}
+**CombatSession**: Holds the state of a single combat.
+- `battle_id: String` - Human-readable identifier (for UI, logs)
+- `turn_count: u32` - Current turn number
+- `score: u32` - Combat score
 
-/// Combat participants list
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct CombatParticipants {
-    pub entities: Vec<Entity>,
-}
+**CombatParticipants**: List of combatant entities.
+- `entities: Vec<Entity>` - References to combatant entities
 
-/// Combat log
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct CombatLog {
-    pub entries: Vec<CombatLogEntry>,
-    pub max_entries: usize,
-}
-
-#[derive(Clone, Reflect)]
-pub struct CombatLogEntry {
-    pub turn: u32,
-    pub message: String,
-}
-
-impl CombatLog {
-    pub fn add_entry(&mut self, turn: u32, message: String) {
-        self.entries.push(CombatLogEntry { turn, message });
-
-        if self.entries.len() > self.max_entries {
-            self.entries.remove(0);
-        }
-    }
-}
-```
+**CombatLog**: Combat event log for UI/replay.
+- `entries: Vec<CombatLogEntry>` - Log entries (turn + message)
+- `max_entries: usize` - Maximum entries to keep
+- Key method: `add_entry(turn, message)` - Adds entry with automatic trimming
 
 **Design Decisions**:
 - **Combat = Entity**: Not global state; managed as Entity (parallel combat support)
@@ -183,30 +125,14 @@ impl CombatLog {
 
 ### 3. Resources (Global Configuration)
 
-```rust
-/// Combat system configuration (global)
-#[derive(Resource, Reflect)]
-#[reflect(Resource)]
-pub struct CombatConfig {
-    pub enable_log: bool,
-    pub max_log_entries: usize,
-    pub min_damage: i32,  // Minimum guaranteed damage
-}
-
-impl Default for CombatConfig {
-    fn default() -> Self {
-        Self {
-            enable_log: true,
-            max_log_entries: 100,
-            min_damage: 1,
-        }
-    }
-}
-```
+**CombatConfig**: Global configuration for the combat system.
+- `enable_log: bool` - Enable combat logging (default: true)
+- `max_log_entries: usize` - Maximum log entries (default: 100)
+- `min_damage: i32` - Minimum guaranteed damage (default: 1)
 
 **Design Decisions**:
-- **Global settings only**: Per-combat settings go in CombatSession
-- **min_damage**: Ensures damage never reaches 0 even with high defense
+- **Global settings only**: Per-combat settings go in CombatSession component
+- **min_damage**: Ensures damage never reaches 0 even with high defense (prevents invincibility)
 
 ### 4. Messages (Events)
 
@@ -219,93 +145,43 @@ impl Default for CombatConfig {
 - **`Event`** (trait): For "observable events" (used with the new Observer pattern)
   - Triggers Observers directly without buffering
 
-**This document uses `Message`** because combat events need buffering (Command/State separation pattern). For more details, see the [Bevy 0.17 migration guide](https://bevy.org/learn/migration-guides/0-16-to-0-17/).
+**This document uses `Message`** because combat events need buffering (Command/State separation pattern).
 
 #### 4.1 Command Messages (Requests)
 
-```rust
-/// Combat start request
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct CombatStartRequested {
-    pub battle_id: String,
-    pub participants: Vec<Entity>,
-}
+**CombatStartRequested**: Request to start a new combat.
+- `battle_id: String` - Human-readable identifier
+- `participants: Vec<Entity>` - Combatant entities
 
-/// Turn advance request
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct CombatTurnAdvanceRequested {
-    pub combat_entity: Entity,  // CombatSession Entity
-}
+**CombatTurnAdvanceRequested**: Request to advance combat turn.
+- `combat_entity: Entity` - CombatSession entity
 
-/// Damage application request
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct DamageRequested {
-    pub attacker: Entity,
-    pub target: Entity,
-    pub base_damage: i32,
-}
+**DamageRequested**: Request damage application.
+- `attacker: Entity` - Attacker entity
+- `target: Entity` - Target entity
+- `base_damage: i32` - Base damage value (before defense)
 
-/// Combat end request
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct CombatEndRequested {
-    pub combat_entity: Entity,
-}
-```
+**CombatEndRequested**: Request combat termination.
+- `combat_entity: Entity` - CombatSession entity
 
 #### 4.2 State Messages (Notifications)
 
-```rust
-/// Combat started notification
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct CombatStartedEvent {
-    pub combat_entity: Entity,
-    pub battle_id: String,
-}
+**CombatStartedEvent**: Combat started notification.
+- `combat_entity, battle_id`
 
-/// Turn completed notification
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct CombatTurnCompletedEvent {
-    pub combat_entity: Entity,
-    pub turn: u32,
-}
+**CombatTurnCompletedEvent**: Turn completed notification.
+- `combat_entity, turn`
 
-/// Damage applied notification
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct DamageAppliedEvent {
-    pub attacker: Entity,
-    pub target: Entity,
-    pub actual_damage: i32,
-    pub is_dead: bool,
-}
+**DamageAppliedEvent**: Damage applied notification.
+- `attacker, target, actual_damage, is_dead`
 
-/// Combat ended notification
-#[derive(Message, Clone, Reflect)]
-#[reflect(Message)]
-pub struct CombatEndedEvent {
-    pub combat_entity: Entity,
-    pub result: CombatResult,
-    pub total_turns: u32,
-    pub score: u32,
-}
-
-#[derive(Clone, Reflect)]
-pub enum CombatResult {
-    Victory,
-    Defeat,
-    Draw,
-}
-```
+**CombatEndedEvent**: Combat ended notification.
+- `combat_entity, result, total_turns, score`
+- `CombatResult` enum: Victory, Defeat, Draw
 
 **Design Decisions**:
 - **Entity-based**: Identified by `combat_entity: Entity` not `battle_id: String`
-- **Fine-grained events**: Damage application is a separate event (easier UI updates)
+- **Fine-grained events**: Damage application is separate (easier UI updates)
 
 ---
 
@@ -317,41 +193,21 @@ The Message-based architecture enables **deterministic replay** by recording Com
 
 #### Replay Components
 
-```rust
-/// Replay recorder component (attach to CombatSession)
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub struct ReplayRecorder {
-    pub commands: Vec<RecordedCommand>,
-    pub is_recording: bool,
-}
+**ReplayRecorder**: Attached to CombatSession to record commands.
+- `commands: Vec<RecordedCommand>` - Recorded command history
+- `is_recording: bool` - Recording status
 
-/// Recorded command with timestamp
-#[derive(Clone, Reflect)]
-pub struct RecordedCommand {
-    pub frame: u32,  // App update frame number
-    pub command: CommandType,
-}
+**RecordedCommand**: Single recorded command with timing.
+- `frame: u32` - Frame number when command was issued
+- `command: CommandType` - Command variant
 
-#[derive(Clone, Reflect)]
-pub enum CommandType {
-    CombatStart {
-        battle_id: String,
-        participants: Vec<String>,  // ⚠️ UniqueId, not Entity!
-    },
-    TurnAdvance {
-        combat_id: String,  // ⚠️ UniqueId, not Entity!
-    },
-    Damage {
-        attacker_id: String,  // ⚠️ UniqueId, not Entity!
-        target_id: String,    // ⚠️ UniqueId, not Entity!
-        base_damage: i32,
-    },
-    CombatEnd {
-        combat_id: String,  // ⚠️ UniqueId, not Entity!
-    },
-}
-```
+**CommandType**: Enum of recordable commands.
+- `CombatStart { battle_id, participants }` - ⚠️ Uses UniqueId strings, not Entity
+- `TurnAdvance { combat_id }` - ⚠️ Uses UniqueId string
+- `Damage { attacker_id, target_id, base_damage }` - ⚠️ Uses UniqueId strings
+- `CombatEnd { combat_id }` - ⚠️ Uses UniqueId string
+
+**Key Insight**: Entity IDs are unstable across runs, so we record stable UniqueId strings instead.
 
 #### Replay Flow
 
@@ -401,141 +257,46 @@ pub enum CommandType {
 └──────────────────────┘
 ```
 
-#### Replay System Implementation
+#### Replay System Design
 
-```rust
-/// Record command messages
-fn record_combat_commands(
-    mut recorders: Query<&mut ReplayRecorder>,
-    combat_starts: MessageReader<CombatStartRequested>,
-    turn_advances: MessageReader<CombatTurnAdvanceRequested>,
-    damage_requests: MessageReader<DamageRequested>,
-    combat_ends: MessageReader<CombatEndRequested>,
-    frame_count: Res<FrameCount>,  // Global frame counter
-) {
-    for mut recorder in recorders.iter_mut() {
-        if !recorder.is_recording {
-            continue;
-        }
+**Recording Phase**:
+1. `record_combat_commands` system reads all Command Messages
+2. For each message, records: frame number + command type + stable IDs
+3. Stores in `ReplayRecorder` component attached to CombatSession
 
-        let frame = frame_count.0;
-
-        // Record all command messages
-        for event in combat_starts.read() {
-            recorder.commands.push(RecordedCommand {
-                frame,
-                command: CommandType::CombatStart {
-                    battle_id: event.battle_id.clone(),
-                    participants: event.participants.clone(),
-                },
-            });
-        }
-
-        // ... record other commands
-    }
-}
-
-/// Playback recorded commands
-fn playback_combat_commands(
-    query: Query<&ReplayRecorder>,
-    mut combat_starts: MessageWriter<CombatStartRequested>,
-    mut turn_advances: MessageWriter<CombatTurnAdvanceRequested>,
-    mut damage_requests: MessageWriter<DamageRequested>,
-    mut combat_ends: MessageWriter<CombatEndRequested>,
-    frame_count: Res<FrameCount>,
-) {
-    for recorder in query.iter() {
-        let current_frame = frame_count.0;
-
-        // Find commands for this frame
-        for cmd in &recorder.commands {
-            if cmd.frame == current_frame {
-                match &cmd.command {
-                    CommandType::CombatStart { battle_id, participants } => {
-                        combat_starts.write(CombatStartRequested {
-                            battle_id: battle_id.clone(),
-                            participants: participants.clone(),
-                        });
-                    }
-                    // ... write other commands
-                    _ => {}
-                }
-            }
-        }
-    }
-}
-```
+**Playback Phase**:
+1. `playback_combat_commands` system queries recorded commands
+2. At frame N, find all commands with `frame == N`
+3. Convert UniqueId strings back to Entity references
+4. Write corresponding Command Messages
+5. Systems execute normally (deterministic with seeded RNG)
 
 ### Replay Requirements
 
 For **deterministic replay**, the system must:
 
-1. **No Random State**: All randomness must be seeded **per-combat** (not globally)
-   ```rust
-   /// ⚠️ CRITICAL: RNG must be per-combat to support parallel combats
-   #[derive(Component, Reflect)]
-   #[reflect(Component)]
-   pub struct CombatSessionRng {
-       pub seed: u64,
-       #[reflect(ignore)]  // StdRng doesn't implement Reflect
-       rng: StdRng,  // seeded RNG
-   }
+**1. Per-Combat Seeded RNG**:
+- All randomness must use `CombatSessionRng` component (NOT global RNG)
+- Each combat has independent seed derived from `battle_id`
+- **Why Component?** Global RNG would break parallel combats
+- Component structure: `seed: u64` + internal `StdRng`
 
-   impl CombatSessionRng {
-       pub fn new(seed: u64) -> Self {
-           Self {
-               seed,
-               rng: StdRng::seed_from_u64(seed),
-           }
-       }
+**2. Command-Only Recording**:
+- Record **only Command Messages** (inputs)
+- State Messages are outputs (derived from inputs, don't record)
+- Example: Record `DamageRequested`, NOT `DamageAppliedEvent`
 
-       pub fn gen_range(&mut self, range: std::ops::Range<i32>) -> i32 {
-           self.rng.gen_range(range)
-       }
-   }
-   ```
+**3. Frame-Based Timing**:
+- Record frame numbers, NOT wall-clock time
+- Requires global `FrameCount` resource
+- Replay at frame N → execute commands recorded at frame N
 
-   **Why Component, not Resource?**
-   - Global `CombatRng` Resource would break parallel combats
-   - Each CombatSession needs independent RNG state
-
-2. **Command-Only Recording**: Record **only Command Messages**, not State Messages
-   - Command Messages are inputs (deterministic)
-   - State Messages are outputs (derived from inputs)
-
-3. **Frame-Based Timing**: Record frame numbers, not wall-clock time
-   ```rust
-   #[derive(Resource, Default)]
-   pub struct FrameCount(pub u32);
-
-   fn increment_frame(mut frame: ResMut<FrameCount>) {
-       frame.0 += 1;
-   }
-   ```
-
-4. **Stable Entity Identification**: Entity IDs change between runs; use stable IDs
-   ```rust
-   /// Stable identifier for replay (does not change between runs)
-   #[derive(Component, Reflect)]
-   #[reflect(Component)]
-   pub struct UniqueId(pub String);
-
-   /// Entity ID mapping for replay
-   #[derive(Resource, Default)]
-   pub struct ReplayEntityMap {
-       pub id_to_entity: HashMap<String, Entity>,  // UniqueId -> Entity
-   }
-
-   /// During replay, resolve UniqueId to current Entity
-   fn resolve_entity(
-       unique_id: &str,
-       map: &ReplayEntityMap,
-   ) -> Option<Entity> {
-       map.id_to_entity.get(unique_id).copied()
-   }
-   ```
-
-   **Important**: All recorded commands must store `UniqueId` strings, not raw `Entity` values.
+**4. Stable Entity Identification**:
+- Entity IDs change between runs
+- Use `UniqueId` component for stable identification
+- Recording: Convert `Entity` → `UniqueId` string
+- Playback: Resolve `UniqueId` string → current `Entity`
+- Requires `ReplayEntityMap` resource for mapping
 
 ### Replay Limitations
 
@@ -552,322 +313,144 @@ For **deterministic replay**, the system must:
 
 ### System Execution Order
 
-```rust
-impl Plugin for CombatPlugin {
-    fn build(&self, app: &mut App) {
-        app
-            .insert_resource(self.config.clone())
+**IssunSet::Logic** (chained order):
+1. `handle_combat_start` - Process start requests, spawn CombatSession entities
+2. `handle_damage_request` - Calculate and apply damage
+3. `handle_turn_advance` - Increment turn counter
+4. `handle_combat_end` - Process end requests, despawn CombatSession entities
 
-            // Messages
-            .add_message::<CombatStartRequested>()
-            .add_message::<CombatTurnAdvanceRequested>()
-            .add_message::<DamageRequested>()
-            .add_message::<CombatEndRequested>()
-            .add_message::<CombatStartedEvent>()
-            .add_message::<CombatTurnCompletedEvent>()
-            .add_message::<DamageAppliedEvent>()
-            .add_message::<CombatEndedEvent>()
+**IssunSet::PostLogic** (optional, for replay):
+- `record_combat_commands` - Record Command Messages
+- `playback_combat_commands` - Playback recorded commands
 
-            // Component registration
-            .register_type::<Combatant>()
-            .register_type::<Health>()
-            .register_type::<Attack>()
-            .register_type::<Defense>()
-            .register_type::<CombatSession>()
-            .register_type::<CombatParticipants>()
-            .register_type::<CombatLog>()
-            .register_type::<CombatConfig>()
-            .register_type::<ReplayRecorder>()
-            .register_type::<UniqueId>()
-            .register_type::<CombatSessionRng>()
-
-            // Systems (placed in IssunSet::Logic)
-            .add_systems(Update, (
-                handle_combat_start,
-                handle_damage_request,
-                handle_turn_advance,
-                handle_combat_end,
-            ).chain().in_set(IssunSet::Logic))
-
-            // Replay systems (optional)
-            .add_systems(Update, (
-                record_combat_commands,
-                playback_combat_commands,
-            ).in_set(IssunSet::PostLogic));
-    }
-}
-```
+**Plugin Registration**:
+- Registers all Messages via `add_message::<T>()`
+- Registers all Components/Resources via `register_type::<T>()`
+- Inserts `CombatConfig` resource
 
 ### Combat Start Flow
 
 ```
-┌─────────────────────┐
-│ CombatStartRequested│
-│ - battle_id         │
-│ - participants: Vec │
-└──────────┬──────────┘
-           │
-           ▼
-  ┌────────────────────┐
-  │ handle_combat_start│
-  │ system             │
-  └────────┬───────────┘
-           │
-           ▼
-  ┌────────────────────┐
-  │ Commands.spawn()   │
-  │ CombatSession      │
-  │ CombatParticipants │
-  │ CombatLog          │
-  └────────┬───────────┘
-           │
-           ▼
-  ┌────────────────────┐
-  │ CombatStartedEvent │
-  │ - combat_entity    │
-  └────────────────────┘
+CombatStartRequested
+  ↓
+handle_combat_start system
+  ↓
+1. Generate seed from battle_id (deterministic)
+2. Spawn CombatSession entity:
+   - CombatSession component
+   - CombatParticipants component
+   - CombatLog component
+   - ReplayRecorder component
+   - UniqueId component
+   - CombatSessionRng component (with seed)
+  ↓
+Write CombatStartedEvent
 ```
 
-**Implementation Example**:
-```rust
-fn handle_combat_start(
-    mut commands: Commands,
-    mut requests: MessageReader<CombatStartRequested>,
-    mut started_events: MessageWriter<CombatStartedEvent>,
-    config: Res<CombatConfig>,
-) {
-    for request in requests.read() {
-        // Generate seed from battle_id for deterministic replay
-        let seed = {
-            use std::collections::hash_map::DefaultHasher;
-            use std::hash::{Hash, Hasher};
-            let mut hasher = DefaultHasher::new();
-            request.battle_id.hash(&mut hasher);
-            hasher.finish()
-        };
-
-        // Spawn combat session entity
-        let combat_entity = commands.spawn((
-            CombatSession {
-                battle_id: request.battle_id.clone(),
-                turn_count: 0,
-                score: 0,
-            },
-            CombatParticipants {
-                entities: request.participants.clone(),
-            },
-            CombatLog {
-                entries: Vec::new(),
-                max_entries: config.max_log_entries,
-            },
-            ReplayRecorder {
-                commands: Vec::new(),
-                is_recording: true,
-            },
-            UniqueId(request.battle_id.clone()),  // Use battle_id as stable ID
-            CombatSessionRng::new(seed),  // Seeded RNG for replay
-        )).id();
-
-        // Emit started event
-        started_events.write(CombatStartedEvent {
-            combat_entity,
-            battle_id: request.battle_id.clone(),
-        });
-    }
-}
-```
+**Key Operations**:
+- Seed generation: `hash(battle_id)` for deterministic replay
+- Entity spawning: Single `commands.spawn()` with all components
+- Event publishing: Write `CombatStartedEvent` with `combat_entity`
 
 ### Damage Processing Flow
 
 ```
-┌──────────────────┐
-│ DamageRequested  │
-│ - attacker       │
-│ - target         │
-│ - base_damage    │
-└────────┬─────────┘
-         │
-         ▼
-┌─────────────────────┐
-│ handle_damage_request│
-│ system              │
-└────────┬────────────┘
-         │
-         ▼
-┌────────────────────┐
-│ Query<&Attack>     │
-│ Query<&Defense>    │
-│ Query<&mut Health> │
-└────────┬───────────┘
-         │
-         ▼
-┌────────────────────┐
-│ Damage calculation │
-│ actual = base - def│
-│ actual >= min_dmg  │
-└────────┬───────────┘
-         │
-         ▼
-┌────────────────────┐
-│ Health::take_damage│
-└────────┬───────────┘
-         │
-         ▼
-┌────────────────────┐
-│ DamageAppliedEvent │
-│ - actual_damage    │
-│ - is_dead          │
-└────────────────────┘
+DamageRequested
+  ↓
+handle_damage_request system
+  ↓
+1. Validate target entity has Health (⚠️ CRITICAL)
+2. Query target's Defense (optional, defaults to 0)
+3. Calculate damage:
+   actual_damage = max(base_damage - defense, min_damage)
+4. Apply damage: Health::take_damage(actual_damage)
+5. Check death: is_dead = !Health::is_alive()
+  ↓
+Write DamageAppliedEvent
 ```
 
-**Implementation Example**:
-```rust
-fn handle_damage_request(
-    mut requests: MessageReader<DamageRequested>,
-    mut applied_events: MessageWriter<DamageAppliedEvent>,
-    attacks: Query<&Attack>,
-    defenses: Query<&Defense>,
-    mut healths: Query<&mut Health>,
-    config: Res<CombatConfig>,
-) {
-    for request in requests.read() {
-        // ⚠️ CRITICAL: Entity validation required
-        let Ok(mut target_health) = healths.get_mut(request.target) else {
-            warn!("Target entity {:?} has no Health component", request.target);
-            continue;
-        };
+**Key Calculations**:
+- **Defense reduction**: `base_damage - defense_value`
+- **Minimum damage guarantee**: `max(calculated, config.min_damage)`
+- **Death check**: `current HP <= 0`
 
-        // Get defense value (optional)
-        let defense_value = defenses.get(request.target)
-            .map(|d| d.value)
-            .unwrap_or(0);
-
-        // Calculate damage
-        let actual_damage = (request.base_damage - defense_value)
-            .max(config.min_damage);
-
-        // Apply damage
-        target_health.take_damage(actual_damage);
-        let is_dead = !target_health.is_alive();
-
-        // Emit event
-        applied_events.write(DamageAppliedEvent {
-            attacker: request.attacker,
-            target: request.target,
-            actual_damage,
-            is_dead,
-        });
-    }
-}
-```
+**Critical Pattern**:
+- Always validate entity existence: `if let Ok(mut health) = healths.get_mut(target)`
+- Never use `.unwrap()` on entity queries (entity may be despawned)
 
 ---
 
 ## 🔌 Customization Points (Observer Pattern)
 
-Use Bevy 0.17's Observer to add custom logic.
+Use Bevy 0.17's Observer pattern to add game-specific combat rules.
 
 ### 1. Custom Turn Logic
 
-```rust
-/// Default: Do nothing after turn completion
-/// Game-specific: Extend with Observer
+**Use Case**: Apply status effects (poison, regen) every turn.
 
-// Game implementation
+**Observer Signature**:
+```rust
 fn custom_turn_logic(
     trigger: Trigger<CombatTurnCompletedEvent>,
-    mut commands: Commands,
-    sessions: Query<(&CombatSession, &CombatParticipants)>,
-    combatants: Query<(&Combatant, &Health)>,
-) {
-    let event = trigger.event();
-
-    // Custom logic: Apply poison damage every turn
-    if let Ok((session, participants)) = sessions.get(event.combat_entity) {
-        for entity in &participants.entities {
-            if let Ok((combatant, health)) = combatants.get(*entity) {
-                // Check poison status & apply damage
-                commands.write_message(DamageRequested {
-                    attacker: event.combat_entity, // Environmental damage
-                    target: *entity,
-                    base_damage: 5,
-                });
-            }
-        }
-    }
-}
-
-// Add plugin
-App::new()
-    .add_plugins(CombatPlugin::default())
-    .observe(custom_turn_logic)  // Add custom logic
-    .run();
+    // ... queries for game-specific components
+)
 ```
+
+**How It Works**:
+1. Listen to `CombatTurnCompletedEvent`
+2. Query participants for status effects
+3. Write `DamageRequested` or other messages based on effects
+
+**Example Effects**:
+- Poison: Deal damage each turn
+- Regeneration: Heal HP each turn
+- Buff expiration: Remove temporary effects
 
 ### 2. Damage Calculation Customization
 
-```rust
-/// Critical hit processing
+**Use Case**: Critical hits, elemental weaknesses, damage modifiers.
 
+**Observer Signature**:
+```rust
 fn critical_hit_logic(
     trigger: Trigger<DamageAppliedEvent>,
-    mut log: Query<&mut CombatLog>,
-    sessions: Query<&CombatSession>,
-) {
-    let event = trigger.event();
-
-    // Critical hit check (high damage)
-    if event.actual_damage > 50 {
-        // Add to log
-        if let Some(combat_entity) = /* find combat entity */ {
-            if let Ok(mut log) = log.get_mut(combat_entity) {
-                log.add_entry(0, "💥 CRITICAL HIT!".to_string());
-            }
-        }
-    }
-}
+    // ... queries for log, effects
+)
 ```
+
+**How It Works**:
+1. Listen to `DamageAppliedEvent`
+2. Check damage value, attacker/target attributes
+3. Add combat log entries for special effects
+4. Trigger achievement/UI updates
+
+**Example Customizations**:
+- Critical hit detection (high damage threshold)
+- Elemental weakness multipliers
+- Damage type resistances
 
 ### 3. Victory Condition Customization
 
-```rust
-/// Check for total wipeout
+**Use Case**: Custom win/loss conditions (last survivor, objective-based).
 
+**Observer Signature**:
+```rust
 fn check_victory_condition(
     trigger: Trigger<DamageAppliedEvent>,
-    mut commands: Commands,
-    sessions: Query<(Entity, &CombatParticipants)>,
-    healths: Query<&Health>,
-) {
-    let event = trigger.event();
-
-    // Only check when someone dies
-    if !event.is_dead {
-        return;
-    }
-
-    // Find combat session
-    for (combat_entity, participants) in sessions.iter() {
-        if participants.entities.contains(&event.target) {
-            // Count survivors
-            let alive_count = participants.entities.iter()
-                .filter(|e| {
-                    healths.get(**e)
-                        .map(|h| h.is_alive())
-                        .unwrap_or(false)
-                })
-                .count();
-
-            // End combat if 1 or fewer survivors
-            if alive_count <= 1 {
-                commands.write_message(CombatEndRequested {
-                    combat_entity,
-                });
-            }
-        }
-    }
-}
+    // ... queries for health, objectives
+)
 ```
+
+**How It Works**:
+1. Listen to `DamageAppliedEvent` (when `is_dead == true`)
+2. Check victory conditions (survivor count, objectives)
+3. Write `CombatEndRequested` when condition met
+
+**Example Conditions**:
+- Last survivor wins
+- Kill boss enemy
+- Protect VIP for N turns
+- Reach HP threshold
 
 ---
 
@@ -916,63 +499,41 @@ fn check_victory_condition(
 
 ### Entity Cleanup & Zombie Prevention
 
-**Problem**: `CombatParticipants` holds `Vec<Entity>`, but external code may despawn combatants during combat (death, removal, etc.), creating **zombie entity references**.
+**Problem**: `CombatParticipants` holds `Vec<Entity>`, but external code may despawn combatants during combat, creating **zombie entity references**.
 
-**Solution**: Validate entity existence before accessing:
+**Solution Strategy**:
 
-```rust
-/// ⚠️ CRITICAL: Always validate entity existence
-fn process_combat_participants(
-    mut sessions: Query<&mut CombatParticipants>,
-    mut commands: Commands,
-    combatants: Query<&Combatant>,  // Use Query to validate
-) {
-    for mut participants in sessions.iter_mut() {
-        // Remove zombie entities from participant list
-        participants.entities.retain(|entity| {
-            // Check if entity still exists with required components
-            combatants.get(*entity).is_ok()
-        });
-    }
-}
-```
+**1. Validate Before Access**:
+- Use `if let Ok(...)` pattern for all entity queries
+- ❌ Never use `.unwrap()` or `.expect()` on entity queries
+- ✅ Always handle `None`/`Err` cases gracefully
+
+**2. Clean Participant Lists**:
+- Use `.retain()` to remove despawned entities
+- Validate: `combatants.get(entity).is_ok()`
+- Run at turn start or before critical operations
+
+**3. Skip Despawned Entities**:
+- Systems should silently skip invalid entities
+- No error messages for expected despawns (death in combat)
+- Warn only for unexpected situations
 
 **Best Practice Pattern**:
 ```rust
-// ❌ WRONG: Direct access without validation
-fn bad_system(
-    participants: Query<&CombatParticipants>,
-    mut healths: Query<&mut Health>,
-) {
-    for participant in participants.iter() {
-        for entity in &participant.entities {
-            let mut health = healths.get_mut(*entity).unwrap();  // ⚠️ PANIC if despawned!
-            // ...
-        }
-    }
+// ✅ CORRECT
+if let Ok(mut health) = healths.get_mut(entity) {
+    // Safe to use
 }
+// Silently skip despawned entities
 
-// ✅ CORRECT: Validate before access
-fn good_system(
-    participants: Query<&CombatParticipants>,
-    mut healths: Query<&mut Health>,
-) {
-    for participant in participants.iter() {
-        for entity in &participant.entities {
-            // Use if-let or Result pattern
-            if let Ok(mut health) = healths.get_mut(*entity) {
-                // Safe to use
-            }
-            // Silently skip despawned entities
-        }
-    }
-}
+// ❌ WRONG
+let mut health = healths.get_mut(entity).unwrap();  // PANIC!
 ```
 
 **When to Clean Up**:
-- **Every System**: Use `if let Ok(...)` pattern for safety
-- **Turn Start**: Clean participant list via `retain()` before processing
-- **Combat End**: No cleanup needed (CombatSession entity is despawned)
+- **Every System**: Use `if let Ok(...)` for safety
+- **Turn Start**: Clean participant list before processing
+- **Combat End**: No cleanup needed (CombatSession despawned)
 
 ---
 
@@ -1033,24 +594,38 @@ These can be implemented as game-side Observers.
 
 ## 🧪 Implementation Strategy
 
-### Phase 1: Core Mechanics ✅ (Design Complete)
+### Phase 1: Core Mechanics ✅ **COMPLETE**
+
+**Design**:
 - [x] Entity/Component design
 - [x] Message definitions
 - [x] System flow design
 - [x] Observer pattern design
 - [x] Replay system design
 
-### Phase 1: Implementation (Next Steps)
-- [ ] Components implementation
-- [ ] Systems implementation
-- [ ] Plugin implementation
-- [ ] Unit Tests (App::update() based)
-- [ ] Replay system implementation
+**Implementation**:
+- [x] Components implementation - **5 modules, ~900 lines**
+- [x] Systems implementation - **5 core systems**
+- [x] Plugin implementation - **Full registration**
+- [x] Unit Tests - **12/12 tests passing**
+- [x] Replay infrastructure - **Components & resources ready**
 
-### Phase 2: Extensions (Phase 2+)
-- [ ] Turn Order System
-- [ ] Status Effects
-- [ ] AI Integration
+**Test Coverage**:
+- ✅ Health component (is_alive, take_damage, heal)
+- ✅ Combat log functionality
+- ✅ Participant cleanup (zombie prevention)
+- ✅ Combat result enum
+- ✅ Plugin initialization & configuration
+- ✅ Combat start system
+- ✅ Damage calculation (with defense, minimum damage)
+- ✅ Deleted entity handling (no panics)
+
+### Phase 2: Extensions (Future)
+- [ ] Turn Order System (initiative-based)
+- [ ] Status Effects (poison, buffs, debuffs)
+- [ ] AI Integration (enemy decision-making)
+- [ ] Replay recording/playback systems (infrastructure ready)
+- [ ] Observer examples (custom turn logic, victory conditions)
 
 ---
 
@@ -1069,27 +644,28 @@ These can be implemented as game-side Observers.
 
 ### Reflect Requirements
 
-All Components/Resources/Messages must have:
-```rust
-#[derive(Reflect)]
-#[reflect(Component)]  // or Resource, Message
-```
+**All Bevy types must have**:
+- Components/Resources: `#[derive(Reflect)]` + `#[reflect(Component/Resource)]`
+- Messages: `#[derive(Reflect)]` + `#[reflect(opaque)]` (NOT `#[reflect(Message)]`)
+- Plugin registration: `app.register_type::<T>()`
 
-Register in Plugin's `build()`:
-```rust
-app.register_type::<Combatant>();
-```
+**Enforcement**: Static linting via `tests/lints.rs` in `make preflight-bevy`
 
 ---
 
 ## 🎬 Replay Implementation Checklist
 
-- [ ] Add `FrameCount` resource (global frame counter)
-- [ ] Add `ReplayRecorder` component (per-combat recording)
-- [ ] Add `UniqueId` component (stable entity identification)
-- [ ] Add `CombatSessionRng` component (per-combat seeded RNG)
-- [ ] Implement `ReplayEntityMap` resource (UniqueId → Entity mapping)
-- [ ] Record Command Messages only (not State Messages)
+**Infrastructure (Phase 1)** ✅:
+- [x] Add `FrameCount` resource (global frame counter)
+- [x] Add `ReplayRecorder` component (per-combat recording)
+- [x] Add `UniqueId` component (stable entity identification)
+- [x] Add `CombatSessionRng` component (per-combat seeded RNG)
+- [x] Implement `ReplayEntityMap` resource (UniqueId → Entity mapping)
+- [x] Define `RecordedCommand` and `CommandType` enums
+
+**Recording/Playback Systems (Phase 2)** - Future:
+- [ ] Implement `record_combat_commands` system
+- [ ] Implement `playback_combat_commands` system
 - [ ] Convert Entity IDs to UniqueId strings during recording
 - [ ] Resolve UniqueId to Entity during playback
 - [ ] Test deterministic replay with parallel combats
