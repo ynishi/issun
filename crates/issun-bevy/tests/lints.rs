@@ -460,7 +460,10 @@ fn check_entity_from_bits_violations(target_dir: &str) -> Vec<String> {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "rs") {
             // Skip entity_safety.rs - that's where the safe wrappers are defined
-            if path.file_name().is_some_and(|name| name == "entity_safety.rs") {
+            if path
+                .file_name()
+                .is_some_and(|name| name == "entity_safety.rs")
+            {
                 continue;
             }
             // Skip commands.rs - entity IDs are queued, not directly accessed
@@ -623,7 +626,9 @@ fn enforce_entity_from_bits_safety() {
     let errors = check_entity_from_bits_violations("src/plugins");
 
     if errors.is_empty() && !Path::new("src/plugins").exists() {
-        eprintln!("⚠️  Warning: src/plugins not found, skipping Entity::from_bits Safety lint check");
+        eprintln!(
+            "⚠️  Warning: src/plugins not found, skipping Entity::from_bits Safety lint check"
+        );
         return;
     }
 

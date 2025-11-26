@@ -128,7 +128,10 @@ mod tests {
 
         // Should return error, NOT crash
         assert!(result.is_err());
-        assert!(matches!(result.err().unwrap(), ScriptError::EntityDespawned(_)));
+        assert!(matches!(
+            result.err().unwrap(),
+            ScriptError::EntityDespawned(_)
+        ));
     }
 
     #[test]
@@ -144,7 +147,10 @@ mod tests {
 
         // Should return error, NOT crash
         assert!(result.is_err());
-        assert!(matches!(result.err().unwrap(), ScriptError::EntityDespawned(_)));
+        assert!(matches!(
+            result.err().unwrap(),
+            ScriptError::EntityDespawned(_)
+        ));
     }
 
     #[test]

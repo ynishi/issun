@@ -81,9 +81,7 @@ mod tests {
         lua.load(r#"log("test message")"#).exec().unwrap();
 
         // Test log_warn()
-        lua.load(r#"log_warn("warning message")"#)
-            .exec()
-            .unwrap();
+        lua.load(r#"log_warn("warning message")"#).exec().unwrap();
 
         // Test log_error()
         lua.load(r#"log_error("error message")"#).exec().unwrap();
@@ -96,14 +94,14 @@ mod tests {
 
         // Test random() returns value in [0, 1)
         let result: f64 = lua.load(r#"return random()"#).eval().unwrap();
-        assert!(result >= 0.0 && result < 1.0);
+        assert!((0.0..1.0).contains(&result));
 
         // Test random_range(min, max)
         let result: f64 = lua
             .load(r#"return random_range(10.0, 20.0)"#)
             .eval()
             .unwrap();
-        assert!(result >= 10.0 && result < 20.0);
+        assert!((10.0..20.0).contains(&result));
     }
 
     #[test]
@@ -116,6 +114,6 @@ mod tests {
             .load(r#"return random_range(-10.0, -5.0)"#)
             .eval()
             .unwrap();
-        assert!(result >= -10.0 && result < -5.0);
+        assert!((-10.0..-5.0).contains(&result));
     }
 }

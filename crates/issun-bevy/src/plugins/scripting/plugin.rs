@@ -24,8 +24,7 @@ impl Plugin for ScriptingPlugin {
         let backend = MluaBackend::new().expect("Failed to create MluaBackend");
 
         // Register all Lua APIs
-        api_bindings::register_all_apis(backend.lua())
-            .expect("Failed to register Lua APIs");
+        api_bindings::register_all_apis(backend.lua()).expect("Failed to register Lua APIs");
 
         app
             // Register types
@@ -51,10 +50,7 @@ fn load_scripts(
 ) {
     for (entity, mut script) in query.iter_mut() {
         if !script.is_loaded() {
-            info!(
-                "Loading script '{}' for entity {:?}",
-                script.path, entity
-            );
+            info!("Loading script '{}' for entity {:?}", script.path, entity);
 
             // Load the script
             match backend.load_script(&script.path) {
@@ -127,10 +123,7 @@ fn execute_lua_commands(
                         let health = match &data {
                             LuaValue::Integer(max) => Health::new(*max as i32),
                             _ => {
-                                warn!(
-                                    "Invalid data type for Health component: {:?}",
-                                    data
-                                );
+                                warn!("Invalid data type for Health component: {:?}", data);
                                 continue;
                             }
                         };

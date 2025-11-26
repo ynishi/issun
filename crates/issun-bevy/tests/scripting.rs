@@ -223,10 +223,7 @@ fn test_lua_script_attached_to_entity() {
     app.add_plugins(MinimalPlugins).add_plugins(ScriptingPlugin);
 
     // Spawn entity with LuaScript
-    let entity = app
-        .world_mut()
-        .spawn(LuaScript::new("test.lua"))
-        .id();
+    let entity = app.world_mut().spawn(LuaScript::new("test.lua")).id();
 
     app.update();
 
@@ -254,7 +251,7 @@ fn test_utility_apis_available() {
     backend.execute_chunk(r#"log_error("error")"#).unwrap();
 
     // Test random functions
-    let result = backend
+    backend
         .execute_chunk(
             r#"
         local r = random()
@@ -267,7 +264,7 @@ fn test_utility_apis_available() {
         .unwrap();
 
     // If assertions in Lua pass, test passes
-    assert!(result == ());
+    assert!(() == ());
 }
 
 #[test]
@@ -330,9 +327,7 @@ end
     fs::write(&script_path, script_content).unwrap();
 
     // Load the combat AI script
-    let handle = backend
-        .load_script(script_path.to_str().unwrap())
-        .unwrap();
+    let handle = backend.load_script(script_path.to_str().unwrap()).unwrap();
 
     // Test on_init function
     backend.call_function(handle, "on_init").unwrap();
@@ -434,9 +429,7 @@ end
     fs::write(&script_path, script_content).unwrap();
 
     // Load script
-    let _handle = backend
-        .load_script(script_path.to_str().unwrap())
-        .unwrap();
+    let _handle = backend.load_script(script_path.to_str().unwrap()).unwrap();
 
     // Subscribe to events by function name
     backend
@@ -476,9 +469,7 @@ end
         .eval()
         .unwrap();
 
-    backend
-        .trigger_event("HealthRestored", heal_event)
-        .unwrap();
+    backend.trigger_event("HealthRestored", heal_event).unwrap();
 
     // Verify events were logged
     use mlua::TableExt;
@@ -661,7 +652,11 @@ fn test_lua_commands_integration() {
     let lua_commands = LuaCommands::new(queue.clone());
 
     // Register commands object in Lua
-    backend.lua().globals().set("commands", lua_commands).unwrap();
+    backend
+        .lua()
+        .globals()
+        .set("commands", lua_commands)
+        .unwrap();
 
     // Create Bevy app
     let mut app = App::new();
@@ -789,18 +784,25 @@ fn test_example_mod_healing_station() {
     // Create command queue and register it
     let queue = Arc::new(Mutex::new(LuaCommandQueue::new()));
     let lua_commands = LuaCommands::new(queue.clone());
-    backend.lua().globals().set("commands", lua_commands).unwrap();
+    backend
+        .lua()
+        .globals()
+        .set("commands", lua_commands)
+        .unwrap();
 
     // Load the healing station mod
     // Try both workspace root and crate-relative paths
-    let mod_path = if std::path::Path::new("../../examples/mods/healing_station/healing_station.lua").exists() {
-        "../../examples/mods/healing_station/healing_station.lua"
-    } else if std::path::Path::new("examples/mods/healing_station/healing_station.lua").exists() {
-        "examples/mods/healing_station/healing_station.lua"
-    } else {
-        eprintln!("⚠️  Warning: Example mod not found, skipping test");
-        return;
-    };
+    let mod_path =
+        if std::path::Path::new("../../examples/mods/healing_station/healing_station.lua").exists()
+        {
+            "../../examples/mods/healing_station/healing_station.lua"
+        } else if std::path::Path::new("examples/mods/healing_station/healing_station.lua").exists()
+        {
+            "examples/mods/healing_station/healing_station.lua"
+        } else {
+            eprintln!("⚠️  Warning: Example mod not found, skipping test");
+            return;
+        };
 
     let handle = backend.load_script(mod_path).unwrap();
 
@@ -808,9 +810,13 @@ fn test_example_mod_healing_station() {
     backend.call_function(handle, "on_init").unwrap();
 
     // Simulate entity entering healing station
-    backend.execute_chunk(r#"
+    backend
+        .execute_chunk(
+            r#"
         on_entity_enter({entity_id = 42})
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
 
     // Check that heal command was queued
     let queue_len = queue.lock().unwrap().len();
@@ -851,5 +857,5 @@ fn test_example_mod_healing_station() {
         .unwrap();
 
     // Result is random, just verify it returns a bool
-    assert!(is_critical == true || is_critical == false);
+    assert!(is_critical || !is_critical);
 }

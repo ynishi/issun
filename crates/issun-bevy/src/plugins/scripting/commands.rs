@@ -12,9 +12,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone)]
 pub enum LuaCommand {
     /// Spawn entity from scene path
-    SpawnEntity {
-        scene_path: String,
-    },
+    SpawnEntity { scene_path: String },
     /// Insert component on entity
     InsertComponent {
         entity: Entity,
@@ -22,14 +20,9 @@ pub enum LuaCommand {
         data: LuaValue,
     },
     /// Remove component from entity
-    RemoveComponent {
-        entity: Entity,
-        type_name: String,
-    },
+    RemoveComponent { entity: Entity, type_name: String },
     /// Despawn entity
-    DespawnEntity {
-        entity: Entity,
-    },
+    DespawnEntity { entity: Entity },
 }
 
 /// Lua value that can be cloned (simplified for now)

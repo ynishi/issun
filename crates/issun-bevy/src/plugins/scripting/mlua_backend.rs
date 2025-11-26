@@ -10,7 +10,7 @@ use std::fs;
 /// MLua-based scripting backend
 pub struct MluaBackend {
     lua: Lua,
-    scripts: HashMap<u64, String>,                      // handle_id -> script_path
+    scripts: HashMap<u64, String>, // handle_id -> script_path
     event_callbacks: HashMap<String, Vec<RegistryKey>>, // event_name -> [callback_refs]
     next_handle_id: u64,
 }
@@ -68,15 +68,14 @@ impl MluaBackend {
             .map_err(|_| ScriptError::FunctionNotFound(function_name.to_string()))?;
 
         // Store callback in Lua registry to prevent garbage collection
-        let callback_ref = self
-            .lua
-            .create_registry_value(callback)
-            .map_err(|e| ScriptError::RuntimeError(format!("Failed to register callback: {}", e)))?;
+        let callback_ref = self.lua.create_registry_value(callback).map_err(|e| {
+            ScriptError::RuntimeError(format!("Failed to register callback: {}", e))
+        })?;
 
         // Add to callbacks list for this event
         self.event_callbacks
             .entry(event_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(callback_ref);
 
         Ok(())
@@ -91,22 +90,18 @@ impl MluaBackend {
         if let Some(callbacks) = self.event_callbacks.get(event_name) {
             for callback_ref in callbacks {
                 // Get callback from registry
-                let callback: mlua::Function = self
-                    .lua
-                    .registry_value(callback_ref)
-                    .map_err(|e| {
+                let callback: mlua::Function =
+                    self.lua.registry_value(callback_ref).map_err(|e| {
                         ScriptError::RuntimeError(format!("Failed to get callback: {}", e))
                     })?;
 
                 // Call callback with event data
-                callback
-                    .call::<_, ()>(event_data.clone())
-                    .map_err(|e| {
-                        ScriptError::RuntimeError(format!(
-                            "Error calling event handler for '{}': {}",
-                            event_name, e
-                        ))
-                    })?;
+                callback.call::<_, ()>(event_data.clone()).map_err(|e| {
+                    ScriptError::RuntimeError(format!(
+                        "Error calling event handler for '{}': {}",
+                        event_name, e
+                    ))
+                })?;
             }
         }
 

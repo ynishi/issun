@@ -85,9 +85,7 @@ impl UserData for LuaEntity {
         });
 
         // entity:id() -> number (for debugging)
-        methods.add_method("id", |_lua, this, ()| {
-            Ok(this.entity.to_bits())
-        });
+        methods.add_method("id", |_lua, this, ()| Ok(this.entity.to_bits()));
     }
 }
 
@@ -124,7 +122,7 @@ mod tests {
             .load(r#"return entity:has_component("Health")"#)
             .eval()
             .unwrap();
-        assert_eq!(has_component, false);
+        assert!(!has_component);
 
         // Test get_component() stub (returns error)
         let result = lua
