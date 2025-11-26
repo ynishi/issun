@@ -9,10 +9,11 @@ use crate::IssunSet;
 use super::{
     api_bindings,
     backend::ScriptingBackend,
-    commands::{LuaCommand, LuaCommandQueue},
+    commands::{LuaCommand, LuaCommandQueue, LuaValue},
     components::LuaScript,
     mlua_backend::MluaBackend,
 };
+use crate::plugins::combat::components::Health;
 
 /// Plugin for scripting system support
 pub struct ScriptingPlugin;
@@ -118,11 +119,32 @@ fn execute_lua_commands(
                     continue;
                 }
 
-                // TODO: Reflect-based component insertion
-                warn!(
-                    "InsertComponent('{}', {:?}) on entity {:?} not yet implemented - requires Reflection",
-                    type_name, data, entity
-                );
+                // Hardcoded component insertion for proof-of-concept
+                // TODO: Generalize to use Reflection and TypeRegistry
+                match type_name.as_str() {
+                    "Health" => {
+                        // Parse LuaValue to Health component
+                        let health = match &data {
+                            LuaValue::Integer(max) => Health::new(*max as i32),
+                            _ => {
+                                warn!(
+                                    "Invalid data type for Health component: {:?}",
+                                    data
+                                );
+                                continue;
+                            }
+                        };
+
+                        commands.entity(entity).insert(health);
+                        info!("Inserted Health component on entity {:?}", entity);
+                    }
+                    _ => {
+                        warn!(
+                            "Unknown component type '{}' - only 'Health' is currently supported",
+                            type_name
+                        );
+                    }
+                }
             }
 
             LuaCommand::RemoveComponent { entity, type_name } => {
