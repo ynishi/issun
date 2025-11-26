@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use super::components::*;
 use super::events::*;
 use super::systems::*;
+use crate::IssunSet;
 
 /// Combat Plugin
 ///
@@ -75,7 +76,6 @@ impl Plugin for CombatPlugin {
             .register_type::<CombatResult>();
 
         // Core systems (placed in Update schedule)
-        // Note: IssunSet will be added in Phase 2
         app.add_systems(
             Update,
             (
@@ -85,7 +85,8 @@ impl Plugin for CombatPlugin {
                 handle_combat_end,
                 cleanup_zombie_entities,
             )
-                .chain(),
+                .chain()
+                .in_set(IssunSet::Logic),
         );
     }
 }

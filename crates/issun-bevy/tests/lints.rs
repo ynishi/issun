@@ -295,6 +295,146 @@ fn check_config_default_violations(target_dir: &str) -> Vec<String> {
 
 //
 // ═══════════════════════════════════════════════════════════════════════════
+// System Ordering Lint
+// ═══════════════════════════════════════════════════════════════════════════
+//
+
+use syn::{FnArg, ImplItem, ItemImpl, Type};
+
+struct SystemOrderingVisitor {
+    errors: Vec<String>,
+    current_file: String,
+}
+
+fn check_system_ordering_violations(target_dir: &str) -> Vec<String> {
+    let mut visitor = SystemOrderingVisitor {
+        errors: Vec::new(),
+        current_file: String::new(),
+    };
+
+    if !Path::new(target_dir).exists() {
+        return Vec::new();
+    }
+
+    for entry in WalkDir::new(target_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "rs")
+            && path.file_name().is_some_and(|name| name == "plugin.rs")
+        {
+            visitor.current_file = path.display().to_string();
+            let content = fs::read_to_string(path).unwrap();
+            if let Ok(file) = syn::parse_file(&content) {
+                visitor.visit_file(&file);
+            }
+        }
+    }
+
+    visitor.errors
+}
+
+impl<'ast> Visit<'ast> for SystemOrderingVisitor {
+    fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
+        if let Type::Path(type_path) = &*node.self_ty {
+            let type_name = type_path
+                .path
+                .segments
+                .last()
+                .map(|s| s.ident.to_string())
+                .unwrap_or_default();
+
+            if type_name.ends_with("Plugin") {
+                for item in &node.items {
+                    if let ImplItem::Fn(method) = item {
+                        if method.sig.ident == "build" {
+                            let body_str = quote::quote!(#method).to_string();
+
+                            if body_str.contains("add_systems") && !body_str.contains("in_set") {
+                                self.errors.push(format!(
+                                    "{} - Plugin::build() calls add_systems without .in_set(). \
+                                    Systems should use IssunSet for deterministic ordering.",
+                                    self.current_file
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        syn::visit::visit_item_impl(self, node);
+    }
+}
+
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// System Parameter Validation Lint
+// ═══════════════════════════════════════════════════════════════════════════
+//
+
+struct SystemParamVisitor {
+    errors: Vec<String>,
+    current_file: String,
+}
+
+fn check_system_param_violations(target_dir: &str) -> Vec<String> {
+    let mut visitor = SystemParamVisitor {
+        errors: Vec::new(),
+        current_file: String::new(),
+    };
+
+    if !Path::new(target_dir).exists() {
+        return Vec::new();
+    }
+
+    for entry in WalkDir::new(target_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "rs")
+            && path.file_name().is_some_and(|name| name == "systems.rs")
+        {
+            visitor.current_file = path.display().to_string();
+            let content = fs::read_to_string(path).unwrap();
+            if let Ok(file) = syn::parse_file(&content) {
+                visitor.visit_file(&file);
+            }
+        }
+    }
+
+    visitor.errors
+}
+
+impl<'ast> Visit<'ast> for SystemParamVisitor {
+    fn visit_item_fn(&mut self, node: &'ast ItemFn) {
+        let mut has_world_ref = false;
+        let mut has_mut_query = false;
+
+        for input in &node.sig.inputs {
+            if let FnArg::Typed(pat_type) = input {
+                let type_str = quote::quote!(#pat_type.ty).to_string();
+
+                if type_str.contains("& World") {
+                    has_world_ref = true;
+                }
+
+                if type_str.contains("Query") && type_str.contains("& mut") {
+                    has_mut_query = true;
+                }
+            }
+        }
+
+        if has_world_ref && has_mut_query {
+            self.errors.push(format!(
+                "{} - Function '{}' uses both &World and Query<&mut ...>. \
+                This causes borrowing conflicts. Use Query results for validation instead.",
+                self.current_file, node.sig.ident
+            ));
+        }
+
+        syn::visit::visit_item_fn(self, node);
+    }
+}
+
+//
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Lint Tests
 // ═══════════════════════════════════════════════════════════════════════════
 //
@@ -348,6 +488,42 @@ fn enforce_config_default() {
         errors.is_empty(),
         "\n\n❌ Config Default Lint Errors:\n\n{}\n\n\
         💡 Fix: Add 'impl Default for YourConfig {{ ... }}'\n",
+        errors.join("\n")
+    );
+}
+
+#[test]
+fn enforce_system_ordering() {
+    let errors = check_system_ordering_violations("src/plugins");
+
+    if errors.is_empty() && !Path::new("src/plugins").exists() {
+        eprintln!("⚠️  Warning: src/plugins not found, skipping System Ordering lint check");
+        return;
+    }
+
+    assert!(
+        errors.is_empty(),
+        "\n\n❌ System Ordering Lint Errors:\n\n{}\n\n\
+        💡 Fix: Use .in_set(IssunSet::Logic) or appropriate set for deterministic ordering\n\
+        Example: app.add_systems(Update, my_system.in_set(IssunSet::Logic));\n",
+        errors.join("\n")
+    );
+}
+
+#[test]
+fn enforce_system_params() {
+    let errors = check_system_param_violations("src/plugins");
+
+    if errors.is_empty() && !Path::new("src/plugins").exists() {
+        eprintln!("⚠️  Warning: src/plugins not found, skipping System Params lint check");
+        return;
+    }
+
+    assert!(
+        errors.is_empty(),
+        "\n\n❌ System Parameter Lint Errors:\n\n{}\n\n\
+        💡 Fix: Remove &World parameter and use Query results for entity validation\n\
+        Example: if let Ok(component) = query.get(entity) {{ /* safe */ }}\n",
         errors.join("\n")
     );
 }
@@ -793,6 +969,151 @@ pub struct MyResource {{
         assert!(
             errors.is_empty(),
             "Expected no errors for non-Config resource, got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn test_system_ordering_detects_missing_in_set() {
+        let test_dir = "tests/lints_fixtures/system_ordering_bad";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/plugin.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+pub struct TestPlugin;
+
+impl Plugin for TestPlugin {{
+    fn build(&self, app: &mut App) {{
+        app.add_systems(Update, my_system);  // Missing .in_set()
+    }}
+}}
+
+fn my_system() {{}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_system_ordering_violations(test_dir);
+
+        fs::remove_dir_all(test_dir).unwrap();
+
+        assert!(
+            !errors.is_empty(),
+            "Expected error for add_systems without .in_set()"
+        );
+        assert!(
+            errors[0].contains("add_systems without .in_set()"),
+            "Expected specific error message, got: {}",
+            errors[0]
+        );
+    }
+
+    #[test]
+    fn test_system_ordering_accepts_with_in_set() {
+        let test_dir = "tests/lints_fixtures/system_ordering_good";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/plugin.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+pub struct TestPlugin;
+
+impl Plugin for TestPlugin {{
+    fn build(&self, app: &mut App) {{
+        app.add_systems(Update, my_system.in_set(IssunSet::Logic));
+    }}
+}}
+
+fn my_system() {{}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_system_ordering_violations(test_dir);
+
+        fs::remove_dir_all(test_dir).unwrap();
+
+        assert!(
+            errors.is_empty(),
+            "Expected no errors for add_systems with .in_set(), got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn test_system_params_detects_world_with_mut_query() {
+        let test_dir = "tests/lints_fixtures/system_params_bad";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/systems.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+pub fn bad_system(
+    mut query: Query<&mut Health>,
+    world: &World,
+) {{
+    // Causes borrowing conflict
+}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_system_param_violations(test_dir);
+
+        fs::remove_dir_all(test_dir).unwrap();
+
+        assert!(
+            !errors.is_empty(),
+            "Expected error for &World with Query<&mut ...>"
+        );
+        assert!(
+            errors[0].contains("borrowing conflicts"),
+            "Expected specific error message, got: {}",
+            errors[0]
+        );
+    }
+
+    #[test]
+    fn test_system_params_accepts_without_conflicts() {
+        let test_dir = "tests/lints_fixtures/system_params_good";
+        fs::create_dir_all(test_dir).unwrap();
+
+        let test_file = format!("{}/systems.rs", test_dir);
+        let mut file = fs::File::create(&test_file).unwrap();
+        writeln!(
+            file,
+            r#"
+use bevy::prelude::*;
+
+pub fn good_system(
+    mut query: Query<&mut Health>,
+) {{
+    // No conflict - uses Query only
+}}
+"#
+        )
+        .unwrap();
+
+        let errors = check_system_param_violations(test_dir);
+
+        fs::remove_dir_all(test_dir).unwrap();
+
+        assert!(
+            errors.is_empty(),
+            "Expected no errors for safe system params, got: {:?}",
             errors
         );
     }
