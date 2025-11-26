@@ -2,3 +2,4 @@
 
 pub mod accounting;
 pub mod combat;
+pub mod modding;
