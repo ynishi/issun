@@ -16,12 +16,11 @@
 //! ```
 
 use issun::modding::{
-    ModLoader, ModHandle, ModMetadata, ModBackend,
-    PluginControl, PluginAction, ModError, ModResult,
+    ModBackend, ModError, ModHandle, ModLoader, ModMetadata, ModResult, PluginAction, PluginControl,
 };
-use rhai::{Engine, AST, Scope, Dynamic, FnPtr};
-use std::path::Path;
+use rhai::{Dynamic, Engine, FnPtr, Scope, AST};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 /// Event subscription from a MOD script
@@ -39,7 +38,7 @@ pub struct RhaiLoader {
     scripts: HashMap<String, LoadedScript>,
     command_queue: Arc<Mutex<Vec<PluginControl>>>,
     event_subscriptions: Arc<Mutex<HashMap<String, Vec<EventSubscription>>>>, // mod_id -> subscriptions
-    event_publish_queue: Arc<Mutex<Vec<(String, serde_json::Value)>>>,         // (event_type, data)
+    event_publish_queue: Arc<Mutex<Vec<(String, serde_json::Value)>>>,        // (event_type, data)
 }
 
 struct LoadedScript {
@@ -110,38 +109,42 @@ impl RhaiLoader {
         // Plugin control API - Set Parameter
         {
             let q = queue.clone();
-            engine.register_fn("set_plugin_param", move |plugin: &str, key: &str, value: Dynamic| {
-                let json_value = dynamic_to_json(value);
-                let control = PluginControl::set_param(plugin, key, json_value);
-                if let Ok(mut queue) = q.lock() {
-                    queue.push(control);
-                }
-            });
+            engine.register_fn(
+                "set_plugin_param",
+                move |plugin: &str, key: &str, value: Dynamic| {
+                    let json_value = dynamic_to_json(value);
+                    let control = PluginControl::set_param(plugin, key, json_value);
+                    if let Ok(mut queue) = q.lock() {
+                        queue.push(control);
+                    }
+                },
+            );
         }
 
         // Random number generation
-        engine.register_fn("random", || -> f64 {
-            rand::random()
-        });
+        engine.register_fn("random", || -> f64 { rand::random() });
 
         // Event subscription API
         {
             let subs = subscriptions.clone();
-            engine.register_fn("subscribe_event", move |event_type: &str, callback: FnPtr| {
-                // Get MOD_ID from current scope
-                // Note: This is a limitation - we can't access scope here
-                // We'll need to handle this in ModEventSystem by using a thread-local or similar
-                // For now, we store with a placeholder and update it when we know the mod_id
-                if let Ok(mut subscriptions) = subs.lock() {
-                    subscriptions
-                        .entry("__current__".to_string())
-                        .or_default()
-                        .push(EventSubscription {
-                            event_type: event_type.to_string(),
-                            callback,
-                        });
-                }
-            });
+            engine.register_fn(
+                "subscribe_event",
+                move |event_type: &str, callback: FnPtr| {
+                    // Get MOD_ID from current scope
+                    // Note: This is a limitation - we can't access scope here
+                    // We'll need to handle this in ModEventSystem by using a thread-local or similar
+                    // For now, we store with a placeholder and update it when we know the mod_id
+                    if let Ok(mut subscriptions) = subs.lock() {
+                        subscriptions
+                            .entry("__current__".to_string())
+                            .or_default()
+                            .push(EventSubscription {
+                                event_type: event_type.to_string(),
+                                callback,
+                            });
+                    }
+                },
+            );
         }
 
         // Event publish API
@@ -166,25 +169,36 @@ impl RhaiLoader {
     /// Extract metadata from a Rhai script by calling `get_metadata()` function
     fn extract_metadata(&self, ast: &AST, scope: &mut Scope) -> ModResult<ModMetadata> {
         // Try to call get_metadata() function from script
-        let result = self.engine.call_fn::<rhai::Map>(scope, ast, "get_metadata", ());
+        let result = self
+            .engine
+            .call_fn::<rhai::Map>(scope, ast, "get_metadata", ());
 
         match result {
             Ok(map) => {
-                let name = map.get("name")
+                let name = map
+                    .get("name")
                     .and_then(|v| v.clone().try_cast::<String>())
                     .unwrap_or_else(|| "Unknown".to_string());
 
-                let version = map.get("version")
+                let version = map
+                    .get("version")
                     .and_then(|v| v.clone().try_cast::<String>())
                     .unwrap_or_else(|| "0.1.0".to_string());
 
-                let author = map.get("author")
+                let author = map
+                    .get("author")
                     .and_then(|v| v.clone().try_cast::<String>());
 
-                let description = map.get("description")
+                let description = map
+                    .get("description")
                     .and_then(|v| v.clone().try_cast::<String>());
 
-                Ok(ModMetadata { name, version, author, description })
+                Ok(ModMetadata {
+                    name,
+                    version,
+                    author,
+                    description,
+                })
             }
             Err(_) => {
                 // No metadata function, use defaults
@@ -212,7 +226,9 @@ impl ModLoader for RhaiLoader {
             .map_err(|e| ModError::LoadFailed(format!("Failed to read file: {}", e)))?;
 
         // Compile script
-        let ast = self.engine.compile(&content)
+        let ast = self
+            .engine
+            .compile(&content)
             .map_err(|e| ModError::InvalidFormat(format!("Compilation error: {}", e)))?;
 
         let mut scope = Scope::new();
@@ -221,7 +237,8 @@ impl ModLoader for RhaiLoader {
         let metadata = self.extract_metadata(&ast, &mut scope)?;
 
         // Generate ID from filename
-        let id = path.file_stem()
+        let id = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .ok_or_else(|| ModError::InvalidFormat("Invalid filename".to_string()))?
             .to_string();
@@ -240,11 +257,14 @@ impl ModLoader for RhaiLoader {
         }
 
         // Store loaded script
-        self.scripts.insert(id.clone(), LoadedScript {
-            ast,
-            scope,
-            mod_id: id.clone(),
-        });
+        self.scripts.insert(
+            id.clone(),
+            LoadedScript {
+                ast,
+                scope,
+                mod_id: id.clone(),
+            },
+        );
 
         Ok(ModHandle {
             id,
@@ -256,7 +276,9 @@ impl ModLoader for RhaiLoader {
     fn unload(&mut self, handle: &ModHandle) -> ModResult<()> {
         // Call on_shutdown() if it exists
         if let Some(script) = self.scripts.get_mut(&handle.id) {
-            let _ = self.engine.call_fn::<()>(&mut script.scope, &script.ast, "on_shutdown", ());
+            let _ = self
+                .engine
+                .call_fn::<()>(&mut script.scope, &script.ast, "on_shutdown", ());
         }
 
         self.scripts.remove(&handle.id);
@@ -264,7 +286,9 @@ impl ModLoader for RhaiLoader {
     }
 
     fn control_plugin(&mut self, handle: &ModHandle, control: &PluginControl) -> ModResult<()> {
-        let script = self.scripts.get_mut(&handle.id)
+        let script = self
+            .scripts
+            .get_mut(&handle.id)
             .ok_or_else(|| ModError::NotFound(format!("Script '{}' not loaded", handle.id)))?;
 
         // Serialize action for passing to script
@@ -280,12 +304,14 @@ impl ModLoader for RhaiLoader {
         };
 
         // Call the script's plugin control handler
-        self.engine.call_fn::<()>(
-            &mut script.scope,
-            &script.ast,
-            "on_control_plugin",
-            (control.plugin_name.clone(), action_str)
-        ).map_err(|e| ModError::ExecutionFailed(format!("Script error: {}", e)))?;
+        self.engine
+            .call_fn::<()>(
+                &mut script.scope,
+                &script.ast,
+                "on_control_plugin",
+                (control.plugin_name.clone(), action_str),
+            )
+            .map_err(|e| ModError::ExecutionFailed(format!("Script error: {}", e)))?;
 
         Ok(())
     }
@@ -296,11 +322,14 @@ impl ModLoader for RhaiLoader {
         fn_name: &str,
         args: Vec<serde_json::Value>,
     ) -> ModResult<serde_json::Value> {
-        let script = self.scripts.get_mut(&handle.id)
+        let script = self
+            .scripts
+            .get_mut(&handle.id)
             .ok_or_else(|| ModError::NotFound(format!("Script '{}' not loaded", handle.id)))?;
 
         // Convert JSON args to Rhai Dynamic (simplified - supports basic types)
-        let rhai_args: Vec<Dynamic> = args.into_iter()
+        let rhai_args: Vec<Dynamic> = args
+            .into_iter()
             .map(|v| match v {
                 serde_json::Value::Number(n) => {
                     if let Some(i) = n.as_i64() {
@@ -319,12 +348,38 @@ impl ModLoader for RhaiLoader {
 
         // Call function with args based on argument count
         let result = match rhai_args.len() {
-            0 => self.engine.call_fn::<Dynamic>(&mut script.scope, &script.ast, fn_name, ()),
-            1 => self.engine.call_fn::<Dynamic>(&mut script.scope, &script.ast, fn_name, (rhai_args[0].clone(),)),
-            2 => self.engine.call_fn::<Dynamic>(&mut script.scope, &script.ast, fn_name, (rhai_args[0].clone(), rhai_args[1].clone())),
-            3 => self.engine.call_fn::<Dynamic>(&mut script.scope, &script.ast, fn_name, (rhai_args[0].clone(), rhai_args[1].clone(), rhai_args[2].clone())),
-            _ => return Err(ModError::ExecutionFailed("Too many arguments (max 3 supported)".to_string())),
-        }.map_err(|e| ModError::FunctionNotFound(format!("Function '{}': {}", fn_name, e)))?;
+            0 => self
+                .engine
+                .call_fn::<Dynamic>(&mut script.scope, &script.ast, fn_name, ()),
+            1 => self.engine.call_fn::<Dynamic>(
+                &mut script.scope,
+                &script.ast,
+                fn_name,
+                (rhai_args[0].clone(),),
+            ),
+            2 => self.engine.call_fn::<Dynamic>(
+                &mut script.scope,
+                &script.ast,
+                fn_name,
+                (rhai_args[0].clone(), rhai_args[1].clone()),
+            ),
+            3 => self.engine.call_fn::<Dynamic>(
+                &mut script.scope,
+                &script.ast,
+                fn_name,
+                (
+                    rhai_args[0].clone(),
+                    rhai_args[1].clone(),
+                    rhai_args[2].clone(),
+                ),
+            ),
+            _ => {
+                return Err(ModError::ExecutionFailed(
+                    "Too many arguments (max 3 supported)".to_string(),
+                ))
+            }
+        }
+        .map_err(|e| ModError::FunctionNotFound(format!("Function '{}': {}", fn_name, e)))?;
 
         // Convert result back to JSON (simplified)
         let json_result = if result.is::<i64>() {
@@ -373,7 +428,10 @@ impl ModLoader for RhaiLoader {
                             count += 1;
                         }
                         Err(e) => {
-                            eprintln!("[RhaiLoader] Failed to call event callback for MOD '{}': {}", mod_id, e);
+                            eprintln!(
+                                "[RhaiLoader] Failed to call event callback for MOD '{}': {}",
+                                mod_id, e
+                            );
                         }
                     }
                 }
@@ -505,7 +563,9 @@ mod tests {
 
         // Create a temporary script file
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn get_metadata() {{
     #{{
         name: "Test Mod",
@@ -518,7 +578,9 @@ fn get_metadata() {{
 fn on_init() {{
     log("Mod initialized!");
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let handle = loader.load(file.path()).unwrap();
         assert_eq!(handle.metadata.name, "Test Mod");
@@ -531,11 +593,15 @@ fn on_init() {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn on_init() {{
     log("Simple script");
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let handle = loader.load(file.path()).unwrap();
         assert_eq!(handle.metadata.name, "Unknown");
@@ -561,19 +627,25 @@ fn on_init() {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn add(a, b) {{
     a + b
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let handle = loader.load(file.path()).unwrap();
 
-        let result = loader.call_function(
-            &handle,
-            "add",
-            vec![serde_json::json!(5), serde_json::json!(3)]
-        ).unwrap();
+        let result = loader
+            .call_function(
+                &handle,
+                "add",
+                vec![serde_json::json!(5), serde_json::json!(3)],
+            )
+            .unwrap();
 
         assert_eq!(result, serde_json::json!(8));
     }
@@ -583,11 +655,15 @@ fn add(a, b) {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn on_control_plugin(plugin_name, action) {{
     log("Controlling: " + plugin_name + " - " + action);
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let handle = loader.load(file.path()).unwrap();
         let control = PluginControl::enable("combat");
@@ -601,14 +677,18 @@ fn on_control_plugin(plugin_name, action) {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn on_init() {{
     log("Initializing mod");
     enable_plugin("combat");
     disable_plugin("economy");
     set_plugin_param("combat", "max_hp", 100);
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let _handle = loader.load(file.path()).unwrap();
 
@@ -625,7 +705,10 @@ fn on_init() {{
         assert!(matches!(commands[1].action, PluginAction::Disable));
         assert_eq!(commands[1].plugin_name, "economy");
 
-        assert!(matches!(commands[2].action, PluginAction::SetParameter { .. }));
+        assert!(matches!(
+            commands[2].action,
+            PluginAction::SetParameter { .. }
+        ));
         assert_eq!(commands[2].plugin_name, "combat");
 
         // Draining again should return empty
@@ -638,7 +721,9 @@ fn on_init() {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn on_init() {{
     log("Setting up event subscriptions");
 
@@ -650,7 +735,9 @@ fn on_init() {{
         log("Enemy defeated!");
     }});
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let handle = loader.load(file.path()).unwrap();
 
@@ -670,7 +757,9 @@ fn on_init() {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 let message = "";
 
 fn on_init() {{
@@ -678,7 +767,9 @@ fn on_init() {{
         log("Event received: " + event.message);
     }});
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let handle = loader.load(file.path()).unwrap();
 
@@ -693,11 +784,8 @@ fn on_init() {{
         });
 
         // Call the callback
-        let result = loader.call_event_callback(
-            &handle.id,
-            &subscriptions[0].callback,
-            &event_data,
-        );
+        let result =
+            loader.call_event_callback(&handle.id, &subscriptions[0].callback, &event_data);
 
         // Should succeed
         assert!(result.is_ok(), "Callback failed: {:?}", result.err());
@@ -708,7 +796,9 @@ fn on_init() {{
         let mut loader = RhaiLoader::new();
 
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"
+        writeln!(
+            file,
+            r#"
 fn on_init() {{
     log("Publishing events");
 
@@ -721,7 +811,9 @@ fn on_init() {{
         data: "World"
     }});
 }}
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let _handle = loader.load(file.path()).unwrap();
 
@@ -744,5 +836,3 @@ fn on_init() {{
         assert_eq!(events2.len(), 0);
     }
 }
-
-

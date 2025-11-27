@@ -86,10 +86,7 @@ async fn test_mod_bridge_with_plugins() {
             .get::<InventoryConfig>()
             .await
             .expect("Inventory config not found");
-        assert!(
-            !inventory_config.enabled,
-            "Inventory should be disabled"
-        );
+        assert!(!inventory_config.enabled, "Inventory should be disabled");
     }
 }
 

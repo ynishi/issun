@@ -135,12 +135,18 @@ mod tests {
         };
 
         // Turn 0: Incubating
-        assert!(matches!(get_state(&mut app), InfectionState::Incubating { .. }));
+        assert!(matches!(
+            get_state(&mut app),
+            InfectionState::Incubating { .. }
+        ));
 
         // Turn 1: Still Incubating
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&mut app), InfectionState::Incubating { .. }));
+        assert!(matches!(
+            get_state(&mut app),
+            InfectionState::Incubating { .. }
+        ));
 
         // Turn 2: Transition to Active
         app.world_mut().write_message(TurnAdvancedMessage);
@@ -157,12 +163,18 @@ mod tests {
         // Turn 5: Transition to Recovered
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&mut app), InfectionState::Recovered { .. }));
+        assert!(matches!(
+            get_state(&mut app),
+            InfectionState::Recovered { .. }
+        ));
 
         // Turn 6: Still Recovered
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&mut app), InfectionState::Recovered { .. }));
+        assert!(matches!(
+            get_state(&mut app),
+            InfectionState::Recovered { .. }
+        ));
 
         // Turn 7: Transition to Plain
         app.world_mut().write_message(TurnAdvancedMessage);

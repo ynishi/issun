@@ -114,7 +114,9 @@ impl ModBridgeSystem {
                 }
             }
             "inventory" => {
-                if let Some(mut config) = resources.get_mut::<crate::plugin::InventoryConfig>().await {
+                if let Some(mut config) =
+                    resources.get_mut::<crate::plugin::InventoryConfig>().await
+                {
                     config.enabled = true;
                     println!("[MOD Bridge] Enabled plugin: inventory");
                 } else {
@@ -128,7 +130,10 @@ impl ModBridgeSystem {
     }
 
     /// Handle plugin disable event (ResourceContext version)
-    async fn handle_disable_resources(resources: &mut ResourceContext, event: &PluginDisabledEvent) {
+    async fn handle_disable_resources(
+        resources: &mut ResourceContext,
+        event: &PluginDisabledEvent,
+    ) {
         match Self::normalize_plugin_name(&event.plugin_name) {
             "combat" => {
                 if let Some(mut config) = resources.get_mut::<crate::plugin::CombatConfig>().await {
@@ -139,7 +144,9 @@ impl ModBridgeSystem {
                 }
             }
             "inventory" => {
-                if let Some(mut config) = resources.get_mut::<crate::plugin::InventoryConfig>().await {
+                if let Some(mut config) =
+                    resources.get_mut::<crate::plugin::InventoryConfig>().await
+                {
                     config.enabled = false;
                     println!("[MOD Bridge] Disabled plugin: inventory");
                 } else {
@@ -158,8 +165,12 @@ impl ModBridgeSystem {
         event: &PluginParameterChangedEvent,
     ) {
         match Self::normalize_plugin_name(&event.plugin_name) {
-            "combat" => Self::apply_combat_param_resources(resources, &event.key, &event.value).await,
-            "inventory" => Self::apply_inventory_param_resources(resources, &event.key, &event.value).await,
+            "combat" => {
+                Self::apply_combat_param_resources(resources, &event.key, &event.value).await
+            }
+            "inventory" => {
+                Self::apply_inventory_param_resources(resources, &event.key, &event.value).await
+            }
             name => {
                 eprintln!("[MOD Bridge] Plugin '{}' is not MOD-controllable yet", name);
             }
@@ -311,7 +322,10 @@ mod tests {
         system.update_resources(&mut resources).await;
 
         // Check config was enabled
-        let config = resources.get::<crate::plugin::CombatConfig>().await.unwrap();
+        let config = resources
+            .get::<crate::plugin::CombatConfig>()
+            .await
+            .unwrap();
         assert!(config.enabled);
     }
 
@@ -335,7 +349,10 @@ mod tests {
         system.update_resources(&mut resources).await;
 
         // Check config was disabled
-        let config = resources.get::<crate::plugin::CombatConfig>().await.unwrap();
+        let config = resources
+            .get::<crate::plugin::CombatConfig>()
+            .await
+            .unwrap();
         assert!(!config.enabled);
     }
 
@@ -361,7 +378,10 @@ mod tests {
         system.update_resources(&mut resources).await;
 
         // Check config was updated
-        let config = resources.get::<crate::plugin::CombatConfig>().await.unwrap();
+        let config = resources
+            .get::<crate::plugin::CombatConfig>()
+            .await
+            .unwrap();
         assert_eq!(config.default_max_hp, 150);
     }
 
@@ -387,7 +407,10 @@ mod tests {
         system.update_resources(&mut resources).await;
 
         // Check config was updated
-        let config = resources.get::<crate::plugin::CombatConfig>().await.unwrap();
+        let config = resources
+            .get::<crate::plugin::CombatConfig>()
+            .await
+            .unwrap();
         assert_eq!(config.difficulty_multiplier, 2.5);
     }
 
@@ -467,7 +490,10 @@ mod tests {
         system.update_resources(&mut resources).await;
 
         // Check config was enabled
-        let config = resources.get::<crate::plugin::CombatConfig>().await.unwrap();
+        let config = resources
+            .get::<crate::plugin::CombatConfig>()
+            .await
+            .unwrap();
         assert!(config.enabled);
     }
 
@@ -500,7 +526,10 @@ mod tests {
         system.update_resources(&mut resources).await;
 
         // Check all changes were applied
-        let combat_config = resources.get::<crate::plugin::CombatConfig>().await.unwrap();
+        let combat_config = resources
+            .get::<crate::plugin::CombatConfig>()
+            .await
+            .unwrap();
         assert!(combat_config.enabled);
         assert_eq!(combat_config.default_max_hp, 200);
 

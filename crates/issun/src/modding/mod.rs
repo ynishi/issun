@@ -32,28 +32,26 @@
 //!     .await?;
 //! ```
 
-pub mod error;
-pub mod loader;
 pub mod control;
-pub mod plugin;
-pub mod events;
+pub mod error;
 pub mod event_system;
+pub mod events;
+pub mod loader;
+pub mod plugin;
 
 #[cfg(test)]
 mod tests;
 
+pub use control::{PluginAction, PluginControl};
 pub use error::{ModError, ModResult};
-pub use loader::{ModLoader, ModHandle, ModMetadata, ModBackend};
-pub use control::{PluginControl, PluginAction};
-pub use plugin::{ModSystemPlugin, ModSystemConfig, ModLoaderState};
 pub use event_system::ModEventSystem;
 pub use events::{
-    DynamicEvent,
-    ModLoadRequested, ModLoadedEvent, ModLoadFailedEvent,
-    ModUnloadRequested, ModUnloadedEvent,
-    PluginControlRequested, PluginEnabledEvent, PluginDisabledEvent,
-    PluginParameterChangedEvent, PluginHookTriggeredEvent,
+    DynamicEvent, ModLoadFailedEvent, ModLoadRequested, ModLoadedEvent, ModUnloadRequested,
+    ModUnloadedEvent, PluginControlRequested, PluginDisabledEvent, PluginEnabledEvent,
+    PluginHookTriggeredEvent, PluginParameterChangedEvent,
 };
+pub use loader::{ModBackend, ModHandle, ModLoader, ModMetadata};
+pub use plugin::{ModLoaderState, ModSystemConfig, ModSystemPlugin};
 
 // Backend loaders are NOT re-exported from issun core to avoid circular dependencies.
 // Users should import them directly from their respective crates:

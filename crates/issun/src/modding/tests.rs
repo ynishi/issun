@@ -16,7 +16,8 @@ impl MockLoader {
 
 impl ModLoader for MockLoader {
     fn load(&mut self, path: &Path) -> ModResult<ModHandle> {
-        let id = path.file_stem()
+        let id = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .ok_or_else(|| ModError::InvalidFormat("Invalid path".to_string()))?
             .to_string();

@@ -261,7 +261,6 @@ impl System for FactionSystem {
         "faction_system"
     }
 
-
     fn as_any(&self) -> &dyn Any {
         self
     }

@@ -22,14 +22,13 @@
 //! ```
 
 use issun::modding::{
-    ModLoader, ModHandle, ModMetadata, ModBackend,
-    PluginControl, PluginAction, ModError, ModResult,
+    ModBackend, ModError, ModHandle, ModLoader, ModMetadata, ModResult, PluginAction, PluginControl,
 };
-use wasmtime::component::{Component, Linker, bindgen};
+use std::collections::HashMap;
+use std::path::Path;
+use wasmtime::component::{bindgen, Component, Linker};
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiView};
-use std::path::Path;
-use std::collections::HashMap;
 
 // Generate Rust bindings from WIT file
 bindgen!({
@@ -144,9 +143,7 @@ impl ModLoader for WasmLoader {
             .map_err(|e| ModError::LoadFailed(format!("Failed to load component: {}", e)))?;
 
         // Create WASI context
-        let wasi = WasiCtxBuilder::new()
-            .inherit_stdio()
-            .build();
+        let wasi = WasiCtxBuilder::new().inherit_stdio().build();
 
         let host_state = HostState {
             wasi,
@@ -160,7 +157,8 @@ impl ModLoader for WasmLoader {
             .map_err(|e| ModError::LoadFailed(format!("Instantiation failed: {}", e)))?;
 
         // Get metadata
-        let metadata_wasm = instance.call_get_metadata(&mut store)
+        let metadata_wasm = instance
+            .call_get_metadata(&mut store)
             .map_err(|e| ModError::LoadFailed(format!("get_metadata failed: {}", e)))?;
 
         let metadata = ModMetadata {
@@ -171,17 +169,20 @@ impl ModLoader for WasmLoader {
         };
 
         // Call on_init
-        instance.call_on_init(&mut store)
+        instance
+            .call_on_init(&mut store)
             .map_err(|e| ModError::ExecutionFailed(format!("on_init failed: {}", e)))?;
 
         // Generate ID
-        let id = path.file_stem()
+        let id = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .ok_or_else(|| ModError::InvalidFormat("Invalid filename".to_string()))?
             .to_string();
 
         // Store instance
-        self.instances.insert(id.clone(), LoadedWasmMod { store, instance });
+        self.instances
+            .insert(id.clone(), LoadedWasmMod { store, instance });
 
         Ok(ModHandle {
             id,
@@ -199,7 +200,9 @@ impl ModLoader for WasmLoader {
     }
 
     fn control_plugin(&mut self, handle: &ModHandle, control: &PluginControl) -> ModResult<()> {
-        let loaded = self.instances.get_mut(&handle.id)
+        let loaded = self
+            .instances
+            .get_mut(&handle.id)
             .ok_or_else(|| ModError::NotFound(format!("Wasm module '{}' not loaded", handle.id)))?;
 
         let action_str = match &control.action {
@@ -213,7 +216,9 @@ impl ModLoader for WasmLoader {
             }
         };
 
-        loaded.instance.call_on_control_plugin(&mut loaded.store, &control.plugin_name, &action_str)
+        loaded
+            .instance
+            .call_on_control_plugin(&mut loaded.store, &control.plugin_name, &action_str)
             .map_err(|e| ModError::ExecutionFailed(format!("on_control_plugin failed: {}", e)))?;
 
         Ok(())
@@ -225,16 +230,18 @@ impl ModLoader for WasmLoader {
         fn_name: &str,
         args: Vec<serde_json::Value>,
     ) -> ModResult<serde_json::Value> {
-        let loaded = self.instances.get_mut(&handle.id)
+        let loaded = self
+            .instances
+            .get_mut(&handle.id)
             .ok_or_else(|| ModError::NotFound(format!("Wasm module '{}' not loaded", handle.id)))?;
 
         // Convert args to strings (simplified)
-        let args_str: Vec<String> = args.into_iter()
-            .map(|v| v.to_string())
-            .collect();
+        let args_str: Vec<String> = args.into_iter().map(|v| v.to_string()).collect();
 
         // Call custom function
-        let result_str = loaded.instance.call_call_custom(&mut loaded.store, fn_name, &args_str)
+        let result_str = loaded
+            .instance
+            .call_call_custom(&mut loaded.store, fn_name, &args_str)
             .map_err(|e| ModError::FunctionNotFound(format!("call_custom failed: {}", e)))?;
 
         // Parse result as JSON

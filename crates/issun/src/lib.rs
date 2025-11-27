@@ -132,9 +132,8 @@ pub mod prelude {
     pub use crate::system::System;
     // MOD system
     pub use crate::modding::{
-        ModLoader, ModHandle, ModMetadata, ModBackend,
-        PluginControl, PluginAction,
-        ModSystemPlugin, ModSystemConfig,
+        ModBackend, ModHandle, ModLoader, ModMetadata, ModSystemConfig, ModSystemPlugin,
+        PluginAction, PluginControl,
     };
     // Re-export proc macros (note: traits come from their respective modules above)
     pub use issun_macros::Plugin as DerivePlugin;

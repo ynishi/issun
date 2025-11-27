@@ -56,7 +56,6 @@ impl System for TimerSystem {
         "timer"
     }
 
-
     fn as_any(&self) -> &dyn Any {
         self
     }

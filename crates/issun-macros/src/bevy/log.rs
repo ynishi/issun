@@ -23,7 +23,7 @@ pub fn log_impl(input: TokenStream) -> TokenStream {
     if parts.len() < 2 {
         return syn::Error::new(
             proc_macro2::Span::call_site(),
-            "log! macro requires at least 2 arguments: log!(app, \"message\", ...args)"
+            "log! macro requires at least 2 arguments: log!(app, \"message\", ...args)",
         )
         .to_compile_error()
         .into();

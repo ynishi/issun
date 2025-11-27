@@ -132,8 +132,7 @@ impl<S: Scene> HeadlessRunner<S> {
             self.update_systems().await;
 
             // Dispatch events
-            if let Some(mut event_bus) = self.director.resources_mut().get_mut::<EventBus>().await
-            {
+            if let Some(mut event_bus) = self.director.resources_mut().get_mut::<EventBus>().await {
                 event_bus.dispatch();
             }
 

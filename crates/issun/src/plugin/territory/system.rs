@@ -199,7 +199,6 @@ impl System for TerritorySystem {
         "territory_system"
     }
 
-
     fn as_any(&self) -> &dyn Any {
         self
     }

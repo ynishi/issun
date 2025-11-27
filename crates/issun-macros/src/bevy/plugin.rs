@@ -76,8 +76,8 @@
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, Data, Fields, Field, Attribute, Lit, Type, Token, Path};
 use syn::parse::Parse;
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, Lit, Path, Token, Type};
 
 /// Plugin configuration options
 #[derive(Default)]
@@ -85,12 +85,12 @@ struct PluginConfig {
     name: String,
     auto_register_types: bool,
     messages: Vec<Type>,
-    components: Vec<Type>,         // Phase 2.2
-    startup_systems: Vec<Path>,    // Phase 2.2
-    update_systems: Vec<Path>,     // Phase 2.2
-    requires: Vec<Type>,            // Phase 2.3 - issun-bevy plugin dependencies
-    requires_bevy: Vec<Type>,       // Phase 2.3 - Bevy standard plugin dependencies
-    auto_require_core: bool,        // Phase 2.3 - Auto-require IssunCorePlugin (default: true)
+    components: Vec<Type>,      // Phase 2.2
+    startup_systems: Vec<Path>, // Phase 2.2
+    update_systems: Vec<Path>,  // Phase 2.2
+    requires: Vec<Type>,        // Phase 2.3 - issun-bevy plugin dependencies
+    requires_bevy: Vec<Type>,   // Phase 2.3 - Bevy standard plugin dependencies
+    auto_require_core: bool,    // Phase 2.3 - Auto-require IssunCorePlugin (default: true)
 }
 
 /// Helper struct for parsing messages = [Type1, Type2, ...]
@@ -148,12 +148,9 @@ pub fn derive_issun_bevy_plugin_impl(input: TokenStream) -> TokenStream {
             }
         },
         _ => {
-            return syn::Error::new_spanned(
-                &input,
-                "IssunBevyPlugin only supports structs",
-            )
-            .to_compile_error()
-            .into();
+            return syn::Error::new_spanned(&input, "IssunBevyPlugin only supports structs")
+                .to_compile_error()
+                .into();
         }
     };
 
@@ -343,7 +340,7 @@ fn parse_plugin_attrs(attrs: &[Attribute], struct_name: &syn::Ident) -> PluginCo
         update_systems: Vec::new(),
         requires: Vec::new(),
         requires_bevy: Vec::new(),
-        auto_require_core: true,  // Default: true
+        auto_require_core: true, // Default: true
     };
 
     for attr in attrs {
@@ -423,12 +420,18 @@ fn parse_plugin_attrs(attrs: &[Attribute], struct_name: &syn::Ident) -> PluginCo
 
 /// Check if field has #[config] attribute
 fn has_config_attr(field: &Field) -> bool {
-    field.attrs.iter().any(|attr| attr.path().is_ident("config"))
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("config"))
 }
 
 /// Check if field has #[resource] attribute
 fn has_resource_attr(field: &Field) -> bool {
-    field.attrs.iter().any(|attr| attr.path().is_ident("resource"))
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("resource"))
 }
 
 /// Check if field has #[skip] attribute
@@ -449,7 +452,10 @@ fn extract_field_doc(field: &Field) -> Option<String> {
 }
 
 /// Generate dependency check code (Phase 2.3)
-fn generate_dependency_checks(config: &PluginConfig, struct_name: &syn::Ident) -> proc_macro2::TokenStream {
+fn generate_dependency_checks(
+    config: &PluginConfig,
+    struct_name: &syn::Ident,
+) -> proc_macro2::TokenStream {
     let mut checks = Vec::new();
     let struct_name_str = struct_name.to_string();
 
@@ -493,7 +499,9 @@ fn generate_dependency_checks(config: &PluginConfig, struct_name: &syn::Ident) -
 
     // Bevy plugin checks (currently just warn, as detection is complex)
     if !config.requires_bevy.is_empty() {
-        let bevy_plugins: Vec<String> = config.requires_bevy.iter()
+        let bevy_plugins: Vec<String> = config
+            .requires_bevy
+            .iter()
             .map(|t| quote!(#t).to_string())
             .collect();
         let _bevy_list = bevy_plugins.join(", ");

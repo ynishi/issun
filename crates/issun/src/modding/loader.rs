@@ -3,8 +3,8 @@
 //! This module defines the `ModLoader` trait that all backend implementations
 //! must implement (RhaiLoader, WasmLoader, etc.)
 
-use crate::modding::error::ModResult;
 use crate::modding::control::PluginControl;
+use crate::modding::error::ModResult;
 use std::path::Path;
 
 /// Metadata about a loaded MOD

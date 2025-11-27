@@ -3,7 +3,7 @@
 //! Processes event subscriptions from MODs and dispatches events to them.
 
 use crate::event::EventBus;
-use crate::modding::{ModLoaderState, DynamicEvent};
+use crate::modding::{DynamicEvent, ModLoaderState};
 use crate::system::System;
 use async_trait::async_trait;
 use std::any::Any;
@@ -52,10 +52,7 @@ impl ModEventSystem {
         // Step 2: Collect DynamicEvents from EventBus and dispatch to subscribers
         let dynamic_events: Vec<DynamicEvent> = {
             if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
-                event_bus.reader::<DynamicEvent>()
-                    .iter()
-                    .cloned()
-                    .collect()
+                event_bus.reader::<DynamicEvent>().iter().cloned().collect()
             } else {
                 Vec::new()
             }
@@ -65,9 +62,14 @@ impl ModEventSystem {
         if !dynamic_events.is_empty() {
             if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
                 for event in &dynamic_events {
-                    let count = loader_state.loader.dispatch_event(&event.event_type, &event.data);
+                    let count = loader_state
+                        .loader
+                        .dispatch_event(&event.event_type, &event.data);
                     if count > 0 {
-                        println!("[ModEventSystem] Dispatched event '{}' to {} subscriber(s)", event.event_type, count);
+                        println!(
+                            "[ModEventSystem] Dispatched event '{}' to {} subscriber(s)",
+                            event.event_type, count
+                        );
                     }
                 }
             }
@@ -80,7 +82,6 @@ impl System for ModEventSystem {
     fn name(&self) -> &'static str {
         "mod_event_system"
     }
-
 
     fn as_any(&self) -> &dyn Any {
         self

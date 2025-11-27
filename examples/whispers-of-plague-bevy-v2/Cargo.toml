@@ -1,0 +1,20 @@
+[package]
+name = "whispers-of-plague-bevy-v2"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+bevy = { version = "0.17", default-features = false, features = [
+    "bevy_state",
+    "multi_threaded",
+] }
+issun-core = { path = "../../crates/issun-core" }
+issun-bevy = { path = "../../crates/issun-bevy" }
+ratatui = "0.28"
+crossterm = "0.28"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+fastrand = "2.0"
+thiserror = "1"

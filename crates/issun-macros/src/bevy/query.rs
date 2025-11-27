@@ -25,7 +25,7 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Attribute};
+use syn::{parse_macro_input, Attribute, DeriveInput};
 
 /// Derive macro for auto-generating query helper methods
 pub fn derive_issun_query_impl(input: TokenStream) -> TokenStream {
@@ -39,7 +39,7 @@ pub fn derive_issun_query_impl(input: TokenStream) -> TokenStream {
     if query_attrs.read_components.is_empty() {
         return syn::Error::new_spanned(
             &input,
-            "IssunQuery requires #[query(read = [ComponentType, ...])] attribute"
+            "IssunQuery requires #[query(read = [ComponentType, ...])] attribute",
         )
         .to_compile_error()
         .into();

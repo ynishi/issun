@@ -31,7 +31,7 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Data, Fields, Field, Attribute, Type};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, Type};
 
 /// Derive macro for auto-generating entity component getters
 pub fn derive_issun_entity_impl(input: TokenStream) -> TokenStream {
@@ -45,7 +45,7 @@ pub fn derive_issun_entity_impl(input: TokenStream) -> TokenStream {
     if primary_field.is_none() {
         return syn::Error::new_spanned(
             &input,
-            "IssunEntity requires a field marked with #[primary]"
+            "IssunEntity requires a field marked with #[primary]",
         )
         .to_compile_error()
         .into();
@@ -94,29 +94,26 @@ pub fn derive_issun_entity_impl(input: TokenStream) -> TokenStream {
 /// Find the field marked with #[primary] attribute
 fn find_primary_field(input: &DeriveInput) -> Option<&syn::Ident> {
     match &input.data {
-        Data::Struct(data) => {
-            match &data.fields {
-                Fields::Named(fields) => {
-                    fields.named.iter().find_map(|field| {
-                        if has_primary_attr(field) {
-                            field.ident.as_ref()
-                        } else {
-                            None
-                        }
-                    })
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => fields.named.iter().find_map(|field| {
+                if has_primary_attr(field) {
+                    field.ident.as_ref()
+                } else {
+                    None
                 }
-                _ => None,
-            }
-        }
+            }),
+            _ => None,
+        },
         _ => None,
     }
 }
 
 /// Check if a field has #[primary] attribute
 fn has_primary_attr(field: &Field) -> bool {
-    field.attrs.iter().any(|attr| {
-        attr.path().is_ident("primary")
-    })
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("primary"))
 }
 
 /// Parse #[components(...)] attribute to extract component types

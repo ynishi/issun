@@ -8,7 +8,7 @@
 
 use issun::context::ResourceContext;
 use issun::event::EventBus;
-use issun::modding::{ModLoader, ModLoaderState, ModEventSystem};
+use issun::modding::{ModEventSystem, ModLoader, ModLoaderState};
 use issun_mod_rhai::RhaiLoader;
 use std::io::Write;
 use tempfile::NamedTempFile;
@@ -22,7 +22,9 @@ async fn test_publish_and_subscribe_e2e() {
     // Create two MOD scripts
     // MOD 1: Publisher - publishes CustomEvent
     let mut publisher_file = NamedTempFile::new().unwrap();
-    writeln!(publisher_file, r#"
+    writeln!(
+        publisher_file,
+        r#"
 fn on_init() {{
     log("Publisher: Publishing CustomEvent");
     publish_event("CustomEvent", #{{
@@ -30,11 +32,15 @@ fn on_init() {{
         value: 99
     }});
 }}
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     // MOD 2: Subscriber - subscribes to CustomEvent
     let mut subscriber_file = NamedTempFile::new().unwrap();
-    writeln!(subscriber_file, r#"
+    writeln!(
+        subscriber_file,
+        r#"
 fn on_init() {{
     log("Subscriber: Subscribing to CustomEvent");
     subscribe_event("CustomEvent", |event_data| {{
@@ -43,7 +49,9 @@ fn on_init() {{
         log("Value: " + event_data.value);
     }});
 }}
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     // Load both MODs
     let mut loader = RhaiLoader::new();
@@ -71,7 +79,8 @@ fn on_init() {{
             .await
             .expect("EventBus not found");
 
-        let events: Vec<_> = event_bus.reader::<issun::modding::DynamicEvent>()
+        let events: Vec<_> = event_bus
+            .reader::<issun::modding::DynamicEvent>()
             .iter()
             .cloned()
             .collect();
@@ -101,31 +110,43 @@ async fn test_multiple_subscribers_same_event() {
 
     // Create 3 subscriber MODs for the same event
     let mut sub1_file = NamedTempFile::new().unwrap();
-    writeln!(sub1_file, r#"
+    writeln!(
+        sub1_file,
+        r#"
 fn on_init() {{
     subscribe_event("SharedEvent", |event| {{
         log("Subscriber 1 received: " + event.data);
     }});
 }}
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     let mut sub2_file = NamedTempFile::new().unwrap();
-    writeln!(sub2_file, r#"
+    writeln!(
+        sub2_file,
+        r#"
 fn on_init() {{
     subscribe_event("SharedEvent", |event| {{
         log("Subscriber 2 received: " + event.data);
     }});
 }}
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     let mut sub3_file = NamedTempFile::new().unwrap();
-    writeln!(sub3_file, r#"
+    writeln!(
+        sub3_file,
+        r#"
 fn on_init() {{
     subscribe_event("SharedEvent", |event| {{
         log("Subscriber 3 received: " + event.data);
     }});
 }}
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     // Load all MODs
     let mut loader = RhaiLoader::new();
@@ -171,7 +192,9 @@ async fn test_event_filtering_by_type() {
 
     // Create a MOD that subscribes to specific event type
     let mut file = NamedTempFile::new().unwrap();
-    writeln!(file, r#"
+    writeln!(
+        file,
+        r#"
 let received_count = 0;
 
 fn on_init() {{
@@ -179,7 +202,9 @@ fn on_init() {{
         log("Received TargetEvent");
     }});
 }}
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     let mut loader = RhaiLoader::new();
     let handle = loader.load(file.path()).unwrap();

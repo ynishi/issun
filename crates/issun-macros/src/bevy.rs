@@ -7,11 +7,11 @@
 //! - `log!()` - Simplified EventLog macro
 
 mod entity;
-mod query;
 mod log;
 mod plugin;
+mod query;
 
 pub use entity::derive_issun_entity_impl;
-pub use query::derive_issun_query_impl;
 pub use log::log_impl;
 pub use plugin::derive_issun_bevy_plugin_impl;
+pub use query::derive_issun_query_impl;

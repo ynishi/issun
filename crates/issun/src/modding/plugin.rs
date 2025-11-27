@@ -1,12 +1,12 @@
 //! MOD System Plugin for ISSUN integration
 
-use crate::modding::{ModLoader, ModHandle, PluginAction, ModEventSystem};
+use crate::context::ResourceContext;
+use crate::engine::ModBridgeSystem;
+use crate::event::EventBus;
 use crate::modding::events::*;
+use crate::modding::{ModEventSystem, ModHandle, ModLoader, PluginAction};
 use crate::plugin::{Plugin, PluginBuilder, PluginBuilderExt};
 use crate::system::System;
-use crate::context::ResourceContext;
-use crate::event::EventBus;
-use crate::engine::ModBridgeSystem;
 use async_trait::async_trait;
 use std::any::Any;
 
@@ -108,7 +108,8 @@ impl ModLoadSystem {
         // Step 1: Collect load requests
         let load_requests: Vec<ModLoadRequested> = {
             if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
-                event_bus.reader::<ModLoadRequested>()
+                event_bus
+                    .reader::<ModLoadRequested>()
                     .iter()
                     .cloned()
                     .collect()
@@ -120,7 +121,8 @@ impl ModLoadSystem {
         // Step 2: Collect unload requests
         let unload_requests: Vec<ModUnloadRequested> = {
             if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
-                event_bus.reader::<ModUnloadRequested>()
+                event_bus
+                    .reader::<ModUnloadRequested>()
                     .iter()
                     .cloned()
                     .collect()
@@ -136,7 +138,10 @@ impl ModLoadSystem {
                 for request in load_requests {
                     match loader_state.loader.load(&request.path) {
                         Ok(handle) => {
-                            println!("[MOD System] Loaded MOD: {} v{}", handle.metadata.name, handle.metadata.version);
+                            println!(
+                                "[MOD System] Loaded MOD: {} v{}",
+                                handle.metadata.name, handle.metadata.version
+                            );
                             loader_state.loaded_mods.push(handle.clone());
                             load_results.push(Ok(handle));
                         }
@@ -169,7 +174,11 @@ impl ModLoadSystem {
             if let Some(mut loader_state) = resources.get_mut::<ModLoaderState>().await {
                 for request in unload_requests {
                     // Find the MOD handle
-                    if let Some(pos) = loader_state.loaded_mods.iter().position(|h| h.id == request.mod_id) {
+                    if let Some(pos) = loader_state
+                        .loaded_mods
+                        .iter()
+                        .position(|h| h.id == request.mod_id)
+                    {
                         let handle = loader_state.loaded_mods.remove(pos);
 
                         match loader_state.loader.unload(&handle) {
@@ -178,7 +187,10 @@ impl ModLoadSystem {
                                 unload_results.push(Ok(request.mod_id));
                             }
                             Err(e) => {
-                                eprintln!("[MOD System] Failed to unload MOD {}: {}", request.mod_id, e);
+                                eprintln!(
+                                    "[MOD System] Failed to unload MOD {}: {}",
+                                    request.mod_id, e
+                                );
                                 // Re-add to list on failure
                                 loader_state.loaded_mods.push(handle);
                             }
@@ -267,7 +279,10 @@ impl PluginControlSystem {
                         });
                     }
                     PluginAction::SetParameter { key, value } => {
-                        println!("[MOD System] Setting {}.{} = {:?}", command.plugin_name, key, value);
+                        println!(
+                            "[MOD System] Setting {}.{} = {:?}",
+                            command.plugin_name, key, value
+                        );
                         event_bus.publish(PluginParameterChangedEvent {
                             plugin_name: command.plugin_name.clone(),
                             key: key.clone(),
@@ -275,7 +290,10 @@ impl PluginControlSystem {
                         });
                     }
                     PluginAction::TriggerHook { hook_name, data } => {
-                        println!("[MOD System] Triggering hook: {}.{}", command.plugin_name, hook_name);
+                        println!(
+                            "[MOD System] Triggering hook: {}.{}",
+                            command.plugin_name, hook_name
+                        );
                         event_bus.publish(PluginHookTriggeredEvent {
                             plugin_name: command.plugin_name.clone(),
                             hook_name: hook_name.clone(),

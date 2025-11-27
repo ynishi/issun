@@ -140,7 +140,6 @@ impl System for ActionResetSystem {
         "action_reset"
     }
 
-
     fn as_any(&self) -> &dyn Any {
         self
     }
