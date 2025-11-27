@@ -6,8 +6,12 @@
 
 pub mod combat;
 pub mod contagion;
+pub mod execution;
 pub mod propagation;
 pub mod state_machine;
+
+// Re-export execution hints for convenience
+pub use execution::{ExecutionHint, ParallelSafe, SequentialAfter, Transactional};
 
 /// A trait for emitting events from a mechanic.
 ///
@@ -41,6 +45,7 @@ pub trait EventEmitter<E> {
 /// - `State`: Mutable state per entity (e.g., infection severity)
 /// - `Input`: Per-frame input data (e.g., density, resistance)
 /// - `Event`: Events emitted when state changes occur
+/// - `Execution`: Execution characteristics hint (e.g., parallel safety, ordering)
 ///
 /// # Type Parameters
 ///
@@ -110,6 +115,24 @@ pub trait Mechanic {
     /// Events are used to communicate state changes to the game world
     /// without coupling the mechanic to a specific engine.
     type Event;
+
+    /// Execution characteristics hint for ECS integration.
+    ///
+    /// This type provides compile-time hints about how this mechanic should be
+    /// scheduled in an ECS (e.g., Bevy). It's a **hint**, not a requirement:
+    /// - issun-core mechanics declare their preferred execution model
+    /// - issun-bevy (or other adapters) interpret these hints for system scheduling
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Combat is parallel-safe
+    /// type Execution = ParallelSafe;
+    ///
+    /// // Propagation reads from multiple entities, prefer sequential
+    /// type Execution = Transactional;
+    /// ```
+    type Execution: ExecutionHint;
 
     /// Execute one step of the mechanic's logic.
     ///

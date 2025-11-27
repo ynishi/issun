@@ -108,8 +108,11 @@ pub fn log_combat_events(mut combat_events: MessageReader<CombatEventWrapper>) {
                     wrapper.entity, amount, is_critical, is_fatal
                 );
             }
-            issun_core::mechanics::combat::CombatEvent::Blocked => {
-                info!("Entity {:?} blocked the attack", wrapper.entity);
+            issun_core::mechanics::combat::CombatEvent::Blocked { attempted_damage } => {
+                info!(
+                    "Entity {:?} blocked the attack (negated {} damage)",
+                    wrapper.entity, attempted_damage
+                );
             }
             issun_core::mechanics::combat::CombatEvent::Evaded => {
                 info!("Entity {:?} evaded the attack", wrapper.entity);

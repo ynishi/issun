@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 use issun_core::mechanics::combat::{CombatConfig, CombatInput};
-use issun_core::mechanics::Mechanic;
+use issun_core::mechanics::{ExecutionHint, Mechanic};
 use std::marker::PhantomData;
 
 use super::systems::{damage_system, log_combat_events};
@@ -12,6 +12,12 @@ use super::types::{
     Attack, CombatConfigResource, CombatEventWrapper, DamageApplied, DamageRequested, Defense,
     ElementType, Health,
 };
+
+/// SystemSet for sequential combat execution.
+///
+/// Used when the mechanic's ExecutionHint indicates non-parallel-safe execution.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct CombatSequentialSet;
 
 /// Combat plugin using issun-core's policy-based design.
 ///
@@ -131,13 +137,41 @@ where
         app.add_message::<DamageApplied>();
         app.add_message::<CombatEventWrapper>();
 
-        // Register systems
-        app.add_systems(Update, (damage_system::<M>, log_combat_events));
-
-        info!(
-            "CombatPluginV2 initialized with mechanic: {}",
-            std::any::type_name::<M>()
-        );
+        // Register systems with execution hints
+        // Use ExecutionHint to determine system scheduling
+        if M::Execution::PARALLEL_SAFE {
+            // Mechanic is parallel-safe - can run concurrently
+            app.add_systems(Update, (damage_system::<M>, log_combat_events));
+            info!(
+                "CombatPluginV2 initialized with mechanic: {} (parallel-safe)",
+                std::any::type_name::<M>()
+            );
+        } else {
+            // Mechanic requires sequential execution
+            // Check for preferred schedule hint
+            if let Some(schedule) = M::Execution::PREFERRED_SCHEDULE {
+                info!(
+                    "CombatPluginV2 initialized with mechanic: {} (sequential, schedule: {})",
+                    std::any::type_name::<M>(),
+                    schedule
+                );
+                // Note: In real implementation, you'd map string to actual schedule
+                // For now, just add to Update with a warning
+                warn!(
+                    "PREFERRED_SCHEDULE '{}' specified but not yet implemented, using Update",
+                    schedule
+                );
+                app.add_systems(Update, damage_system::<M>.in_set(CombatSequentialSet));
+            } else {
+                // No specific schedule, use sequential set
+                info!(
+                    "CombatPluginV2 initialized with mechanic: {} (sequential)",
+                    std::any::type_name::<M>()
+                );
+                app.add_systems(Update, damage_system::<M>.in_set(CombatSequentialSet));
+            }
+            app.add_systems(Update, log_combat_events);
+        }
     }
 }
 

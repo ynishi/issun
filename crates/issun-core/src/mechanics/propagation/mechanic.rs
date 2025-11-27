@@ -1,6 +1,6 @@
 //! Propagation mechanic implementation
 
-use crate::mechanics::{EventEmitter, Mechanic};
+use crate::mechanics::{EventEmitter, Mechanic, Transactional};
 use std::marker::PhantomData;
 
 use super::policies::PropagationPolicy;
@@ -60,6 +60,10 @@ impl<P: PropagationPolicy> Mechanic for PropagationMechanic<P> {
     type State = PropagationState;
     type Input = PropagationInput;
     type Event = PropagationEvent;
+
+    // Propagation reads from multiple entities (graph neighbors)
+    // Requires consistent snapshot of the world state
+    type Execution = Transactional;
 
     fn step(
         config: &Self::Config,

@@ -1,7 +1,7 @@
 //! State machine mechanic implementation
 
 use crate::mechanics::contagion::InfectionState;
-use crate::mechanics::{EventEmitter, Mechanic};
+use crate::mechanics::{EventEmitter, Mechanic, ParallelSafe};
 use std::marker::PhantomData;
 
 use super::policies::StateMachinePolicy;
@@ -67,6 +67,9 @@ impl<P: StateMachinePolicy> Mechanic for StateMachineMechanic<P> {
     type State = InfectionState;
     type Input = StateMachineInput;
     type Event = StateMachineEvent;
+
+    // State machine only modifies a single entity's state
+    type Execution = ParallelSafe;
 
     fn step(
         config: &Self::Config,

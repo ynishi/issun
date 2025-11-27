@@ -5,7 +5,7 @@
 
 use std::marker::PhantomData;
 
-use crate::mechanics::{EventEmitter, Mechanic};
+use crate::mechanics::{EventEmitter, Mechanic, ParallelSafe};
 
 use super::policies::{ProgressionPolicy, SpreadPolicy};
 use super::strategies::{LinearSpread, ThresholdProgression};
@@ -92,6 +92,9 @@ impl<S: SpreadPolicy, P: ProgressionPolicy> Mechanic for ContagionMechanic<S, P>
     type State = SimpleSeverity;
     type Input = ContagionInput;
     type Event = ContagionEvent;
+
+    // Contagion only modifies a single entity's state
+    type Execution = ParallelSafe;
 
     fn step(
         config: &Self::Config,

@@ -5,7 +5,7 @@
 
 use std::marker::PhantomData;
 
-use crate::mechanics::{EventEmitter, Mechanic};
+use crate::mechanics::{EventEmitter, Mechanic, ParallelSafe};
 
 use super::policies::{CriticalPolicy, DamageCalculationPolicy, DefensePolicy, ElementalPolicy};
 use super::strategies::{LinearDamageCalculation, NoCritical, NoElemental, SubtractiveDefense};
@@ -97,6 +97,9 @@ where
     type State = CombatState;
     type Input = CombatInput;
     type Event = CombatEvent;
+
+    // Combat is parallel-safe: only modifies the target entity's Health
+    type Execution = ParallelSafe;
 
     fn step(
         config: &Self::Config,
