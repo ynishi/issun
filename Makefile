@@ -234,7 +234,22 @@ publish: preflight
 	sleep 30
 
 	@echo ""
-	@echo "--- Step 2: Publishing issun ---"
+	@echo "--- Step 2: Publishing issun-core ---"
+	@echo "  Running dry-run for issun-core..."
+	cargo publish -p issun-core --dry-run --allow-dirty
+
+	@echo "  ✓ Dry-run successful for issun-core"
+	@echo "  Publishing issun-core to crates.io..."
+	cargo publish -p issun-core --allow-dirty
+
+	@echo ""
+	@echo "✅ issun-core published successfully!"
+	@echo ""
+	@echo "⏳ Waiting 30 seconds for crates.io index to update..."
+	sleep 30
+
+	@echo ""
+	@echo "--- Step 3: Publishing issun ---"
 	@echo "  Running dry-run for issun..."
 	cargo publish -p issun --dry-run --allow-dirty
 
@@ -249,7 +264,22 @@ publish: preflight
 	sleep 30
 
 	@echo ""
-	@echo "--- Step 3: Publishing issun-server ---"
+	@echo "--- Step 4: Publishing issun-bevy ---"
+	@echo "  Running dry-run for issun-bevy..."
+	cargo publish -p issun-bevy --dry-run --allow-dirty
+
+	@echo "  ✓ Dry-run successful for issun-bevy"
+	@echo "  Publishing issun-bevy to crates.io..."
+	cargo publish -p issun-bevy --allow-dirty
+
+	@echo ""
+	@echo "✅ issun-bevy published successfully!"
+	@echo ""
+	@echo "⏳ Waiting 30 seconds for crates.io index to update..."
+	sleep 30
+
+	@echo ""
+	@echo "--- Step 5: Publishing issun-server ---"
 	@echo "  Running dry-run for issun-server..."
 	cargo publish -p issun-server --dry-run --allow-dirty
 
