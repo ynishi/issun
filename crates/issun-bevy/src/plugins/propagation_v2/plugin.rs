@@ -8,7 +8,9 @@ use issun_core::mechanics::Mechanic;
 use std::marker::PhantomData;
 
 use super::systems::{log_propagation_events, propagation_step_system};
-use super::types::{NodeSeverity, PropagationEventWrapper, PropagationGraphResource, PropagationStateComponent};
+use super::types::{
+    NodeSeverity, PropagationEventWrapper, PropagationGraphResource, PropagationStateComponent,
+};
 
 /// Propagation plugin using issun-core's policy-based design.
 ///
@@ -123,9 +125,7 @@ mod tests {
         app.add_plugins(PropagationPluginV2::<TestPropagation>::new(graph));
 
         // Verify resource exists
-        assert!(app
-            .world()
-            .contains_resource::<PropagationGraphResource>());
+        assert!(app.world().contains_resource::<PropagationGraphResource>());
 
         // Verify state component was spawned
         let state_count = app

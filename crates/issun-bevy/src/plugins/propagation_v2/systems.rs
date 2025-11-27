@@ -62,7 +62,12 @@ pub fn propagation_step_system<M>(
     let mut emitter = BevyPropagationEmitter::new(&mut event_writer);
 
     // Call issun-core's pure propagation logic
-    M::step(&graph.graph, &mut state_component.state, input, &mut emitter);
+    M::step(
+        &graph.graph,
+        &mut state_component.state,
+        input,
+        &mut emitter,
+    );
 }
 
 /// System: Log propagation events for debugging.

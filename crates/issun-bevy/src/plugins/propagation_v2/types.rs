@@ -9,9 +9,19 @@ use issun_core::mechanics::EventEmitter;
 use std::marker::PhantomData;
 
 /// Propagation graph resource - wraps issun-core's PropagationGraph
-#[derive(Resource, Clone)]
+#[derive(Resource, Clone, Reflect)]
+#[reflect(Resource, Default)]
 pub struct PropagationGraphResource {
+    #[reflect(ignore)]
     pub graph: PropagationGraph,
+}
+
+impl Default for PropagationGraphResource {
+    fn default() -> Self {
+        Self {
+            graph: PropagationGraph::new(Vec::new()),
+        }
+    }
 }
 
 impl PropagationGraphResource {

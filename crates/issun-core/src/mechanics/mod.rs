@@ -5,7 +5,9 @@
 //! composition of behaviors with zero runtime overhead.
 
 pub mod combat;
+pub mod diplomacy;
 pub mod contagion;
+pub mod evolution;
 pub mod execution;
 pub mod propagation;
 pub mod state_machine;

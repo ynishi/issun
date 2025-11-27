@@ -9,4 +9,4 @@ homepage.workspace = true
 documentation.workspace = true
 
 [dependencies]
-# No dependencies - pure Rust logic only
+serde = { workspace = true, features = ["derive"] }

@@ -37,8 +37,7 @@ use super::duration::Duration;
 /// // Check if it's active (most contagious)
 /// assert!(!state.is_active());
 /// ```
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum InfectionState {
     /// Incubation period - infection present but not yet symptomatic.
     ///
@@ -204,7 +203,6 @@ impl InfectionState {
         }
     }
 }
-
 
 /// Simplified infection state type (without duration details).
 ///
