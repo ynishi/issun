@@ -67,6 +67,7 @@ impl<'a, 'b> EventEmitter<ContagionEvent> for BevyMessageEmitter<'a, 'b> {
 // ==================== Message Logging System ====================
 
 /// Example system to log contagion messages
+#[allow(dead_code)] // Example system for demonstration purposes
 pub fn log_contagion_events(mut messages: MessageReader<ContagionEventWrapper>) {
     for wrapper in messages.read() {
         match wrapper.event {

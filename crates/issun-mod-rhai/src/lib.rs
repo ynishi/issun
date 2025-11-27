@@ -44,7 +44,8 @@ pub struct RhaiLoader {
 struct LoadedScript {
     ast: AST,
     scope: Scope<'static>,
-    mod_id: String, // Store MOD ID for event callbacks
+    #[allow(dead_code)] // Reserved for future event callback implementation
+    mod_id: String,
 }
 
 impl RhaiLoader {

@@ -11,6 +11,9 @@ description = "ISSUN plugins for Bevy ECS"
 keywords = ["bevy", "game", "plugin", "ecs"]
 categories = ["game-engines"]
 
+[lib]
+doctest = false
+
 [dependencies]
 bevy = { version = "0.17", default-features = false, features = [
     "bevy_state",

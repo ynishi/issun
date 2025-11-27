@@ -61,6 +61,11 @@ pub struct StateMachineInput {
 }
 
 impl StateMachineInput {
+    /// Creates a new state machine input.
+    ///
+    /// # Arguments
+    ///
+    /// * `time_delta` - Time elapsed since last update
     pub fn new(time_delta: Duration) -> Self {
         Self { time_delta }
     }
@@ -71,13 +76,17 @@ impl StateMachineInput {
 pub enum StateMachineEvent {
     /// Transitioned from one state to another
     StateTransition {
+        /// Previous state
         from: InfectionStateType,
+        /// New state
         to: InfectionStateType,
     },
 
     /// Time advanced in current state
     TimeAdvanced {
+        /// Current state
         state: InfectionStateType,
+        /// Total elapsed time in this state
         elapsed: Duration,
     },
 }

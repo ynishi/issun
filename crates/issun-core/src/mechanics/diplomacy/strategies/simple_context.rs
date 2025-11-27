@@ -5,11 +5,7 @@ use crate::mechanics::diplomacy::types::ArgumentType;
 pub struct NoContext;
 
 impl ContextPolicy for NoContext {
-    fn apply_context(
-        influence: f32,
-        _arg_type: ArgumentType,
-        _relationship: f32,
-    ) -> f32 {
+    fn apply_context(influence: f32, _arg_type: ArgumentType, _relationship: f32) -> f32 {
         influence
     }
 }

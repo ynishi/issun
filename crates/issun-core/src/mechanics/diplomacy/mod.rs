@@ -5,6 +5,7 @@
 
 pub mod mechanic;
 pub mod policies;
+/// Strategy implementations for diplomacy mechanics.
 pub mod strategies;
 pub mod types;
 

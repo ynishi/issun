@@ -46,18 +46,12 @@ where
         }
 
         // 1. Calculate raw influence (Policy I)
-        let raw_influence = I::calculate_influence(
-            input.argument_strength,
-            input.argument_type,
-            config,
-        );
+        let raw_influence =
+            I::calculate_influence(input.argument_strength, input.argument_type, config);
 
         // 2. Apply context modifiers (Policy C)
-        let context_influence = C::apply_context(
-            raw_influence,
-            input.argument_type,
-            state.relationship_score,
-        );
+        let context_influence =
+            C::apply_context(raw_influence, input.argument_type, state.relationship_score);
 
         // 3. Apply resistance (Policy R)
         let final_influence = R::apply_resistance(
@@ -70,7 +64,7 @@ where
         // 4. Check result
         if final_influence <= 0.0 {
             emitter.emit(DiplomacyEvent::ArgumentRejected);
-            
+
             // Decrease patience on failure
             if state.patience > 0 {
                 state.patience -= 1;
@@ -80,9 +74,9 @@ where
             }
         } else {
             // Apply progress
-            state.agreement_progress = (state.agreement_progress + final_influence)
-                .min(config.agreement_threshold);
-            
+            state.agreement_progress =
+                (state.agreement_progress + final_influence).min(config.agreement_threshold);
+
             emitter.emit(DiplomacyEvent::ProgressMade {
                 amount: final_influence,
                 current: state.agreement_progress,
@@ -129,16 +123,16 @@ mod tests {
         };
 
         let mut emitter = VecEmitter(vec![]);
-        
+
         // Turn 1
         SimpleDiplomacy::step(&config, &mut state, input.clone(), &mut emitter);
-        
+
         // Influence: 60 - 10 = 50
         assert_eq!(state.agreement_progress, 50.0);
-        
+
         // Turn 2
         SimpleDiplomacy::step(&config, &mut state, input, &mut emitter);
-        
+
         // Influence: 50 + 50 = 100 -> Success
         assert_eq!(state.agreement_progress, 100.0);
         assert!(state.is_finished);
@@ -156,9 +150,9 @@ mod tests {
         };
 
         let mut emitter = VecEmitter(vec![]);
-        
+
         SimpleDiplomacy::step(&config, &mut state, input, &mut emitter);
-        
+
         // Rejected -> Patience lost -> Failed
         assert!(emitter.0.contains(&DiplomacyEvent::ArgumentRejected));
         assert!(emitter.0.contains(&DiplomacyEvent::NegotiationFailed));

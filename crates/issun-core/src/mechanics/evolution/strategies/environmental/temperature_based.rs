@@ -54,7 +54,7 @@ impl EnvironmentalPolicy for TemperatureBased {
         let multiplier = 1.0 - temp_deviation * Self::SENSITIVITY;
 
         // Clamp to [0.0, 1.0]
-        multiplier.max(0.0).min(1.0)
+        multiplier.clamp(0.0, 1.0)
     }
 }
 

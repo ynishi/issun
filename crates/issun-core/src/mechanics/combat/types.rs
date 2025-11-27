@@ -72,9 +72,7 @@ impl CombatState {
         if self.max_hp == 0 {
             0.0
         } else {
-            (self.current_hp as f32 / self.max_hp as f32)
-                .max(0.0)
-                .min(1.0)
+            (self.current_hp as f32 / self.max_hp as f32).clamp(0.0, 1.0)
         }
     }
 }

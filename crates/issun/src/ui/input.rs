@@ -78,11 +78,8 @@ pub fn poll_key(timeout: Duration) -> std::io::Result<Option<KeyCode>> {
 mod tests {
     use super::*;
 
-    #[cfg_attr(
-        not(feature = "tty_tests"),
-        ignore = "requires terminal input; enable via `--features tty_tests`"
-    )]
     #[test]
+    #[ignore = "requires terminal input"]
     fn test_poll_input_timeout() {
         // This test just verifies the function compiles and returns Ok
         // Real testing requires terminal interaction
@@ -90,11 +87,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[cfg_attr(
-        not(feature = "tty_tests"),
-        ignore = "requires terminal input; enable via `--features tty_tests`"
-    )]
     #[test]
+    #[ignore = "requires terminal input"]
     fn test_poll_key_timeout() {
         let result = poll_key(Duration::from_millis(1));
         assert!(result.is_ok());

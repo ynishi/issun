@@ -162,20 +162,36 @@ where
         }
 
         // Boundary events
-        if state.is_at_min() && !(EvolutionState { value: old_value, ..state.clone() }).is_at_min() {
+        if state.is_at_min()
+            && !(EvolutionState {
+                value: old_value,
+                ..state.clone()
+            })
+            .is_at_min()
+        {
             emitter.emit(EvolutionEvent::MinimumReached {
                 final_value: new_value,
             });
         }
 
-        if state.is_at_max() && !(EvolutionState { value: old_value, ..state.clone() }).is_at_max() {
+        if state.is_at_max()
+            && !(EvolutionState {
+                value: old_value,
+                ..state.clone()
+            })
+            .is_at_max()
+        {
             emitter.emit(EvolutionEvent::MaximumReached {
                 final_value: new_value,
             });
         }
 
         // Threshold crossing event (at 25%, 50%, 75%)
-        let old_normalized = (EvolutionState { value: old_value, ..state.clone() }).normalized();
+        let old_normalized = (EvolutionState {
+            value: old_value,
+            ..state.clone()
+        })
+        .normalized();
         let new_normalized = state.normalized();
 
         for threshold in [0.25, 0.5, 0.75] {
@@ -206,8 +222,8 @@ where
 mod tests {
     use super::*;
     use crate::mechanics::evolution::strategies::{
-        Cyclic, Decay, DiminishingRate, ExponentialRate, Growth, HumidityBased, LinearRate,
-        NoEnvironment, TemperatureBased,
+        Cyclic, Decay, DiminishingRate, ExponentialRate, Growth, LinearRate, NoEnvironment,
+        TemperatureBased,
     };
     use crate::mechanics::evolution::types::{Environment, SubjectType};
 
@@ -316,7 +332,7 @@ mod tests {
             time_delta: 1.0,
         };
 
-        let mut state = EvolutionState::new(100.0, 0.0, 100.0, SubjectType::Food);
+        let state = EvolutionState::new(100.0, 0.0, 100.0, SubjectType::Food);
 
         // Optimal temperature
         let input_optimal = EvolutionInput {

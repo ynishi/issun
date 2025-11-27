@@ -42,12 +42,7 @@ impl Oscillating {
 }
 
 impl DirectionPolicy for Oscillating {
-    fn calculate_direction(
-        _current_value: f32,
-        _min: f32,
-        _max: f32,
-        elapsed_time: f32,
-    ) -> f32 {
+    fn calculate_direction(_current_value: f32, _min: f32, _max: f32, elapsed_time: f32) -> f32 {
         // Calculate phase based on elapsed time
         let phase = (2.0 * PI * elapsed_time) / Self::PERIOD;
 

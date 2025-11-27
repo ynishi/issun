@@ -52,7 +52,7 @@ impl ComprehensiveEnvironment {
     fn temperature_multiplier(temperature: f32) -> f32 {
         let deviation = (temperature - Self::OPTIMAL_TEMPERATURE).abs();
         let multiplier = 1.0 - deviation * Self::TEMP_SENSITIVITY;
-        multiplier.max(0.1).min(1.0)
+        multiplier.clamp(0.1, 1.0)
     }
 
     /// Calculate humidity multiplier
@@ -66,7 +66,7 @@ impl ComprehensiveEnvironment {
     fn pressure_multiplier(pressure: f32) -> f32 {
         let deviation = (pressure - Self::OPTIMAL_PRESSURE).abs();
         let multiplier = 1.0 - deviation * Self::PRESSURE_SENSITIVITY;
-        multiplier.max(0.5).min(1.0)
+        multiplier.clamp(0.5, 1.0)
     }
 }
 
@@ -119,9 +119,9 @@ mod tests {
     #[test]
     fn test_poor_conditions() {
         let env = Environment {
-            temperature: 0.0,  // Cold
-            humidity: 0.0,     // Dry
-            pressure: 2.0,     // High pressure
+            temperature: 0.0, // Cold
+            humidity: 0.0,    // Dry
+            pressure: 2.0,    // High pressure
             custom: HashMap::new(),
         };
 
@@ -159,7 +159,7 @@ mod tests {
         // Test that factors multiply (not add)
         let env = Environment {
             temperature: 25.0,
-            humidity: 0.0,  // 0.5x multiplier
+            humidity: 0.0, // 0.5x multiplier
             pressure: 1.0,
             custom: HashMap::new(),
         };

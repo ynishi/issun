@@ -121,26 +121,39 @@ impl Default for EvolutionInput {
 pub enum EvolutionEvent {
     /// Value changed
     ValueChanged {
+        /// Previous value
         old_value: f32,
+        /// New value after change
         new_value: f32,
+        /// Change amount (new - old)
         delta: f32,
     },
 
     /// Reached minimum bound
-    MinimumReached { final_value: f32 },
+    MinimumReached {
+        /// Final value at minimum
+        final_value: f32,
+    },
 
     /// Reached maximum bound
-    MaximumReached { final_value: f32 },
+    MaximumReached {
+        /// Final value at maximum
+        final_value: f32,
+    },
 
     /// Crossed a threshold
     ThresholdCrossed {
+        /// Threshold value that was crossed
         threshold: f32,
+        /// Direction of crossing
         direction: Direction,
     },
 
     /// Status changed
     StatusChanged {
+        /// Previous status
         old_status: EvolutionStatus,
+        /// New status after change
         new_status: EvolutionStatus,
     },
 }
@@ -202,9 +215,9 @@ pub struct Environment {
 impl Default for Environment {
     fn default() -> Self {
         Self {
-            temperature: 20.0,  // Room temperature
-            humidity: 0.5,      // 50% humidity
-            pressure: 1.0,      // Normal pressure
+            temperature: 20.0, // Room temperature
+            humidity: 0.5,     // 50% humidity
+            pressure: 1.0,     // Normal pressure
             custom: HashMap::new(),
         }
     }

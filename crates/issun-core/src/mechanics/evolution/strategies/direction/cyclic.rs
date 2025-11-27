@@ -30,12 +30,7 @@ use crate::mechanics::evolution::policies::DirectionPolicy;
 pub struct Cyclic;
 
 impl DirectionPolicy for Cyclic {
-    fn calculate_direction(
-        current_value: f32,
-        min: f32,
-        max: f32,
-        _elapsed_time: f32,
-    ) -> f32 {
+    fn calculate_direction(current_value: f32, min: f32, max: f32, _elapsed_time: f32) -> f32 {
         // Calculate midpoint (equilibrium point)
         let midpoint = (min + max) / 2.0;
 

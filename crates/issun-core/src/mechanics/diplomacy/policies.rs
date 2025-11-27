@@ -33,9 +33,5 @@ pub trait ResistancePolicy {
 /// Policy for contextual modifiers (e.g., cultural affinity, environment).
 pub trait ContextPolicy {
     /// Apply contextual modifiers to the final influence.
-    fn apply_context(
-        influence: f32,
-        arg_type: ArgumentType,
-        relationship: f32,
-    ) -> f32;
+    fn apply_context(influence: f32, arg_type: ArgumentType, relationship: f32) -> f32;
 }

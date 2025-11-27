@@ -21,7 +21,7 @@
 //!     .await?;
 //! ```
 
-use issun::modding::{
+use ::issun::modding::{
     ModBackend, ModError, ModHandle, ModLoader, ModMetadata, ModResult, PluginAction, PluginControl,
 };
 use std::collections::HashMap;
@@ -99,7 +99,7 @@ impl WasmLoader {
     /// Link host API functions defined in WIT
     fn link_host_functions(linker: &mut Linker<HostState>) -> ModResult<()> {
         // Link the api interface
-        issun::mod_::api::add_to_linker(linker, |state: &mut HostState| state)
+        crate::issun::modapi::api::add_to_linker(linker, |state: &mut HostState| state)
             .map_err(|e| ModError::LoadFailed(format!("Failed to link API: {}", e)))?;
 
         Ok(())
@@ -113,7 +113,7 @@ impl Default for WasmLoader {
 }
 
 // Implement host API functions
-impl issun::mod_::api::Host for HostState {
+impl crate::issun::modapi::api::Host for HostState {
     fn log(&mut self, message: String) {
         println!("[WASM MOD] {}", message);
         self.log_buffer.push(message);
@@ -153,7 +153,7 @@ impl ModLoader for WasmLoader {
         let mut store = Store::new(&self.engine, host_state);
 
         // Instantiate the component
-        let (instance, _) = ModGuest::instantiate(&mut store, &component, &self.linker)
+        let instance = ModGuest::instantiate(&mut store, &component, &self.linker)
             .map_err(|e| ModError::LoadFailed(format!("Instantiation failed: {}", e)))?;
 
         // Get metadata

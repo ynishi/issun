@@ -26,10 +26,16 @@ pub type NodeId = String;
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropagationGraph {
+    /// Edges defining connections between nodes
     pub edges: Vec<PropagationEdge>,
 }
 
 impl PropagationGraph {
+    /// Creates a new propagation graph with the given edges.
+    ///
+    /// # Arguments
+    ///
+    /// * `edges` - Vector of propagation edges defining the graph structure
     pub fn new(edges: Vec<PropagationEdge>) -> Self {
         Self { edges }
     }
@@ -70,6 +76,13 @@ pub struct PropagationEdge {
 }
 
 impl PropagationEdge {
+    /// Creates a new propagation edge.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - Source node ID
+    /// * `to` - Target node ID
+    /// * `rate` - Transmission rate between 0.0 and 1.0
     pub fn new(from: NodeId, to: NodeId, rate: f32) -> Self {
         Self { from, to, rate }
     }
@@ -85,12 +98,19 @@ pub struct PropagationInput {
 }
 
 impl PropagationInput {
+    /// Creates a new empty propagation input.
     pub fn new() -> Self {
         Self {
             node_states: HashMap::new(),
         }
     }
 
+    /// Builder method to add a node state.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - Node ID
+    /// * `severity` - Infection severity for this node
     pub fn with_state(mut self, node: NodeId, severity: f32) -> Self {
         self.node_states.insert(node, severity);
         self
@@ -113,12 +133,20 @@ pub struct PropagationState {
 }
 
 impl PropagationState {
+    /// Creates a new empty propagation state.
     pub fn new() -> Self {
         Self {
             node_pressures: HashMap::new(),
         }
     }
 
+    /// Gets the infection pressure for a specific node.
+    ///
+    /// Returns 0.0 if the node has no recorded pressure.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - Node ID to query
     pub fn get_pressure(&self, node: &NodeId) -> f32 {
         self.node_pressures.get(node).copied().unwrap_or(0.0)
     }
@@ -128,15 +156,28 @@ impl PropagationState {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PropagationEvent {
     /// Infection pressure calculated for a node
-    PressureCalculated { node: NodeId, pressure: f32 },
+    PressureCalculated {
+        /// Node ID
+        node: NodeId,
+        /// Calculated pressure value
+        pressure: f32,
+    },
 
     /// Initial infection triggered at a node
-    InitialInfection { node: NodeId, initial_severity: u32 },
+    InitialInfection {
+        /// Node ID
+        node: NodeId,
+        /// Initial infection severity
+        initial_severity: u32,
+    },
 
     /// Pressure increased at already-infected node
     PressureIncreased {
+        /// Node ID
         node: NodeId,
+        /// Previous pressure value
         old_pressure: f32,
+        /// New pressure value
         new_pressure: f32,
     },
 }

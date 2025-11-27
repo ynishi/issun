@@ -22,12 +22,7 @@ use crate::mechanics::evolution::policies::DirectionPolicy;
 pub struct Decay;
 
 impl DirectionPolicy for Decay {
-    fn calculate_direction(
-        _current_value: f32,
-        _min: f32,
-        _max: f32,
-        _elapsed_time: f32,
-    ) -> f32 {
+    fn calculate_direction(_current_value: f32, _min: f32, _max: f32, _elapsed_time: f32) -> f32 {
         -1.0 // Always negative (decay)
     }
 }

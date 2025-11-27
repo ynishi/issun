@@ -35,20 +35,20 @@ pub use super::policies::{DirectionPolicy, EnvironmentalPolicy, RateCalculationP
 
 // All strategies
 pub use super::strategies::{
+    // Environmental strategies
+    ComprehensiveEnvironment,
     // Direction strategies
     Cyclic,
     Decay,
-    Growth,
-    Oscillating,
-    // Environmental strategies
-    ComprehensiveEnvironment,
-    HumidityBased,
-    NoEnvironment,
-    TemperatureBased,
     // Rate strategies
     DiminishingRate,
     ExponentialRate,
+    Growth,
+    HumidityBased,
     LinearRate,
+    NoEnvironment,
+    Oscillating,
+    TemperatureBased,
     ThresholdRate,
 };
 

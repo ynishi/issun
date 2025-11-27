@@ -42,7 +42,7 @@ use super::types::{CombatConfig, CombatEvent, CombatInput, CombatState};
 /// type SimpleCombat = CombatMechanic;
 ///
 /// // Customize only elemental system
-/// type ElementalCombat = CombatMechanic<_, _, ElementalAffinity>;
+/// type ElementalCombat = CombatMechanic<LinearDamageCalculation, SubtractiveDefense, ElementalAffinity>;
 ///
 /// // Fully customize
 /// type AdvancedCombat = CombatMechanic<

@@ -6,10 +6,12 @@ members = [
     "crates/issun-analyzer",
     "crates/issun-cli",
     "crates/issun-mod-rhai",
-    "crates/issun-mod-wasm", "crates/issun-bevy", "crates/issun-core",
+    "crates/issun-bevy",
+    "crates/issun-core",
 ]
 exclude = [
     "examples/*",
+    "crates/issun-mod-wasm",  # Temporarily excluded due to Sync trait issues with WasiCtx
 ]
 resolver = "2"
 

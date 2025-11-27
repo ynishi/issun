@@ -47,12 +47,7 @@ pub trait DirectionPolicy {
     /// - Zero = no change
     ///
     /// The magnitude affects the rate of change.
-    fn calculate_direction(
-        current_value: f32,
-        min: f32,
-        max: f32,
-        elapsed_time: f32,
-    ) -> f32;
+    fn calculate_direction(current_value: f32, min: f32, max: f32, elapsed_time: f32) -> f32;
 }
 
 /// Policy for calculating environmental influence on evolution.
@@ -214,12 +209,12 @@ mod tests {
     #[test]
     fn test_rate_calculation_linear() {
         let rate = TestLinearRate::calculate_rate(
-            2.0,  // base_rate
-            50.0, // current_value
-            0.0,  // min
+            2.0,   // base_rate
+            50.0,  // current_value
+            0.0,   // min
             100.0, // max
-            1.0,  // direction_multiplier
-            1.5,  // environmental_multiplier
+            1.0,   // direction_multiplier
+            1.5,   // environmental_multiplier
         );
         assert_eq!(rate, 3.0); // 2.0 * 1.0 * 1.5
     }

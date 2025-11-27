@@ -36,6 +36,12 @@ pub struct DiplomacyState {
 }
 
 impl DiplomacyState {
+    /// Creates a new diplomacy state.
+    ///
+    /// # Arguments
+    ///
+    /// * `relationship_score` - Initial relationship score, clamped to [-1.0, 1.0]
+    /// * `max_patience` - Maximum patience before negotiation fails
     pub fn new(relationship_score: f32, max_patience: u32) -> Self {
         Self {
             agreement_progress: 0.0,
@@ -58,11 +64,16 @@ pub struct DiplomacyInput {
     pub target_resistance: f32,
 }
 
+/// Type of diplomatic argument.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ArgumentType {
+    /// Logical reasoning-based argument.
     Logic,
+    /// Emotional appeal-based argument.
     Emotion,
+    /// Bribery or material incentive-based argument.
     Bribe,
+    /// Intimidation or threat-based argument.
     Intimidation,
 }
 
@@ -70,11 +81,19 @@ pub enum ArgumentType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DiplomacyEvent {
     /// Progress was made towards agreement
-    ProgressMade { amount: f32, current: f32 },
+    ProgressMade {
+        /// Amount of progress made this turn
+        amount: f32,
+        /// Current total progress
+        current: f32,
+    },
     /// The argument was rejected or had no effect
     ArgumentRejected,
     /// Patience decreased
-    PatienceLost { remaining: u32 },
+    PatienceLost {
+        /// Remaining patience
+        remaining: u32,
+    },
     /// Negotiation succeeded (Agreement reached)
     AgreementReached,
     /// Negotiation failed (Patience ran out)

@@ -44,7 +44,7 @@ use crate::mechanics::evolution::policies::RateCalculationPolicy;
 ///     1.0,   // direction (growth)
 ///     1.0,   // environment
 /// );
-/// assert_eq!(rate, 0.2); // 2.0 * (1 - 0.9) = 0.2
+/// assert!((rate - 0.2).abs() < f32::EPSILON); // 2.0 * (1 - 0.9) = 0.2
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DiminishingRate;

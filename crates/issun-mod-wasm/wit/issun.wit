@@ -1,7 +1,7 @@
 // WIT (WebAssembly Interface Types) definition for ISSUN MOD API
 // This defines the contract between the host (ISSUN engine) and guest (MOD)
 
-package issun:mod;
+package issun:modapi;
 
 /// Host API provided by ISSUN engine to MODs
 interface api {
@@ -19,7 +19,7 @@ interface api {
     set-plugin-param: func(plugin: string, key: string, value: string);
 
     /// Get a random number between 0.0 and 1.0
-    random: func() -> float32;
+    random: func() -> f32;
 }
 
 /// Guest interface that MODs must implement

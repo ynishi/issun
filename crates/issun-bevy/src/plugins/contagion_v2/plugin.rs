@@ -82,6 +82,7 @@ impl ContagionRng {
         self.rng.f32()
     }
 
+    #[allow(dead_code)] // Reserved for testing purposes
     pub fn with_seed(seed: u64) -> Self {
         Self {
             rng: fastrand::Rng::with_seed(seed),
@@ -91,6 +92,7 @@ impl ContagionRng {
 
 /// Message wrapper for issun-core's ContagionEvent (Bevy 0.17+)
 #[derive(bevy::ecs::message::Message, Clone, Debug)]
+#[allow(dead_code)] // Fields used by Bevy message system
 pub struct ContagionEventWrapper {
     pub entity: Entity,
     pub event: ContagionEvent,

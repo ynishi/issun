@@ -40,10 +40,7 @@ mod tests {
     #[test]
     fn test_no_environment_always_one() {
         let env = Environment::default();
-        assert_eq!(
-            NoEnvironment::calculate_environmental_multiplier(&env),
-            1.0
-        );
+        assert_eq!(NoEnvironment::calculate_environmental_multiplier(&env), 1.0);
     }
 
     #[test]
@@ -54,9 +51,6 @@ mod tests {
             pressure: 0.1,       // Near vacuum
             custom: HashMap::new(),
         };
-        assert_eq!(
-            NoEnvironment::calculate_environmental_multiplier(&env),
-            1.0
-        );
+        assert_eq!(NoEnvironment::calculate_environmental_multiplier(&env), 1.0);
     }
 }
