@@ -1,0 +1,17 @@
+[package]
+name = "pandemic-crisis"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+issun-bevy = { path = "../../crates/issun-bevy" }
+issun-macros = { path = "../../crates/issun-macros" }
+bevy = { version = "0.17", default-features = false, features = [
+    "bevy_state",
+    "multi_threaded",
+] }
+rand = "0.8"
+ratatui = "0.28"
+crossterm = "0.28"

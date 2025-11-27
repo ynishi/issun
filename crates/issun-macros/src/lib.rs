@@ -6,6 +6,13 @@
 //! - `#[derive(Service)]` - Auto-implement Service trait
 //! - `#[derive(System)]` - Auto-implement System trait
 //! - `#[derive(Asset)]` - Auto-generate asset loading
+//!
+//! Bevy-specific macros:
+//! - `#[derive(IssunEntity)]` - Auto-generate component getters for any entity-holding Resource
+//! - `#[derive(IssunQuery)]` - Query helper methods avoiding borrowing conflicts
+//! - `log!()` - Simplified EventLog macro
+
+mod bevy;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -1637,6 +1644,63 @@ fn push_unique_path(paths: &mut Vec<Path>, new_path: Path) {
 
 fn path_to_string(path: &Path) -> String {
     path.to_token_stream().to_string()
+}
+
+// =============================================================================
+// Bevy-specific macros
+// =============================================================================
+
+/// Derive macro for entity component getters (Bevy)
+///
+/// Works with any Resource that holds an Entity field.
+///
+/// # Basic Example (defaults to ActionPoints)
+/// ```ignore
+/// #[derive(Resource, IssunEntity)]
+/// pub struct Player {
+///     #[primary]
+///     pub entity: Entity,
+/// }
+/// ```
+///
+/// # Example with custom components
+/// ```ignore
+/// #[derive(Resource, IssunEntity)]
+/// #[components(ActionPoints, Health, ContagionInfection)]
+/// pub struct Player {
+///     #[primary]
+///     pub entity: Entity,
+/// }
+/// ```
+///
+/// This generates getter methods like `action_points()`, `health()`, etc.
+#[proc_macro_derive(IssunEntity, attributes(primary, components))]
+pub fn derive_issun_entity(input: TokenStream) -> TokenStream {
+    bevy::derive_issun_entity_impl(input)
+}
+
+/// Derive macro for Query helpers (Bevy)
+///
+/// # Example
+/// ```ignore
+/// #[derive(IssunQuery)]
+/// #[query(read = [ContagionInfection, ContagionNode])]
+/// pub struct InfectionQuery;
+/// ```
+#[proc_macro_derive(IssunQuery, attributes(query))]
+pub fn derive_issun_query(input: TokenStream) -> TokenStream {
+    bevy::derive_issun_query_impl(input)
+}
+
+/// Simplified EventLog macro (Bevy)
+///
+/// # Example
+/// ```ignore
+/// log!(app, "✅ {} quarantined", city.name);
+/// ```
+#[proc_macro]
+pub fn log(input: TokenStream) -> TokenStream {
+    bevy::log_impl(input)
 }
 
 /// Attribute macro that injects `pump_event_systems` calls before/after input handlers.
