@@ -3,6 +3,7 @@
 //! Tests: components, startup_systems, update_systems
 
 use bevy::prelude::*;
+use issun_bevy::IssunCorePlugin;
 use issun_macros::IssunBevyPlugin;
 
 // Test components for registration
@@ -70,6 +71,7 @@ fn test_components() {
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
         .add_plugins(Phase22TestPlugin::default());
 
     app.update();
@@ -105,6 +107,7 @@ fn test_startup_systems() {
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
         .add_plugins(Phase22TestPlugin::default());
 
     // update() runs Startup systems
@@ -125,6 +128,7 @@ fn test_update_systems() {
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
         .add_plugins(Phase22TestPlugin::default());
 
     // First update runs Startup, second runs Update

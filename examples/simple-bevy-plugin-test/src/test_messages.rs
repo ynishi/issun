@@ -4,19 +4,20 @@
 //! Full message functionality testing is done in pandemic-crisis.
 
 use bevy::prelude::*;
+use issun_bevy::IssunCorePlugin;
 use issun_macros::IssunBevyPlugin;
 
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct GameStartedMessage {
     pub player_name: String,
 }
 
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct TurnAdvancedMessage {
     pub turn: u32,
 }
 
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct VictoryMessage {
     pub reason: String,
 }
@@ -42,6 +43,7 @@ pub fn run_messages_test() {
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
         .add_plugins(MessagesTestPlugin::default());
 
     app.update();

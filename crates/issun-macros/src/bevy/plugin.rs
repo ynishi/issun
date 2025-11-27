@@ -64,6 +64,9 @@
 //! - `#[plugin(components = [Type1, Type2, ...])]` - Auto-register component types for Reflection (optional, Phase 2.2)
 //! - `#[plugin(startup_systems = [fn1, fn2, ...])]` - Auto-register systems to Startup schedule (optional, Phase 2.2)
 //! - `#[plugin(update_systems = [fn1, fn2, ...])]` - Auto-register systems to Update schedule (optional, Phase 2.2)
+//! - `#[plugin(requires = [Plugin1, Plugin2, ...])]` - Declare issun-bevy plugin dependencies (optional, Phase 2.3)
+//! - `#[plugin(requires_bevy = [BevyPlugin1, ...])]` - Declare Bevy standard plugin dependencies (optional, Phase 2.3)
+//! - `#[plugin(auto_require_core = true)]` - Auto-require IssunCorePlugin (default: true, Phase 2.3)
 //!
 //! ## Field-level attributes
 //!
@@ -85,6 +88,9 @@ struct PluginConfig {
     components: Vec<Type>,         // Phase 2.2
     startup_systems: Vec<Path>,    // Phase 2.2
     update_systems: Vec<Path>,     // Phase 2.2
+    requires: Vec<Type>,            // Phase 2.3 - issun-bevy plugin dependencies
+    requires_bevy: Vec<Type>,       // Phase 2.3 - Bevy standard plugin dependencies
+    auto_require_core: bool,        // Phase 2.3 - Auto-require IssunCorePlugin (default: true)
 }
 
 /// Helper struct for parsing messages = [Type1, Type2, ...]
@@ -244,6 +250,20 @@ pub fn derive_issun_bevy_plugin_impl(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
+    // Generate dependency checks (Phase 2.3)
+    let dependency_checks = generate_dependency_checks(&plugin_config, struct_name);
+
+    // Generate marker resource (Phase 2.3)
+    let marker_name = format_ident!("{}Marker", struct_name);
+    let marker_registration = quote! {
+        // Marker resource registration (Phase 2.3)
+        #[derive(::bevy::prelude::Resource)]
+        pub struct #marker_name;
+    };
+    let marker_insert = quote! {
+        app.insert_resource(#marker_name);
+    };
+
     // Generate builder methods
     let builder_methods: Vec<_> = config_fields
         .iter()
@@ -273,8 +293,17 @@ pub fn derive_issun_bevy_plugin_impl(input: TokenStream) -> TokenStream {
         .collect();
 
     let expanded = quote! {
+        // Marker resource definition (Phase 2.3)
+        #marker_registration
+
         impl ::bevy::prelude::Plugin for #struct_name {
             fn build(&self, app: &mut ::bevy::prelude::App) {
+                // Dependency checks (Phase 2.3)
+                #dependency_checks
+
+                // Marker registration (Phase 2.3)
+                #marker_insert
+
                 // Auto-generated resource registration
                 // Note: All resources must implement Clone
                 #(#resource_registrations)*
@@ -312,6 +341,9 @@ fn parse_plugin_attrs(attrs: &[Attribute], struct_name: &syn::Ident) -> PluginCo
         components: Vec::new(),
         startup_systems: Vec::new(),
         update_systems: Vec::new(),
+        requires: Vec::new(),
+        requires_bevy: Vec::new(),
+        auto_require_core: true,  // Default: true
     };
 
     for attr in attrs {
@@ -360,6 +392,27 @@ fn parse_plugin_attrs(attrs: &[Attribute], struct_name: &syn::Ident) -> PluginCo
                         config.update_systems = systems.paths;
                     }
                 }
+            } else if meta.path.is_ident("requires") {
+                // Parse requires = [Plugin1, Plugin2, ...]
+                if let Ok(value) = meta.value() {
+                    if let Ok(plugins) = value.parse::<MessageList>() {
+                        config.requires = plugins.types;
+                    }
+                }
+            } else if meta.path.is_ident("requires_bevy") {
+                // Parse requires_bevy = [BevyPlugin1, ...]
+                if let Ok(value) = meta.value() {
+                    if let Ok(plugins) = value.parse::<MessageList>() {
+                        config.requires_bevy = plugins.types;
+                    }
+                }
+            } else if meta.path.is_ident("auto_require_core") {
+                // Parse auto_require_core = true/false
+                if let Ok(value) = meta.value() {
+                    if let Ok(Lit::Bool(b)) = value.parse::<Lit>() {
+                        config.auto_require_core = b.value();
+                    }
+                }
             }
             Ok(())
         });
@@ -393,6 +446,67 @@ fn extract_field_doc(field: &Field) -> Option<String> {
         }
     }
     None
+}
+
+/// Generate dependency check code (Phase 2.3)
+fn generate_dependency_checks(config: &PluginConfig, struct_name: &syn::Ident) -> proc_macro2::TokenStream {
+    let mut checks = Vec::new();
+    let struct_name_str = struct_name.to_string();
+
+    // IssunCorePlugin check (if auto_require_core)
+    if config.auto_require_core {
+        checks.push(quote! {
+            assert!(
+                app.world().contains_resource::<::issun_bevy::IssunCorePluginMarker>(),
+                "{} requires IssunCorePlugin. Add it before this plugin:\n\
+                 app.add_plugins(::issun_bevy::IssunCorePlugin);\n\
+                 app.add_plugins({}::default());",
+                #struct_name_str,
+                #struct_name_str
+            );
+        });
+    }
+
+    // issun-bevy plugin checks
+    for plugin_type in &config.requires {
+        // Extract type name for marker (e.g., TimePlugin -> TimePluginMarker)
+        // Use quote to convert Type to string, then extract last segment
+        let type_str = quote!(#plugin_type).to_string();
+        let type_name = type_str.split("::").last().unwrap_or(&type_str);
+        let type_name = type_name.trim();
+        let marker_name = format_ident!("{}Marker", type_name);
+        let plugin_str = quote!(#plugin_type).to_string();
+
+        checks.push(quote! {
+            assert!(
+                app.world().contains_resource::<#marker_name>(),
+                "{} requires {}. Add it before this plugin:\n\
+                 app.add_plugins({}::default());\n\
+                 app.add_plugins({}::default());",
+                #struct_name_str,
+                #plugin_str,
+                #plugin_str,
+                #struct_name_str
+            );
+        });
+    }
+
+    // Bevy plugin checks (currently just warn, as detection is complex)
+    if !config.requires_bevy.is_empty() {
+        let bevy_plugins: Vec<String> = config.requires_bevy.iter()
+            .map(|t| quote!(#t).to_string())
+            .collect();
+        let _bevy_list = bevy_plugins.join(", ");
+
+        checks.push(quote! {
+            // Note: Bevy plugin detection is not implemented yet
+            // Please ensure the following Bevy plugins are added: #bevy_list
+        });
+    }
+
+    quote! {
+        #(#checks)*
+    }
 }
 
 /// Convert PascalCase to snake_case

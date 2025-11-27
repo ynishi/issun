@@ -1751,6 +1751,9 @@ pub fn log(input: TokenStream) -> TokenStream {
 /// - `#[plugin(components = [Type1, Type2, ...])]` - Auto-register component types (Phase 2.2)
 /// - `#[plugin(startup_systems = [fn1, fn2, ...])]` - Auto-register Startup systems (Phase 2.2)
 /// - `#[plugin(update_systems = [fn1, fn2, ...])]` - Auto-register Update systems (Phase 2.2)
+/// - `#[plugin(requires = [Plugin1, Plugin2, ...])]` - Declare issun-bevy plugin dependencies (Phase 2.3)
+/// - `#[plugin(requires_bevy = [BevyPlugin1, ...])]` - Declare Bevy standard plugin dependencies (Phase 2.3)
+/// - `#[plugin(auto_require_core = true)]` - Auto-require IssunCorePlugin (default: true, Phase 2.3)
 ///
 /// ## Field-level
 /// - `#[config]` - Config resource (insert_resource + builder method)

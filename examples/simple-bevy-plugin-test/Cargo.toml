@@ -7,7 +7,7 @@ publish = false
 [workspace]
 
 [dependencies]
-bevy = { version = "0.15", default-features = false, features = ["bevy_state"] }
+bevy = { version = "0.17", default-features = false, features = ["bevy_state"] }
 issun-bevy = { path = "../../crates/issun-bevy" }
 issun-macros = { path = "../../crates/issun-macros" }
 serde = { version = "1.0", features = ["derive"] }

@@ -1,6 +1,7 @@
 //! Test for #[skip] attribute
 
 use bevy::prelude::*;
+use issun_bevy::IssunCorePlugin;
 use issun_macros::IssunBevyPlugin;
 use serde::{Deserialize, Serialize};
 
@@ -32,9 +33,9 @@ mod tests {
     #[test]
     fn test_skip_field() {
         let mut app = App::new();
-        app.add_plugins(MinimalPlugins).add_plugins(
-            SkipTestPlugin::default(),
-        );
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(IssunCorePlugin)
+            .add_plugins(SkipTestPlugin::default());
 
         app.update();
 
@@ -54,9 +55,9 @@ pub fn run_skip_test() {
     println!("\nTest 3: Skip field");
 
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins).add_plugins(
-        SkipTestPlugin::default().with_config(PublicConfig { value: 42 }),
-    );
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
+        .add_plugins(SkipTestPlugin::default().with_config(PublicConfig { value: 42 }));
 
     app.update();
 

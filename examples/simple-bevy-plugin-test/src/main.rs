@@ -11,8 +11,10 @@
 mod test_skip;
 mod test_messages;
 mod test_phase22;
+mod test_phase23;
 
 use bevy::prelude::*;
+use issun_bevy::IssunCorePlugin;
 use issun_macros::IssunBevyPlugin;
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +57,7 @@ fn main() {
     // Test 1: Default plugin
     println!("Test 1: Default plugin");
     app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
         .add_plugins(SimpleGamePlugin::default());
 
     app.update();
@@ -77,7 +80,9 @@ fn main() {
     // Test 2: Builder methods
     println!("Test 2: Builder methods");
     let mut app2 = App::new();
-    app2.add_plugins(MinimalPlugins).add_plugins(
+    app2.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
+        .add_plugins(
         SimpleGamePlugin::default()
             .with_config(GameConfig {
                 difficulty: 2.0,
@@ -117,6 +122,9 @@ fn main() {
     // Test 6-8: Phase 2.2 features
     test_phase22::run_phase22_tests();
 
+    // Test 9-11: Phase 2.3 features (dependency checking)
+    test_phase23::run_phase23_tests();
+
     println!("\n=== All tests passed! ===");
 }
 
@@ -139,6 +147,7 @@ fn test_auto_register() {
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(IssunCorePlugin)
         .add_plugins(AutoRegisterPlugin::default());
 
     app.update();

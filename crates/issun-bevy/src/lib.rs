@@ -23,6 +23,12 @@ pub enum IssunSet {
     Visual,
 }
 
+/// Marker resource indicating IssunCorePlugin is installed
+///
+/// Used by other issun-bevy plugins to verify IssunCorePlugin dependency.
+#[derive(Resource)]
+pub struct IssunCorePluginMarker;
+
 /// ISSUN Core Plugin (configures SystemSet ordering once)
 ///
 /// ## Usage Example
@@ -39,6 +45,9 @@ pub struct IssunCorePlugin;
 
 impl Plugin for IssunCorePlugin {
     fn build(&self, app: &mut App) {
+        // Register marker resource for dependency checking
+        app.insert_resource(IssunCorePluginMarker);
+
         // Configure SystemSet ordering
         app.configure_sets(
             Update,
