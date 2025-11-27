@@ -11,7 +11,12 @@ use std::marker::PhantomData;
 ///
 /// Generic over the mechanic type to allow different virus behaviors
 /// per entity at compile time.
+///
+/// Note: Generic types cannot implement Reflect traits due to Bevy's type registration requirements.
+/// For full reflection support (trace/replay/inspector), use concrete wrapper types
+/// from the reflect_wrappers module (SimpleVirusStateReflect, etc.).
 #[derive(Component)]
+#[allow(unknown_lints, missing_reflect)] // Generic types cannot implement Reflect for Bevy type registration
 pub struct ContagionState<M: Mechanic<State = SimpleSeverity>> {
     pub state: SimpleSeverity,
     _marker: PhantomData<M>,
@@ -50,7 +55,6 @@ pub struct ContagionConfigResource {
     #[reflect(ignore)]
     pub config: ContagionConfig,
 }
-
 
 impl ContagionConfigResource {
     pub fn new(base_rate: f32) -> Self {

@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use issun_core::mechanics::contagion::prelude::*;
 
+use super::reflect_wrappers::*;
 use super::systems::*;
 use crate::IssunSet;
 
@@ -36,11 +37,14 @@ impl Plugin for ContagionV2Plugin {
         app.add_message::<ContagionEventWrapper>();
 
         // Component registration
-        // Note: We can't register ContagionState<M> (generic) with Bevy's reflection
-        // system, but we can register the concrete types
+        // Note: ContagionState<M> cannot be registered directly due to generic constraints.
+        // Use Reflect wrapper types for full reflection support (trace/replay/inspector).
         app.register_type::<ContagionConfigResource>()
             .register_type::<ContagionInputParams>()
-            .register_type::<ContagionRng>();
+            .register_type::<ContagionRng>()
+            .register_type::<SimpleVirusStateReflect>()
+            .register_type::<ExplosiveVirusStateReflect>()
+            .register_type::<ZombieVirusStateReflect>();
 
         // Systems - one system per mechanic type
         app.add_systems(

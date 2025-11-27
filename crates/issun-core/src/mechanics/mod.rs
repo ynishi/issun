@@ -5,6 +5,8 @@
 //! composition of behaviors with zero runtime overhead.
 
 pub mod contagion;
+pub mod propagation;
+pub mod state_machine;
 
 /// A trait for emitting events from a mechanic.
 ///

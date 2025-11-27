@@ -49,6 +49,13 @@ fn check_reflect_violations(target_dir: &str) -> Vec<String> {
 
 impl<'ast> Visit<'ast> for ReflectVisitor {
     fn visit_item_struct(&mut self, node: &'ast ItemStruct) {
+        // Skip types marked with #[allow(missing_reflect)]
+        // This is used for generic types that cannot implement Reflect
+        if self.has_allow_attr(node, "missing_reflect") {
+            syn::visit::visit_item_struct(self, node);
+            return;
+        }
+
         // Detect structs that derive Component/Resource/Message/Event
         // ⚠️ Bevy 0.17: buffered events use Message, observer events use Event
         let derived_types = ["Component", "Resource", "Message", "Event"];
@@ -65,7 +72,12 @@ impl<'ast> Visit<'ast> for ReflectVisitor {
                 // ⚠️ CRITICAL: Bevy 0.17 doesn't have ReflectMessage or ReflectEvent
                 // Message and Event types only need #[derive(Reflect)], not #[reflect(...)]
                 // See: https://github.com/bevyengine/bevy/discussions/11587
-                if *ty != "Message" && *ty != "Event" && !self.has_reflect_attr(node, ty) {
+                // Skip #[reflect(...)] check if #[allow(missing_reflect_attr)] is present
+                if *ty != "Message"
+                    && *ty != "Event"
+                    && !self.has_reflect_attr(node, ty)
+                    && !self.has_allow_attr(node, "missing_reflect_attr")
+                {
                     self.errors.push(format!(
                         "{} - '{}' derives {} but missing #[reflect({})]",
                         self.current_file, node.ident, ty, ty
@@ -96,6 +108,19 @@ impl ReflectVisitor {
         use quote::ToTokens;
         node.attrs.iter().any(|attr| {
             attr.path().is_ident("reflect") && attr.meta.to_token_stream().to_string().contains(ty)
+        })
+    }
+
+    fn has_allow_attr(&self, node: &ItemStruct, lint_name: &str) -> bool {
+        node.attrs.iter().any(|attr| {
+            if !attr.path().is_ident("allow") {
+                return false;
+            }
+            attr.parse_args_with(
+                syn::punctuated::Punctuated::<syn::Path, syn::Token![,]>::parse_terminated,
+            )
+            .map(|list| list.iter().any(|p| p.is_ident(lint_name)))
+            .unwrap_or(false)
         })
     }
 }

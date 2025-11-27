@@ -151,6 +151,19 @@ impl Default for Duration {
     }
 }
 
+impl std::ops::Add for Duration {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Duration::Turns(a), Duration::Turns(b)) => Duration::Turns(a + b),
+            (Duration::Ticks(a), Duration::Ticks(b)) => Duration::Ticks(a + b),
+            (Duration::Seconds(a), Duration::Seconds(b)) => Duration::Seconds(a + b),
+            _ => self, // Mismatched modes, return left operand
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -29,7 +29,9 @@
 
 mod components;
 mod plugin;
+mod reflect_wrappers;
 mod systems;
 
 pub use components::*;
 pub use plugin::ContagionV2Plugin;
+pub use reflect_wrappers::*;

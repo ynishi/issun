@@ -3,8 +3,10 @@
 use crate::components::*;
 use crate::resources::{GameContext, GameMode, UIState, VictoryResult, VictoryState};
 use crate::states::GameScene;
-use bevy::{ecs::message::MessageReader, prelude::*};
+use bevy::prelude::*;
 use issun_bevy::plugins::contagion_v2::*;
+use issun_core::mechanics::propagation::*;
+use issun_core::mechanics::{EventEmitter, Mechanic};
 
 /// Initialize first infected district
 pub fn setup_initial_infection(mut _commands: Commands) {
@@ -31,7 +33,7 @@ pub fn infect_initial_district(
     }
 }
 
-/// Propagate infection between districts based on ContagionGraph edges
+/// Propagate infection between districts using PropagationMechanic
 pub fn propagate_infection_between_districts_system(
     mut query: Query<(
         &District,
@@ -47,63 +49,94 @@ pub fn propagate_infection_between_districts_system(
         return;
     }
 
-    // Collect current infection states to avoid borrow issues
-    let district_states: std::collections::HashMap<String, (u32, String)> = query
+    // Step 1: Convert ContagionGraph to PropagationGraph
+    let prop_graph = PropagationGraph::new(
+        contagion_graph
+            .edges
+            .iter()
+            .map(|e| PropagationEdge::new(e.from.clone(), e.to.clone(), e.rate))
+            .collect(),
+    );
+
+    // Step 2: Collect current infection states
+    let district_data: std::collections::HashMap<String, (u32, String, f32)> = query
         .iter()
         .map(|(district, state, _)| {
             (
                 district.id.clone(),
-                (state.severity(), district.name.clone()),
+                (state.severity(), district.name.clone(), district.panic_level),
             )
         })
         .collect();
 
-    // Update density and directly infect districts based on infection pressure
-    for (district, mut state, mut params) in query.iter_mut() {
-        // Calculate infection pressure from neighbors
-        let mut infection_pressure = 0.0;
+    // Step 3: Create PropagationInput
+    let mut node_states = std::collections::HashMap::new();
+    for (id, (severity, _, _)) in &district_data {
+        node_states.insert(id.clone(), *severity as f32);
+    }
+    let input = PropagationInput { node_states };
 
-        for edge in &contagion_graph.edges {
-            if edge.to == district.id {
-                if let Some(&(source_severity, _)) = district_states.get(&edge.from) {
-                    if source_severity > 0 {
-                        // Infection pressure = edge rate * source severity
-                        infection_pressure += edge.rate * (source_severity as f32 / 100.0);
-                    }
+    // Step 4: Run PropagationMechanic
+    let mut prop_state = PropagationState::default();
+    let mut events = Vec::new();
+    let mut emitter = VecEmitter { events: &mut events };
+
+    LinearPropagationMechanic::step(&prop_graph, &mut prop_state, input, &mut emitter);
+
+    // Step 5: Apply propagation results to districts
+    for (district, mut state, mut params) in query.iter_mut() {
+        let current_severity = district_data
+            .get(&district.id)
+            .map(|(s, _, _)| *s)
+            .unwrap_or(0);
+
+        let panic_level = district.panic_level;
+        let infection_pressure = prop_state.get_pressure(&district.id);
+
+        // Calculate effective density = infection_pressure + panic_level bonus
+        let effective_density = (infection_pressure + panic_level).min(1.0);
+
+        // Apply infection events
+        for event in &events {
+            match event {
+                PropagationEvent::InitialInfection {
+                    node,
+                    initial_severity,
+                } if node == &district.id => {
+                    state.state.severity = *initial_severity;
+                    params.density = effective_density;
+
+                    ui_state.add_message(format!(
+                        "{} INFECTED! Initial severity: {} (pressure: {:.2}, panic: {:.1}%)",
+                        district.name,
+                        initial_severity,
+                        infection_pressure,
+                        panic_level * 100.0
+                    ));
                 }
+                _ => {}
             }
         }
 
-        let current_severity = district_states
-            .get(&district.id)
-            .map(|(s, _)| *s)
-            .unwrap_or(0);
-
-        // Calculate effective density = infection_pressure + panic_level bonus
-        let panic_bonus = district.panic_level; // panic_level ranges 0.0 to 1.0
-        let effective_density = (infection_pressure + panic_bonus).min(1.0);
-
-        // If not infected yet and infection pressure is high enough, start infection
-        if current_severity == 0 && infection_pressure > 0.15 {
-            // Start infection with severity based on pressure
-            let initial_severity = (infection_pressure * 50.0).min(20.0) as u32;
-            state.state.severity = initial_severity;
-            params.density = effective_density; // Use effective density
-
-            ui_state.add_message(format!(
-                "{} INFECTED! Initial severity: {} (pressure: {:.2}, panic: {:.1}%)",
-                district.name,
-                initial_severity,
-                infection_pressure,
-                panic_bonus * 100.0
-            ));
-        } else if current_severity == 0 && infection_pressure > 0.0 {
+        // Update density based on infection status
+        if current_severity == 0 && infection_pressure > 0.0 {
             // Not yet infected but exposed - update density
             params.density = effective_density;
         } else if current_severity > 0 {
             // Already infected - use effective density (base + panic)
-            params.density = (0.5 + panic_bonus).min(1.0);
+            params.density = (0.5 + panic_level).min(1.0);
         }
+    }
+}
+
+/// Event emitter that collects events into a Vec
+struct VecEmitter<'a, E> {
+    events: &'a mut Vec<E>,
+}
+
+impl<'a, E> EventEmitter<E> for VecEmitter<'a, E> {
+    fn emit(&mut self, event: E) {
+        self.events.push(event);
     }
 }
 
