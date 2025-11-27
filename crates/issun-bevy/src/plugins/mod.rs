@@ -8,6 +8,7 @@ pub mod contagion;
 pub mod contagion_v2;
 pub mod metrics;
 pub mod modding;
+pub mod propagation_v2;
 pub mod save_load;
 pub mod scripting;
 pub mod time;
