@@ -29,7 +29,7 @@ pub enum DefeatType {
 }
 
 /// Game statistics
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct GameStats {
     pub current_turn: u32,
     pub total_infected: usize,

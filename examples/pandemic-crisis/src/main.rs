@@ -25,11 +25,61 @@ use game_rules::*;
 use player::*;
 use world::*;
 
-use issun_macros::log;
+use issun_macros::{log, IssunBevyPlugin};
 
 use crossterm::event::{self, Event, KeyCode};
 use std::io;
 use std::time::Duration;
+
+// ============================================================================
+// Pandemic Crisis Plugin (using IssunBevyPlugin macro)
+// ============================================================================
+
+/// Pandemic Crisis game plugin with all game-specific resources
+///
+/// Note: auto_register_types is disabled because resources don't implement Reflect yet.
+/// To enable: Add `#[derive(Reflect)]` to all resources and set `auto_register_types = true`
+///
+/// Note: messages attribute would use add_event(), but issun-bevy uses add_message()
+/// So event registration is done manually in Plugin::build()
+#[derive(Default, IssunBevyPlugin)]
+#[plugin(name = "pandemic_crisis")]
+pub struct PandemicCrisisPlugin {
+    #[resource]
+    pub game_state: GameState,
+
+    #[resource]
+    pub stats: GameStats,
+
+    #[resource]
+    pub cure_research: CureResearch,
+
+    #[resource]
+    pub budget: EmergencyBudget,
+
+    #[resource]
+    pub quarantines: ActiveQuarantines,
+
+    #[resource]
+    pub awareness: ActiveAwareness,
+
+    #[resource]
+    pub healthcare: ActiveEmergencyHealthcare,
+
+    #[resource]
+    pub travel_ban: TravelBanStatus,
+
+    #[resource]
+    pub event_log: EventLog,
+}
+
+impl PandemicCrisisPlugin {
+    /// Create plugin with custom event log size
+    pub fn with_event_log_size(mut self, max_entries: usize) -> Self {
+        self.event_log = EventLog::new(max_entries);
+        self
+    }
+}
 
 fn main() -> io::Result<()> {
     // Initialize terminal
@@ -60,16 +110,11 @@ fn main() -> io::Result<()> {
     // Time plugin
     app.add_plugins(TimePlugin::default());
 
-    // Resources
-    app.insert_resource(GameState::default());
-    app.insert_resource(GameStats::default());
-    app.insert_resource(CureResearch::default());
-    app.insert_resource(EmergencyBudget::default());
-    app.insert_resource(ActiveQuarantines::default());
-    app.insert_resource(ActiveAwareness::default());
-    app.insert_resource(ActiveEmergencyHealthcare::default());
-    app.insert_resource(TravelBanStatus::default());
-    app.insert_resource(EventLog::new(20));
+    // Game resources (using IssunBevyPlugin macro)
+    app.add_plugins(
+        PandemicCrisisPlugin::default()
+            .with_event_log_size(20)
+    );
 
     // Startup systems
     app.add_systems(Startup, (

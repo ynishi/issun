@@ -13,7 +13,7 @@ pub struct Player {
 }
 
 /// Cure research progress
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct CureResearch {
     pub progress: f32, // 0.0 to 1.0 (100%)
     pub deployed: bool,
@@ -44,7 +44,7 @@ impl CureResearch {
 }
 
 /// Emergency healthcare budget
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct EmergencyBudget {
     pub uses_remaining: u32,
     pub max_uses: u32,
@@ -75,7 +75,7 @@ impl EmergencyBudget {
 }
 
 /// Active quarantines
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct ActiveQuarantines {
     pub quarantines: Vec<Quarantine>,
 }
@@ -121,7 +121,7 @@ impl ActiveQuarantines {
 }
 
 /// Active awareness campaigns
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct ActiveAwareness {
     pub campaigns: Vec<AwarenessCampaign>,
 }
@@ -164,7 +164,7 @@ impl ActiveAwareness {
 }
 
 /// Active emergency healthcare
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct ActiveEmergencyHealthcare {
     pub campaigns: Vec<EmergencyHealthcareCampaign>,
 }
@@ -207,7 +207,7 @@ impl ActiveEmergencyHealthcare {
 }
 
 /// Travel ban status
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct TravelBanStatus {
     pub active: bool,
     pub start_turn: Option<u32>,

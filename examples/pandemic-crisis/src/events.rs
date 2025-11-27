@@ -6,7 +6,7 @@ use issun_bevy::plugins::contagion::*;
 use crate::world::get_city_name;
 
 /// Event log for display
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct EventLog {
     pub entries: Vec<String>,
     pub max_entries: usize,

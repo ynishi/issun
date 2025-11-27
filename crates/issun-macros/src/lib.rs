@@ -10,6 +10,7 @@
 //! Bevy-specific macros:
 //! - `#[derive(IssunEntity)]` - Auto-generate component getters for any entity-holding Resource
 //! - `#[derive(IssunQuery)]` - Query helper methods avoiding borrowing conflicts
+//! - `#[derive(IssunBevyPlugin)]` - Auto-generate Bevy Plugin boilerplate
 //! - `log!()` - Simplified EventLog macro
 
 mod bevy;
@@ -1701,6 +1702,69 @@ pub fn derive_issun_query(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn log(input: TokenStream) -> TokenStream {
     bevy::log_impl(input)
+}
+
+/// Derive macro for Bevy Plugin boilerplate generation
+///
+/// Auto-generates Plugin implementation with resource registration and builder methods.
+///
+/// # Requirements
+///
+/// **All fields marked with `#[resource]` or `#[config]` must implement `Clone`.**
+///
+/// This is because `Plugin::build(&self, app)` takes `&self`, so resources must be cloned.
+///
+/// # Example
+/// ```ignore
+/// use bevy::prelude::*;
+/// use issun_macros::IssunBevyPlugin;
+///
+/// #[derive(Resource, Clone, Default)]
+/// pub struct MyConfig { pub difficulty: f32 }
+///
+/// #[derive(Resource, Clone, Default)]
+/// pub struct GameStats { pub score: u32 }
+///
+/// #[derive(Default, IssunBevyPlugin)]
+/// #[plugin(name = "my_plugin")]
+/// pub struct MyPlugin {
+///     #[config]
+///     pub config: MyConfig,
+///
+///     #[resource]
+///     pub stats: GameStats,
+/// }
+///
+/// // Usage
+/// App::new()
+///     .add_plugins(MyPlugin::default()
+///         .with_config(MyConfig { difficulty: 2.0 })
+///     );
+/// ```
+///
+/// # Attributes
+///
+/// ## Struct-level
+/// - `#[plugin(name = "...")]` - Custom plugin name
+/// - `#[plugin(auto_register_types = true)]` - Auto-register types for Reflection
+/// - `#[plugin(messages = [Type1, Type2, ...])]` - Auto-register messages
+/// - `#[plugin(components = [Type1, Type2, ...])]` - Auto-register component types (Phase 2.2)
+/// - `#[plugin(startup_systems = [fn1, fn2, ...])]` - Auto-register Startup systems (Phase 2.2)
+/// - `#[plugin(update_systems = [fn1, fn2, ...])]` - Auto-register Update systems (Phase 2.2)
+///
+/// ## Field-level
+/// - `#[config]` - Config resource (insert_resource + builder method)
+/// - `#[resource]` - Resource (insert_resource + builder method)
+/// - `#[skip]` - Skip this field
+///
+/// # Generated Code
+///
+/// - `Plugin::build()` implementation with resource registration
+/// - Builder methods: `with_config()`, `with_stats()`
+/// - Type registration (if `auto_register_types = true`)
+#[proc_macro_derive(IssunBevyPlugin, attributes(plugin, config, resource, skip))]
+pub fn derive_issun_bevy_plugin(input: TokenStream) -> TokenStream {
+    bevy::derive_issun_bevy_plugin_impl(input)
 }
 
 /// Attribute macro that injects `pump_event_systems` calls before/after input handlers.
