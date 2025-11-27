@@ -204,10 +204,8 @@ impl ModLoadSystem {
 
         // Publish unload results
         if let Some(mut event_bus) = resources.get_mut::<EventBus>().await {
-            for result in unload_results {
-                if let Ok(mod_id) = result {
-                    event_bus.publish(ModUnloadedEvent { mod_id });
-                }
+            for mod_id in unload_results.into_iter().flatten() {
+                event_bus.publish(ModUnloadedEvent { mod_id });
             }
         }
     }

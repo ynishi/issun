@@ -128,16 +128,10 @@ impl PropagationState {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PropagationEvent {
     /// Infection pressure calculated for a node
-    PressureCalculated {
-        node: NodeId,
-        pressure: f32,
-    },
+    PressureCalculated { node: NodeId, pressure: f32 },
 
     /// Initial infection triggered at a node
-    InitialInfection {
-        node: NodeId,
-        initial_severity: u32,
-    },
+    InitialInfection { node: NodeId, initial_severity: u32 },
 
     /// Pressure increased at already-infected node
     PressureIncreased {

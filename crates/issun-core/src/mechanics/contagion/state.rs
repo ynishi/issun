@@ -38,6 +38,7 @@ use super::duration::Duration;
 /// assert!(!state.is_active());
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum InfectionState {
     /// Incubation period - infection present but not yet symptomatic.
     ///
@@ -73,6 +74,7 @@ pub enum InfectionState {
     },
 
     /// Plain - no infection, no immunity, fully susceptible.
+    #[default]
     Plain,
 }
 
@@ -203,11 +205,6 @@ impl InfectionState {
     }
 }
 
-impl Default for InfectionState {
-    fn default() -> Self {
-        InfectionState::Plain
-    }
-}
 
 /// Simplified infection state type (without duration details).
 ///

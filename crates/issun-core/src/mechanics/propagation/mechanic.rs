@@ -71,11 +71,8 @@ impl<P: PropagationPolicy> Mechanic for PropagationMechanic<P> {
         state.node_pressures.clear();
 
         // Get all unique target nodes
-        let target_nodes: std::collections::HashSet<NodeId> = config
-            .edges
-            .iter()
-            .map(|edge| edge.to.clone())
-            .collect();
+        let target_nodes: std::collections::HashSet<NodeId> =
+            config.edges.iter().map(|edge| edge.to.clone()).collect();
 
         // For each target node, calculate total infection pressure
         for target in target_nodes {

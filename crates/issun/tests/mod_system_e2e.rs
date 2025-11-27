@@ -12,7 +12,6 @@ use issun::context::ResourceContext;
 use issun::engine::ModBridgeSystem;
 use issun::event::EventBus;
 use issun::plugin::{CombatConfig, InventoryConfig};
-use issun::system::System;
 
 // NOTE: The full end-to-end test with RhaiLoader is in issun-mod-rhai crate
 // This file tests the ModBridgeSystem integration with the event system

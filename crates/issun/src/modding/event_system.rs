@@ -17,6 +17,12 @@ use std::any::Any;
 /// 4. Calls MOD callbacks with event data
 pub struct ModEventSystem;
 
+impl Default for ModEventSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModEventSystem {
     pub fn new() -> Self {
         Self
