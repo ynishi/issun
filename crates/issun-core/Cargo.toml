@@ -7,6 +7,9 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
+description = "Core domain models and traits for ISSUN game engine"
+keywords = ["game", "engine", "core", "domain"]
+categories = ["game-engines"]
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
