@@ -264,7 +264,10 @@ fn test_utility_apis_available() {
         .unwrap();
 
     // If assertions in Lua pass, test passes
-    assert!(() == ());
+    #[allow(clippy::unit_cmp)]
+    {
+        assert!(() == ());
+    }
 }
 
 #[test]
@@ -856,6 +859,9 @@ fn test_example_mod_healing_station() {
         .call_function("roll_critical", ())
         .unwrap();
 
-    // Result is random, just verify it returns a bool
-    assert!(is_critical || !is_critical);
+    // Result is random, just verify it returns a bool (always true, but explicit type check)
+    #[allow(clippy::overly_complex_bool_expr)]
+    {
+        assert!(is_critical || !is_critical);
+    }
 }

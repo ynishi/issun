@@ -12,7 +12,7 @@ pub fn handle_contagion_spawn(
     mut commands: Commands,
     mut messages: MessageReader<ContagionSpawnRequested>,
     mut spawned_messages: MessageWriter<ContagionSpawnedEvent>,
-    node_registry: Res<NodeRegistry>,
+    _node_registry: Res<NodeRegistry>,
     config: Res<ContagionConfig>,
     mut rng: ResMut<ContagionRng>,
 ) {

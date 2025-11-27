@@ -1,6 +1,8 @@
 //! Unit tests for contagion propagation
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
+#[allow(deprecated)] // iter_entities is deprecated but acceptable in tests
 mod tests {
     use bevy::prelude::*;
 
@@ -46,9 +48,11 @@ mod tests {
             .id();
 
         // Register nodes
-        let mut registry = app.world_mut().resource_mut::<NodeRegistry>();
-        registry.register("node_a", node_a);
-        registry.register("node_b", node_b);
+        {
+            let mut registry = app.world_mut().resource_mut::<NodeRegistry>();
+            registry.register("node_a", node_a);
+            registry.register("node_b", node_b);
+        }
 
         (node_a, node_b, edge)
     }
@@ -221,12 +225,13 @@ mod tests {
         app.world_mut()
             .spawn(PropagationEdge::new("cd", node_c, node_d, 1.0));
 
-        let mut registry = app.world_mut().resource_mut::<NodeRegistry>();
-        registry.register("a", node_a);
-        registry.register("b", node_b);
-        registry.register("c", node_c);
-        registry.register("d", node_d);
-        drop(registry);
+        {
+            let mut registry = app.world_mut().resource_mut::<NodeRegistry>();
+            registry.register("a", node_a);
+            registry.register("b", node_b);
+            registry.register("c", node_c);
+            registry.register("d", node_d);
+        }
 
         // Spawn at node A
         app.world_mut().write_message(ContagionSpawnRequested {
@@ -337,15 +342,16 @@ mod tests {
         let (node_a, _node_b, edge) = setup_basic_network(&mut app);
 
         // Set edge noise level to enable mutations
-        let mut edge_mut = app.world_mut().entity_mut(edge);
-        edge_mut.insert(PropagationEdge {
-            edge_id: "edge_ab".to_string(),
-            from_node: node_a,
-            to_node: _node_b,
-            transmission_rate: 1.0,
-            noise_level: 1.0, // Enable mutations
-        });
-        drop(edge_mut);
+        {
+            let mut edge_mut = app.world_mut().entity_mut(edge);
+            edge_mut.insert(PropagationEdge {
+                edge_id: "edge_ab".to_string(),
+                from_node: node_a,
+                to_node: _node_b,
+                transmission_rate: 1.0,
+                noise_level: 1.0, // Enable mutations
+            });
+        }
 
         // Spawn with high mutation rate
         app.world_mut().write_message(ContagionSpawnRequested {

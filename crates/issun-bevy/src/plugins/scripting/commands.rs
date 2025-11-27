@@ -226,7 +226,10 @@ mod tests {
         let num_value: mlua::Value = lua.load("return 3.14").eval().unwrap();
         let lua_value: LuaValue = num_value.into();
         if let LuaValue::Number(n) = lua_value {
-            assert!((n - 3.14).abs() < 0.001);
+            #[allow(clippy::approx_constant)]
+            {
+                assert!((n - 3.14).abs() < 0.001);
+            }
         } else {
             panic!("Expected Number");
         }
