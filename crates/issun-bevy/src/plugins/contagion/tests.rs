@@ -4,12 +4,8 @@
 mod tests {
     use bevy::prelude::*;
 
-    use super::super::{
-        components::*,
-        events::*,
-        plugin::ContagionPlugin,
-        resources::*,
-    };
+    use super::super::{components::*, events::*, plugin::ContagionPlugin, resources::*};
+    use crate::IssunCorePlugin;
 
     // ==================== Test Setup Helpers ====================
 
@@ -17,6 +13,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins((
             MinimalPlugins,
+            IssunCorePlugin,
             ContagionPlugin::default().with_seed(42),
         ));
         app
@@ -26,25 +23,27 @@ mod tests {
         let mut app = App::new();
         app.add_plugins((
             MinimalPlugins,
-            ContagionPlugin::default()
-                .with_seed(42)
-                .with_config(config),
+            IssunCorePlugin,
+            ContagionPlugin::default().with_seed(42).with_config(config),
         ));
         app
     }
 
     fn setup_basic_network(app: &mut App) -> (Entity, Entity, Entity) {
-        let node_a = app.world_mut().spawn(
-            ContagionNode::new("node_a", NodeType::City, 10000)
-        ).id();
+        let node_a = app
+            .world_mut()
+            .spawn(ContagionNode::new("node_a", NodeType::City, 10000))
+            .id();
 
-        let node_b = app.world_mut().spawn(
-            ContagionNode::new("node_b", NodeType::City, 8000)
-        ).id();
+        let node_b = app
+            .world_mut()
+            .spawn(ContagionNode::new("node_b", NodeType::City, 8000))
+            .id();
 
-        let edge = app.world_mut().spawn(
-            PropagationEdge::new("edge_ab", node_a, node_b, 1.0)
-        ).id();
+        let edge = app
+            .world_mut()
+            .spawn(PropagationEdge::new("edge_ab", node_a, node_b, 1.0))
+            .id();
 
         // Register nodes
         let mut registry = app.world_mut().resource_mut::<NodeRegistry>();
@@ -75,24 +74,23 @@ mod tests {
         app.update();
 
         // Verify contagion entity created
-        let contagions = app.world_mut()
-            .query::<&Contagion>()
-            .iter(app.world())
-            .count();
+        let mut query = app.world_mut().query::<&Contagion>();
+        let contagions = query.iter(app.world()).count();
         assert_eq!(contagions, 1, "Should spawn 1 contagion");
 
         // Verify initial infection created
-        let infections = app.world_mut()
-            .query::<&ContagionInfection>()
-            .iter(app.world())
+        let infections = app
+            .world()
+            .iter_entities()
+            .filter(|e| e.contains::<ContagionInfection>())
             .count();
         assert_eq!(infections, 1, "Should create initial infection");
 
         // Verify infection is in Incubating state
-        let infection = app.world_mut()
-            .query::<&ContagionInfection>()
-            .iter(app.world())
-            .next()
+        let infection = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<ContagionInfection>())
             .unwrap();
         assert!(
             matches!(infection.state, InfectionState::Incubating { .. }),
@@ -100,9 +98,9 @@ mod tests {
         );
 
         // Verify spawned event
-        let spawned_events: Vec<_> = app.world()
-            .read_messages::<ContagionSpawnedEvent>()
-            .collect();
+        let messages = app.world().resource::<Messages<ContagionSpawnedEvent>>();
+        let mut cursor = messages.get_cursor();
+        let spawned_events: Vec<_> = cursor.read(messages).cloned().collect();
         assert_eq!(spawned_events.len(), 1, "Should emit ContagionSpawnedEvent");
     }
 
@@ -136,9 +134,8 @@ mod tests {
         // Helper to get infection state
         let get_state = |app: &App| -> InfectionState {
             app.world()
-                .query::<&ContagionInfection>()
-                .iter(app.world())
-                .next()
+                .iter_entities()
+                .find_map(|e| e.get::<ContagionInfection>())
                 .unwrap()
                 .state
                 .clone()
@@ -200,22 +197,29 @@ mod tests {
         let mut app = create_test_app_with_config(config);
 
         // Create network: A → B → C → D
-        let node_a = app.world_mut().spawn(
-            ContagionNode::new("a", NodeType::City, 1000)
-        ).id();
-        let node_b = app.world_mut().spawn(
-            ContagionNode::new("b", NodeType::City, 1000)
-        ).id();
-        let node_c = app.world_mut().spawn(
-            ContagionNode::new("c", NodeType::City, 1000)
-        ).id();
-        let node_d = app.world_mut().spawn(
-            ContagionNode::new("d", NodeType::City, 1000)
-        ).id();
+        let node_a = app
+            .world_mut()
+            .spawn(ContagionNode::new("a", NodeType::City, 1000))
+            .id();
+        let node_b = app
+            .world_mut()
+            .spawn(ContagionNode::new("b", NodeType::City, 1000))
+            .id();
+        let node_c = app
+            .world_mut()
+            .spawn(ContagionNode::new("c", NodeType::City, 1000))
+            .id();
+        let node_d = app
+            .world_mut()
+            .spawn(ContagionNode::new("d", NodeType::City, 1000))
+            .id();
 
-        app.world_mut().spawn(PropagationEdge::new("ab", node_a, node_b, 1.0));
-        app.world_mut().spawn(PropagationEdge::new("bc", node_b, node_c, 1.0));
-        app.world_mut().spawn(PropagationEdge::new("cd", node_c, node_d, 1.0));
+        app.world_mut()
+            .spawn(PropagationEdge::new("ab", node_a, node_b, 1.0));
+        app.world_mut()
+            .spawn(PropagationEdge::new("bc", node_b, node_c, 1.0));
+        app.world_mut()
+            .spawn(PropagationEdge::new("cd", node_c, node_d, 1.0));
 
         let mut registry = app.world_mut().resource_mut::<NodeRegistry>();
         registry.register("a", node_a);
@@ -239,8 +243,8 @@ mod tests {
         // Count infected nodes
         let count_infected = |app: &App| -> usize {
             app.world()
-                .query::<&ContagionInfection>()
-                .iter(app.world())
+                .iter_entities()
+                .filter(|e| e.contains::<ContagionInfection>())
                 .count()
         };
 
@@ -295,10 +299,10 @@ mod tests {
         app.update();
 
         // Should start in Incubating
-        let infection = app.world()
-            .query::<&ContagionInfection>()
-            .iter(app.world())
-            .next()
+        let infection = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<ContagionInfection>())
             .unwrap();
         assert!(matches!(infection.state, InfectionState::Incubating { .. }));
 
@@ -308,10 +312,10 @@ mod tests {
         }
 
         // Should now be Active
-        let infection = app.world()
-            .query::<&ContagionInfection>()
-            .iter(app.world())
-            .next()
+        let infection = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<ContagionInfection>())
             .unwrap();
         assert!(matches!(infection.state, InfectionState::Active { .. }));
     }
@@ -330,7 +334,18 @@ mod tests {
         };
 
         let mut app = create_test_app_with_config(config);
-        let (node_a, node_b, _edge) = setup_basic_network(&mut app);
+        let (node_a, _node_b, edge) = setup_basic_network(&mut app);
+
+        // Set edge noise level to enable mutations
+        let mut edge_mut = app.world_mut().entity_mut(edge);
+        edge_mut.insert(PropagationEdge {
+            edge_id: "edge_ab".to_string(),
+            from_node: node_a,
+            to_node: _node_b,
+            transmission_rate: 1.0,
+            noise_level: 1.0, // Enable mutations
+        });
+        drop(edge_mut);
 
         // Spawn with high mutation rate
         app.world_mut().write_message(ContagionSpawnRequested {
@@ -344,16 +359,23 @@ mod tests {
         });
         app.update();
 
+        // Advance turn to get disease into Active state for higher transmission rate
+        app.world_mut().write_message(TurnAdvancedMessage);
+        app.update();
+
         // Trigger propagation multiple times to increase mutation chance
-        for _ in 0..10 {
+        for _ in 0..50 {
             app.world_mut().write_message(PropagationStepRequested);
             app.update();
         }
 
         // Check if mutation occurred
-        let spread_events: Vec<_> = app.world()
-            .read_messages::<ContagionSpreadEvent>()
+        let messages = app.world().resource::<Messages<ContagionSpreadEvent>>();
+        let mut cursor = messages.get_cursor();
+        let spread_events: Vec<_> = cursor
+            .read(messages)
             .filter(|e| e.is_mutation)
+            .cloned()
             .collect();
 
         assert!(
@@ -362,7 +384,8 @@ mod tests {
         );
 
         // Check that mutated contagion has different ID
-        let mutations_with_original = spread_events.iter()
+        let mutations_with_original = spread_events
+            .iter()
             .filter(|e| e.original_id.is_some())
             .count();
         assert!(
@@ -396,46 +419,48 @@ mod tests {
         app.update();
 
         // Initial credibility should be 1.0
-        let initial_credibility = app.world()
-            .query::<&Contagion>()
-            .iter(app.world())
-            .next()
+        let initial_credibility = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<Contagion>())
             .unwrap()
             .credibility;
         assert_eq!(initial_credibility, 1.0);
 
         // Apply decay over 5 turns
-        app.world_mut().write_message(CredibilityDecayRequested {
-            elapsed_turns: 5,
-        });
+        app.world_mut()
+            .write_message(CredibilityDecayRequested { elapsed_turns: 5 });
         app.update();
 
-        let after_decay = app.world()
-            .query::<&Contagion>()
-            .iter(app.world())
-            .next()
+        let after_decay = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<Contagion>())
             .unwrap()
             .credibility;
         assert!(after_decay < 1.0, "Credibility should decay");
         assert!(after_decay > 0.0, "Credibility should not reach zero yet");
 
         // Apply decay to expire contagion
-        app.world_mut().write_message(CredibilityDecayRequested {
-            elapsed_turns: 10,
-        });
+        app.world_mut()
+            .write_message(CredibilityDecayRequested { elapsed_turns: 10 });
         app.update();
 
         // Contagion should be removed
-        let contagions = app.world()
-            .query::<&Contagion>()
-            .iter(app.world())
+        let contagions = app
+            .world()
+            .iter_entities()
+            .filter(|e| e.contains::<Contagion>())
             .count();
-        assert_eq!(contagions, 0, "Contagion should be removed after full decay");
+        assert_eq!(
+            contagions, 0,
+            "Contagion should be removed after full decay"
+        );
 
         // Check removal event
-        let removal_events: Vec<_> = app.world()
-            .read_messages::<ContagionRemovedEvent>()
-            .collect();
+        let messages = app.world().resource::<Messages<ContagionRemovedEvent>>();
+        let mut cursor = messages.get_cursor();
+        let removal_events: Vec<_> = cursor.read(messages).cloned().collect();
         assert_eq!(removal_events.len(), 1, "Should emit removal event");
     }
 
@@ -474,18 +499,18 @@ mod tests {
         }
 
         // Verify in Plain state
-        let infection = app.world()
-            .query::<&ContagionInfection>()
-            .iter(app.world())
-            .next()
+        let infection = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<ContagionInfection>())
             .unwrap();
         assert!(matches!(infection.state, InfectionState::Plain));
 
         // Verify reinfection is disabled
-        let contagion = app.world()
-            .query::<&Contagion>()
-            .iter(app.world())
-            .next()
+        let contagion = app
+            .world()
+            .iter_entities()
+            .find_map(|e| e.get::<Contagion>())
             .unwrap();
         assert!(!contagion.reinfection_enabled);
     }
@@ -499,10 +524,11 @@ mod tests {
             let mut app = App::new();
             app.add_plugins((
                 MinimalPlugins,
+                IssunCorePlugin,
                 ContagionPlugin::default().with_seed(12345),
             ));
 
-            let (node_a, node_b, _edge) = setup_basic_network(&mut app);
+            let (node_a, _node_b, _edge) = setup_basic_network(&mut app);
 
             app.world_mut().write_message(ContagionSpawnRequested {
                 contagion_id: "test".to_string(),
@@ -522,8 +548,10 @@ mod tests {
             }
 
             // Collect event IDs
-            app.world()
-                .read_messages::<ContagionSpreadEvent>()
+            let messages = app.world().resource::<Messages<ContagionSpreadEvent>>();
+            let mut cursor = messages.get_cursor();
+            cursor
+                .read(messages)
                 .map(|e| e.contagion_id.clone())
                 .collect()
         };
@@ -542,7 +570,7 @@ mod tests {
     #[test]
     fn test_entity_deletion_handling() {
         let mut app = create_test_app();
-        let (node_a, node_b, _edge) = setup_basic_network(&mut app);
+        let (node_a, _node_b, _edge) = setup_basic_network(&mut app);
 
         // Spawn contagion
         app.world_mut().write_message(ContagionSpawnRequested {
@@ -556,11 +584,12 @@ mod tests {
         });
         app.update();
 
-        let contagion_entity = app.world()
-            .query::<Entity>()
-            .iter(app.world())
-            .find(|&e| app.world().get::<Contagion>(e).is_some())
-            .unwrap();
+        let contagion_entity = app
+            .world()
+            .iter_entities()
+            .find(|e| e.contains::<Contagion>())
+            .unwrap()
+            .id();
 
         // Delete contagion entity
         app.world_mut().despawn(contagion_entity);
@@ -602,9 +631,11 @@ mod tests {
         app.update();
 
         // Clear initial events
-        let _: Vec<_> = app.world()
-            .read_messages::<InfectionStateChangedEvent>()
-            .collect();
+        let messages = app
+            .world()
+            .resource::<Messages<InfectionStateChangedEvent>>();
+        let mut cursor = messages.get_cursor();
+        let _: Vec<_> = cursor.read(messages).cloned().collect();
 
         // Trigger state transitions
         for _ in 0..3 {
@@ -613,16 +644,14 @@ mod tests {
         }
 
         // Collect state change events
-        let state_changes: Vec<_> = app.world()
-            .read_messages::<InfectionStateChangedEvent>()
-            .collect();
+        let messages = app
+            .world()
+            .resource::<Messages<InfectionStateChangedEvent>>();
+        let mut cursor = messages.get_cursor();
+        let state_changes: Vec<_> = cursor.read(messages).cloned().collect();
 
         // Should have transitions: Incubating→Active, Active→Recovered, Recovered→Plain
-        assert_eq!(
-            state_changes.len(),
-            3,
-            "Should emit 3 state change events"
-        );
+        assert_eq!(state_changes.len(), 3, "Should emit 3 state change events");
 
         // Verify transition sequence
         assert_eq!(state_changes[0].old_state, InfectionStateType::Incubating);

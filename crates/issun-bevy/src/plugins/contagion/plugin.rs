@@ -2,27 +2,14 @@
 
 use bevy::prelude::*;
 
+use super::{components::*, events::*, resources::*, systems::*};
 use crate::IssunSet;
-use super::{
-    components::*,
-    events::*,
-    resources::*,
-    systems::*,
-};
 
 /// Contagion propagation plugin with infection state machine
+#[derive(Default)]
 pub struct ContagionPlugin {
     pub config: ContagionConfig,
     pub rng_seed: Option<u64>,
-}
-
-impl Default for ContagionPlugin {
-    fn default() -> Self {
-        Self {
-            config: ContagionConfig::default(),
-            rng_seed: None,
-        }
-    }
 }
 
 impl ContagionPlugin {

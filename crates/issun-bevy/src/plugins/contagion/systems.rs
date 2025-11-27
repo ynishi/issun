@@ -3,11 +3,7 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use super::{
-    components::*,
-    events::*,
-    resources::*,
-};
+use super::{components::*, events::*, resources::*};
 
 // ==================== Spawn System ====================
 
@@ -21,10 +17,7 @@ pub fn handle_contagion_spawn(
     mut rng: ResMut<ContagionRng>,
 ) {
     for msg in messages.read() {
-        let Some(&origin_entity) = node_registry.id_to_entity.get(&msg.origin_node.to_string()) else {
-            warn!("Origin node {:?} not found", msg.origin_node);
-            continue;
-        };
+        let origin_entity = msg.origin_node;
 
         // Generate durations with variance
         let incubation_duration = generate_duration(
@@ -44,18 +37,20 @@ pub fn handle_contagion_spawn(
         );
 
         // Spawn contagion entity
-        let contagion_entity = commands.spawn(Contagion {
-            contagion_id: msg.contagion_id.clone(),
-            content: msg.content.clone(),
-            mutation_rate: msg.mutation_rate,
-            credibility: 1.0,
-            origin_node: origin_entity,
-            created_at: ContagionDuration::zero(&config.time_mode),
-            incubation_duration,
-            active_duration,
-            immunity_duration,
-            reinfection_enabled: config.default_reinfection_enabled,
-        }).id();
+        let contagion_entity = commands
+            .spawn(Contagion {
+                contagion_id: msg.contagion_id.clone(),
+                content: msg.content.clone(),
+                mutation_rate: msg.mutation_rate,
+                credibility: 1.0,
+                origin_node: origin_entity,
+                created_at: ContagionDuration::zero(&config.time_mode),
+                incubation_duration,
+                active_duration,
+                immunity_duration,
+                reinfection_enabled: config.default_reinfection_enabled,
+            })
+            .id();
 
         // Spawn initial infection at origin
         commands.spawn(ContagionInfection {
@@ -80,9 +75,9 @@ pub fn handle_contagion_spawn(
 
 /// Progress infection states (Tick/Time-based)
 pub fn progress_infection_states_continuous(
-    mut infections: Query<(Entity, &mut ContagionInfection)>,
+    infections: Query<(Entity, &mut ContagionInfection)>,
     contagions: Query<&Contagion>,
-    mut state_changed: MessageWriter<InfectionStateChangedEvent>,
+    state_changed: MessageWriter<InfectionStateChangedEvent>,
     config: Res<ContagionConfig>,
     time: Res<Time>,
 ) {
@@ -96,7 +91,13 @@ pub fn progress_infection_states_continuous(
         _ => return,
     };
 
-    progress_infections_impl(infections, contagions, state_changed, delta, &config.time_mode);
+    progress_infections_impl(
+        infections,
+        contagions,
+        state_changed,
+        delta,
+        &config.time_mode,
+    );
 }
 
 /// Progress infection states (Turn-based)
@@ -111,7 +112,13 @@ pub fn progress_infection_states_turn_based(
     let has_message = turn_messages.read().next().is_some();
     if has_message {
         let delta = ContagionDuration::Turns(1);
-        progress_infections_impl(infections, contagions, state_changed, delta, &config.time_mode);
+        progress_infections_impl(
+            infections,
+            contagions,
+            state_changed,
+            delta,
+            &config.time_mode,
+        );
     }
 }
 
@@ -131,7 +138,10 @@ fn progress_infections_impl(
         let mut transitioned = false;
 
         match &mut infection.state {
-            InfectionState::Incubating { elapsed, total_duration } => {
+            InfectionState::Incubating {
+                elapsed,
+                total_duration,
+            } => {
                 elapsed.add(&delta);
                 if total_duration.is_expired(elapsed) {
                     infection.state = InfectionState::Active {
@@ -141,7 +151,10 @@ fn progress_infections_impl(
                     transitioned = true;
                 }
             }
-            InfectionState::Active { elapsed, total_duration } => {
+            InfectionState::Active {
+                elapsed,
+                total_duration,
+            } => {
                 elapsed.add(&delta);
                 if total_duration.is_expired(elapsed) {
                     infection.state = InfectionState::Recovered {
@@ -151,7 +164,10 @@ fn progress_infections_impl(
                     transitioned = true;
                 }
             }
-            InfectionState::Recovered { elapsed, immunity_duration } => {
+            InfectionState::Recovered {
+                elapsed,
+                immunity_duration,
+            } => {
                 elapsed.add(&delta);
                 if immunity_duration.is_expired(elapsed) {
                     infection.state = InfectionState::Plain;
@@ -177,6 +193,7 @@ fn progress_infections_impl(
 // ==================== Propagation System ====================
 
 /// Main propagation system (with state-based transmission rates)
+#[allow(clippy::too_many_arguments)]
 pub fn handle_propagation_step(
     mut commands: Commands,
     mut messages: MessageReader<PropagationStepRequested>,
@@ -207,7 +224,8 @@ pub fn handle_propagation_step(
                 continue;
             }
 
-            let Ok((contagion_entity, contagion)) = contagions.get(infection.contagion_entity) else {
+            let Ok((contagion_entity, contagion)) = contagions.get(infection.contagion_entity)
+            else {
                 continue;
             };
 
@@ -218,9 +236,9 @@ pub fn handle_propagation_step(
                 }
 
                 // Check if target already infected
-                let target_infected = infections.iter().any(|i|
+                let target_infected = infections.iter().any(|i| {
                     i.node_entity == edge.to_node && i.contagion_entity == contagion_entity
-                );
+                });
                 if target_infected {
                     continue;
                 }
@@ -256,37 +274,48 @@ pub fn handle_propagation_step(
             let (target_contagion, target_contagion_id) = if pending.is_mutation {
                 // Create mutated contagion
                 let mutated_content = mutate_content(&pending.contagion.content, &mut rng.rng);
-                let mutated_id = format!("{}_{}", pending.contagion.contagion_id, rng.rng.gen::<u64>());
+                let mutated_id = format!(
+                    "{}_{}",
+                    pending.contagion.contagion_id,
+                    rng.rng.gen::<u64>()
+                );
 
-                let mutated = commands.spawn(Contagion {
-                    contagion_id: mutated_id.clone(),
-                    content: mutated_content,
-                    mutation_rate: pending.contagion.mutation_rate,
-                    credibility: pending.contagion.credibility * 0.9,
-                    origin_node: pending.to_node,
-                    created_at: pending.contagion.created_at,
-                    incubation_duration: pending.contagion.incubation_duration,
-                    active_duration: pending.contagion.active_duration,
-                    immunity_duration: pending.contagion.immunity_duration,
-                    reinfection_enabled: pending.contagion.reinfection_enabled,
-                }).id();
+                let mutated = commands
+                    .spawn(Contagion {
+                        contagion_id: mutated_id.clone(),
+                        content: mutated_content,
+                        mutation_rate: pending.contagion.mutation_rate,
+                        credibility: pending.contagion.credibility * 0.9,
+                        origin_node: pending.to_node,
+                        created_at: pending.contagion.created_at,
+                        incubation_duration: pending.contagion.incubation_duration,
+                        active_duration: pending.contagion.active_duration,
+                        immunity_duration: pending.contagion.immunity_duration,
+                        reinfection_enabled: pending.contagion.reinfection_enabled,
+                    })
+                    .id();
 
                 mutation_count += 1;
                 (mutated, mutated_id)
             } else {
-                (pending.contagion_entity, pending.contagion.contagion_id.clone())
+                (
+                    pending.contagion_entity,
+                    pending.contagion.contagion_id.clone(),
+                )
             };
 
             // Spawn infection at target node
-            let infection_entity = commands.spawn(ContagionInfection {
-                contagion_entity: target_contagion,
-                node_entity: pending.to_node,
-                state: InfectionState::Incubating {
-                    elapsed: ContagionDuration::zero(&config.time_mode),
-                    total_duration: pending.contagion.incubation_duration,
-                },
-                infected_at: ContagionDuration::zero(&config.time_mode),
-            }).id();
+            let infection_entity = commands
+                .spawn(ContagionInfection {
+                    contagion_entity: target_contagion,
+                    node_entity: pending.to_node,
+                    state: InfectionState::Incubating {
+                        elapsed: ContagionDuration::zero(&config.time_mode),
+                        total_duration: pending.contagion.incubation_duration,
+                    },
+                    infected_at: ContagionDuration::zero(&config.time_mode),
+                })
+                .id();
 
             spread_messages.write(ContagionSpreadEvent {
                 infection_entity,
@@ -384,13 +413,14 @@ fn mutate_content(content: &ContagionContent, rng: &mut impl Rng) -> ContagionCo
                 sentiment: (sentiment * 1.5).clamp(-1.0, 1.0),
             }
         }
-        ContagionContent::Political { faction, claim } => {
-            ContagionContent::Political {
-                faction: faction.clone(),
-                claim: format!("{} (exaggerated)", claim),
-            }
-        }
-        ContagionContent::MarketTrend { commodity, direction } => {
+        ContagionContent::Political { faction, claim } => ContagionContent::Political {
+            faction: faction.clone(),
+            claim: format!("{} (exaggerated)", claim),
+        },
+        ContagionContent::MarketTrend {
+            commodity,
+            direction,
+        } => {
             let new_direction = if rng.gen::<f32>() < 0.7 {
                 *direction
             } else {
@@ -405,12 +435,10 @@ fn mutate_content(content: &ContagionContent, rng: &mut impl Rng) -> ContagionCo
                 direction: new_direction,
             }
         }
-        ContagionContent::Custom { key, data } => {
-            ContagionContent::Custom {
-                key: key.clone(),
-                data: data.clone(),
-            }
-        }
+        ContagionContent::Custom { key, data } => ContagionContent::Custom {
+            key: key.clone(),
+            data: data.clone(),
+        },
     }
 }
 
