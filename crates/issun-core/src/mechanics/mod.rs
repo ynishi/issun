@@ -4,6 +4,7 @@
 //! The design is based on Policy-Based Design patterns, allowing for compile-time
 //! composition of behaviors with zero runtime overhead.
 
+pub mod combat;
 pub mod contagion;
 pub mod propagation;
 pub mod state_machine;

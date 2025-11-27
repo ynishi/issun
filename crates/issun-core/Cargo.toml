@@ -9,4 +9,4 @@ homepage.workspace = true
 documentation.workspace = true
 
 [dependencies]
-# No dependencies needed for core traits - pure Rust generics
+# No dependencies - pure Rust logic only
