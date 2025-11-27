@@ -116,10 +116,22 @@ pub enum CombatEvent {
         is_fatal: bool,
     },
 
-    /// Attack was completely blocked (damage reduced to 0).
-    Blocked,
+    /// Attack was completely blocked (damage reduced to 0 or below).
+    ///
+    /// This provides context about the attempted damage before it was blocked,
+    /// which can be useful for UI feedback (e.g., "BLOCKED! (50 damage negated)").
+    Blocked {
+        /// The damage value before it was blocked.
+        ///
+        /// This includes all calculations (base damage, defense, elemental, critical)
+        /// but before checking if it's <= 0.
+        attempted_damage: i32,
+    },
 
     /// Attack missed or was evaded.
+    ///
+    /// **Note**: This event is currently unused by the default mechanic implementation.
+    /// It's provided for future extensions where accuracy/evasion systems are added.
     Evaded,
 }
 

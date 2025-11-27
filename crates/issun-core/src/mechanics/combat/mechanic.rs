@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 
 use crate::mechanics::{EventEmitter, Mechanic};
 
-use super::policies::{DamageCalculationPolicy, DefensePolicy, ElementalPolicy};
-use super::strategies::{LinearDamageCalculation, NoElemental, SubtractiveDefense};
+use super::policies::{CriticalPolicy, DamageCalculationPolicy, DefensePolicy, ElementalPolicy};
+use super::strategies::{LinearDamageCalculation, NoCritical, NoElemental, SubtractiveDefense};
 use super::types::{CombatConfig, CombatEvent, CombatInput, CombatState};
 
 /// The core combat mechanic that composes three policy types.
@@ -22,6 +22,7 @@ use super::types::{CombatConfig, CombatEvent, CombatInput, CombatState};
 /// - `D`: Damage calculation policy (`DamageCalculationPolicy`)
 /// - `F`: Defense application policy (`DefensePolicy`)
 /// - `E`: Elemental affinity policy (`ElementalPolicy`)
+/// - `C`: Critical hit policy (`CriticalPolicy`)
 ///
 /// # Default Policies
 ///
@@ -29,6 +30,7 @@ use super::types::{CombatConfig, CombatEvent, CombatInput, CombatState};
 /// - Damage: `LinearDamageCalculation` (damage = attack power)
 /// - Defense: `SubtractiveDefense` (damage = attack - defense)
 /// - Elemental: `NoElemental` (no elemental system)
+/// - Critical: `NoCritical` (no critical hits)
 ///
 /// # Examples
 ///
@@ -79,15 +81,17 @@ pub struct CombatMechanic<
     D: DamageCalculationPolicy = LinearDamageCalculation,
     F: DefensePolicy = SubtractiveDefense,
     E: ElementalPolicy = NoElemental,
+    C: CriticalPolicy = NoCritical,
 > {
-    _marker: PhantomData<(D, F, E)>,
+    _marker: PhantomData<(D, F, E, C)>,
 }
 
-impl<D, F, E> Mechanic for CombatMechanic<D, F, E>
+impl<D, F, E, C> Mechanic for CombatMechanic<D, F, E, C>
 where
     D: DamageCalculationPolicy,
     F: DefensePolicy,
     E: ElementalPolicy,
+    C: CriticalPolicy,
 {
     type Config = CombatConfig;
     type State = CombatState;
@@ -107,26 +111,31 @@ where
         let after_defense = F::apply_defense(base_damage, input.defender_defense, config);
 
         // 3. Apply elemental modifier (delegated to policy E)
-        let final_damage = E::apply_elemental_modifier(
+        let after_elemental = E::apply_elemental_modifier(
             after_defense,
             input.attacker_element,
             input.defender_element,
         );
 
-        // 4. Check if damage is completely negated
+        // 4. Apply critical hit (delegated to policy C)
+        let (final_damage, is_critical) = C::apply_critical(after_elemental, config);
+
+        // 5. Check if damage is completely negated
         if final_damage <= 0 {
-            emitter.emit(CombatEvent::Blocked);
+            emitter.emit(CombatEvent::Blocked {
+                attempted_damage: after_elemental,
+            });
             return;
         }
 
-        // 5. Apply damage to state
+        // 6. Apply damage to state
         state.current_hp = (state.current_hp - final_damage).max(0);
         let is_fatal = state.current_hp == 0;
 
-        // 6. Emit damage event
+        // 7. Emit damage event
         emitter.emit(CombatEvent::DamageDealt {
             amount: final_damage,
-            is_critical: false, // TODO: Add CriticalPolicy in future
+            is_critical,
             is_fatal,
         });
     }
@@ -346,7 +355,9 @@ mod tests {
 
         // Blocked event emitted
         match &emitter.0[0] {
-            CombatEvent::Blocked => {}
+            CombatEvent::Blocked { attempted_damage } => {
+                assert_eq!(*attempted_damage, 0); // 0 damage before blocking
+            }
             _ => panic!("Expected Blocked event"),
         }
     }

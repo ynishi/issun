@@ -6,12 +6,15 @@
 //! - `damage`: Damage calculation strategies
 //! - `defense`: Defense application strategies
 //! - `elemental`: Elemental affinity strategies
+//! - `critical`: Critical hit strategies
 
+pub mod critical;
 pub mod damage;
 pub mod defense;
 pub mod elemental;
 
 // Re-export common strategies for convenience
+pub use critical::{NoCritical, SimpleCritical};
 pub use damage::{LinearDamageCalculation, ScalingDamageCalculation};
 pub use defense::{PercentageReduction, SubtractiveDefense};
 pub use elemental::{ElementalAffinity, NoElemental};

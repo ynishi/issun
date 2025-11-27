@@ -6,6 +6,7 @@
 //! - `DamageCalculationPolicy`: How to calculate base damage from attack power
 //! - `DefensePolicy`: How defense reduces incoming damage
 //! - `ElementalPolicy`: How elemental matchups modify damage
+//! - `CriticalPolicy`: How critical hits are determined and applied
 
 use super::types::{CombatConfig, Element};
 
@@ -122,4 +123,48 @@ pub trait ElementalPolicy {
         attacker_element: Option<Element>,
         defender_element: Option<Element>,
     ) -> i32;
+}
+
+/// Policy for determining and applying critical hits.
+///
+/// This policy controls whether an attack becomes a critical hit and how
+/// the critical multiplier is applied to damage.
+///
+/// # Examples
+///
+/// ```rust
+/// use issun_core::mechanics::combat::policies::CriticalPolicy;
+/// use issun_core::mechanics::combat::CombatConfig;
+///
+/// struct NoCritical;
+///
+/// impl CriticalPolicy for NoCritical {
+///     fn apply_critical(damage: i32, _config: &CombatConfig) -> (i32, bool) {
+///         (damage, false) // No critical hits
+///     }
+/// }
+/// ```
+pub trait CriticalPolicy {
+    /// Determine if an attack is a critical hit and calculate the final damage.
+    ///
+    /// # Parameters
+    ///
+    /// - `damage`: Damage before critical calculation
+    /// - `config`: Global combat configuration
+    ///
+    /// # Returns
+    ///
+    /// A tuple of `(final_damage, is_critical)`:
+    /// - `final_damage`: Damage after critical multiplier (if any)
+    /// - `is_critical`: Whether this attack was a critical hit
+    ///
+    /// # Implementation Notes
+    ///
+    /// Typical critical mechanics:
+    /// - **Chance-based**: Roll random number to determine critical (e.g., 10% chance)
+    /// - **Guaranteed**: Always critical (for special abilities)
+    /// - **None**: No critical hits (`NoCritical` strategy)
+    ///
+    /// Common multipliers: 1.5x, 2.0x, 3.0x
+    fn apply_critical(damage: i32, config: &CombatConfig) -> (i32, bool);
 }

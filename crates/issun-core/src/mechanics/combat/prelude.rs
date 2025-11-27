@@ -23,12 +23,14 @@ pub use super::mechanic::CombatMechanic;
 pub use super::types::{CombatConfig, CombatEvent, CombatInput, CombatState, Element};
 
 // Policies (for custom implementations)
-pub use super::policies::{DamageCalculationPolicy, DefensePolicy, ElementalPolicy};
+pub use super::policies::{
+    CriticalPolicy, DamageCalculationPolicy, DefensePolicy, ElementalPolicy,
+};
 
 // Common strategies
 pub use super::strategies::{
-    ElementalAffinity, LinearDamageCalculation, NoElemental, PercentageReduction,
-    ScalingDamageCalculation, SubtractiveDefense,
+    ElementalAffinity, LinearDamageCalculation, NoCritical, NoElemental, PercentageReduction,
+    ScalingDamageCalculation, SimpleCritical, SubtractiveDefense,
 };
 
 // ==================== Strategy Aliases ====================
@@ -48,6 +50,12 @@ pub use PercentageReduction as Percentage;
 
 /// Elemental affinity system (Pokémon-style)
 pub use ElementalAffinity as Affinity;
+
+/// No critical hit system
+pub use NoCritical as NoCrit;
+
+/// Simple critical hit system (10% chance, 2x multiplier)
+pub use SimpleCritical as Crit;
 
 // ==================== RPG Presets ====================
 // Common combat styles for RPG games
