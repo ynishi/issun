@@ -2,7 +2,6 @@
 
 #[cfg(test)]
 #[allow(clippy::module_inception)]
-#[allow(deprecated)] // iter_entities is deprecated but acceptable in tests
 mod tests {
     use bevy::prelude::*;
 
@@ -83,19 +82,13 @@ mod tests {
         assert_eq!(contagions, 1, "Should spawn 1 contagion");
 
         // Verify initial infection created
-        let infections = app
-            .world()
-            .iter_entities()
-            .filter(|e| e.contains::<ContagionInfection>())
-            .count();
+        let mut query = app.world_mut().query::<&ContagionInfection>();
+        let infections = query.iter(app.world()).count();
         assert_eq!(infections, 1, "Should create initial infection");
 
         // Verify infection is in Incubating state
-        let infection = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<ContagionInfection>())
-            .unwrap();
+        let mut query = app.world_mut().query::<&ContagionInfection>();
+        let infection = query.iter(app.world()).next().unwrap();
         assert!(
             matches!(infection.state, InfectionState::Incubating { .. }),
             "Initial infection should be Incubating"
@@ -136,49 +129,45 @@ mod tests {
         app.update();
 
         // Helper to get infection state
-        let get_state = |app: &App| -> InfectionState {
-            app.world()
-                .iter_entities()
-                .find_map(|e| e.get::<ContagionInfection>())
-                .unwrap()
-                .state
-                .clone()
+        let get_state = |app: &mut App| -> InfectionState {
+            let mut query = app.world_mut().query::<&ContagionInfection>();
+            query.iter(app.world()).next().unwrap().state.clone()
         };
 
         // Turn 0: Incubating
-        assert!(matches!(get_state(&app), InfectionState::Incubating { .. }));
+        assert!(matches!(get_state(&mut app), InfectionState::Incubating { .. }));
 
         // Turn 1: Still Incubating
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&app), InfectionState::Incubating { .. }));
+        assert!(matches!(get_state(&mut app), InfectionState::Incubating { .. }));
 
         // Turn 2: Transition to Active
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&app), InfectionState::Active { .. }));
+        assert!(matches!(get_state(&mut app), InfectionState::Active { .. }));
 
         // Turn 3-4: Still Active
         for _ in 0..2 {
             app.world_mut().write_message(TurnAdvancedMessage);
             app.update();
         }
-        assert!(matches!(get_state(&app), InfectionState::Active { .. }));
+        assert!(matches!(get_state(&mut app), InfectionState::Active { .. }));
 
         // Turn 5: Transition to Recovered
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&app), InfectionState::Recovered { .. }));
+        assert!(matches!(get_state(&mut app), InfectionState::Recovered { .. }));
 
         // Turn 6: Still Recovered
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&app), InfectionState::Recovered { .. }));
+        assert!(matches!(get_state(&mut app), InfectionState::Recovered { .. }));
 
         // Turn 7: Transition to Plain
         app.world_mut().write_message(TurnAdvancedMessage);
         app.update();
-        assert!(matches!(get_state(&app), InfectionState::Plain));
+        assert!(matches!(get_state(&mut app), InfectionState::Plain));
     }
 
     // ==================== Test: State-Based Transmission Rates ====================
@@ -246,20 +235,18 @@ mod tests {
         app.update();
 
         // Count infected nodes
-        let count_infected = |app: &App| -> usize {
-            app.world()
-                .iter_entities()
-                .filter(|e| e.contains::<ContagionInfection>())
-                .count()
+        let count_infected = |app: &mut App| -> usize {
+            let mut query = app.world_mut().query::<&ContagionInfection>();
+            query.iter(app.world()).count()
         };
 
         // Initially: 1 infected (A in Incubating)
-        assert_eq!(count_infected(&app), 1);
+        assert_eq!(count_infected(&mut app), 1);
 
         // Propagation in Incubating state (rate=0.2, may not spread)
         app.world_mut().write_message(PropagationStepRequested);
         app.update();
-        let count_after_incubating = count_infected(&app);
+        let count_after_incubating = count_infected(&mut app);
 
         // Advance to Active state
         app.world_mut().write_message(TurnAdvancedMessage);
@@ -268,7 +255,7 @@ mod tests {
         // Propagation in Active state (rate=0.8, likely spreads)
         app.world_mut().write_message(PropagationStepRequested);
         app.update();
-        let count_after_active = count_infected(&app);
+        let count_after_active = count_infected(&mut app);
 
         // Active transmission should be more effective than Incubating
         assert!(
@@ -304,11 +291,10 @@ mod tests {
         app.update();
 
         // Should start in Incubating
-        let infection = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<ContagionInfection>())
-            .unwrap();
+        let infection = {
+            let mut query = app.world_mut().query::<&ContagionInfection>();
+            query.iter(app.world()).next().unwrap().clone()
+        };
         assert!(matches!(infection.state, InfectionState::Incubating { .. }));
 
         // Progress through ticks (120 ticks for incubation)
@@ -317,11 +303,10 @@ mod tests {
         }
 
         // Should now be Active
-        let infection = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<ContagionInfection>())
-            .unwrap();
+        let infection = {
+            let mut query = app.world_mut().query::<&ContagionInfection>();
+            query.iter(app.world()).next().unwrap().clone()
+        };
         assert!(matches!(infection.state, InfectionState::Active { .. }));
     }
 
@@ -425,12 +410,10 @@ mod tests {
         app.update();
 
         // Initial credibility should be 1.0
-        let initial_credibility = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<Contagion>())
-            .unwrap()
-            .credibility;
+        let initial_credibility = {
+            let mut query = app.world_mut().query::<&Contagion>();
+            query.iter(app.world()).next().unwrap().credibility
+        };
         assert_eq!(initial_credibility, 1.0);
 
         // Apply decay over 5 turns
@@ -438,12 +421,10 @@ mod tests {
             .write_message(CredibilityDecayRequested { elapsed_turns: 5 });
         app.update();
 
-        let after_decay = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<Contagion>())
-            .unwrap()
-            .credibility;
+        let after_decay = {
+            let mut query = app.world_mut().query::<&Contagion>();
+            query.iter(app.world()).next().unwrap().credibility
+        };
         assert!(after_decay < 1.0, "Credibility should decay");
         assert!(after_decay > 0.0, "Credibility should not reach zero yet");
 
@@ -453,11 +434,10 @@ mod tests {
         app.update();
 
         // Contagion should be removed
-        let contagions = app
-            .world()
-            .iter_entities()
-            .filter(|e| e.contains::<Contagion>())
-            .count();
+        let contagions = {
+            let mut query = app.world_mut().query::<&Contagion>();
+            query.iter(app.world()).count()
+        };
         assert_eq!(
             contagions, 0,
             "Contagion should be removed after full decay"
@@ -505,19 +485,17 @@ mod tests {
         }
 
         // Verify in Plain state
-        let infection = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<ContagionInfection>())
-            .unwrap();
+        let infection = {
+            let mut query = app.world_mut().query::<&ContagionInfection>();
+            query.iter(app.world()).next().unwrap().clone()
+        };
         assert!(matches!(infection.state, InfectionState::Plain));
 
         // Verify reinfection is disabled
-        let contagion = app
-            .world()
-            .iter_entities()
-            .find_map(|e| e.get::<Contagion>())
-            .unwrap();
+        let contagion = {
+            let mut query = app.world_mut().query::<&Contagion>();
+            query.iter(app.world()).next().unwrap().clone()
+        };
         assert!(!contagion.reinfection_enabled);
     }
 
@@ -590,12 +568,10 @@ mod tests {
         });
         app.update();
 
-        let contagion_entity = app
-            .world()
-            .iter_entities()
-            .find(|e| e.contains::<Contagion>())
-            .unwrap()
-            .id();
+        let contagion_entity = {
+            let mut query = app.world_mut().query::<(Entity, &Contagion)>();
+            query.iter(app.world()).next().unwrap().0
+        };
 
         // Delete contagion entity
         app.world_mut().despawn(contagion_entity);
