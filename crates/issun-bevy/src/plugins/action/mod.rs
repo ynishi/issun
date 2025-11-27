@@ -83,11 +83,14 @@
 //! use bevy::prelude::*;
 //! use issun_bevy::plugins::action::{ConsumeActionMessage, ActionPoints};
 //!
+//! #[derive(Component)]
+//! struct Player;
+//!
 //! fn player_attack(
 //!     mut commands: Commands,
 //!     player_query: Query<Entity, With<Player>>,
 //! ) {
-//!     if let Ok(player) = player_query.get_single() {
+//!     if let Ok(player) = player_query.single() {
 //!         commands.write_message(ConsumeActionMessage {
 //!             entity: player,
 //!             context: "Attack enemy".to_string(),
@@ -112,7 +115,7 @@
 //!
 //! App::new()
 //!     .add_plugins(ActionPlugin::default())
-//!     .observe(log_actions)
+//!     .add_observer(log_actions)
 //!     .run();
 //! ```
 //!
@@ -123,7 +126,10 @@
 //! use issun_bevy::plugins::action::{
 //!     ActionPlugin, CheckTurnEndMessage, ActionPoints
 //! };
-//! use issun_bevy::plugins::time::events::AdvanceTimeRequested;
+//! use issun_bevy::plugins::time::AdvanceTimeRequested;
+//!
+//! #[derive(Component)]
+//! struct Player;
 //!
 //! // Custom: Only check player entities
 //! fn check_turn_end_players_only(

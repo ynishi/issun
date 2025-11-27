@@ -18,11 +18,14 @@ use bevy::prelude::*;
 /// use bevy::prelude::*;
 /// use issun_bevy::plugins::action::ConsumeActionMessage;
 ///
+/// #[derive(Component)]
+/// struct Player;
+///
 /// fn player_action(
 ///     mut commands: Commands,
 ///     player_query: Query<Entity, With<Player>>,
 /// ) {
-///     if let Ok(player) = player_query.get_single() {
+///     if let Ok(player) = player_query.single() {
 ///         commands.write_message(ConsumeActionMessage {
 ///             entity: player,
 ///             context: "Attack enemy".to_string(),
@@ -91,7 +94,7 @@ pub struct CheckTurnEndMessage;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// use bevy::prelude::*;
 /// use issun_bevy::plugins::action::ActionConsumedHook;
 ///
@@ -103,8 +106,9 @@ pub struct CheckTurnEndMessage;
 ///     );
 /// }
 ///
-/// // Register observer in app
-/// app.observe(log_action_consumed);
+/// # fn setup(app: &mut App) {
+/// app.add_observer(log_action_consumed);
+/// # }
 /// ```
 #[derive(Event, Clone, Debug, Reflect)]
 pub struct ActionConsumedHook {
@@ -124,7 +128,7 @@ pub struct ActionConsumedHook {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// use bevy::prelude::*;
 /// use issun_bevy::plugins::action::{ActionsDepletedHook, CheckTurnEndMessage};
 ///
@@ -136,7 +140,9 @@ pub struct ActionConsumedHook {
 ///     commands.write_message(CheckTurnEndMessage);
 /// }
 ///
-/// app.observe(on_actions_depleted);
+/// # fn setup(app: &mut App) {
+/// app.add_observer(on_actions_depleted);
+/// # }
 /// ```
 #[derive(Event, Clone, Debug, Reflect)]
 pub struct ActionsDepletedHook {
@@ -150,7 +156,7 @@ pub struct ActionsDepletedHook {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// use bevy::prelude::*;
 /// use issun_bevy::plugins::action::ActionsResetHook;
 ///
@@ -162,7 +168,9 @@ pub struct ActionsDepletedHook {
 ///     );
 /// }
 ///
-/// app.observe(on_actions_reset);
+/// # fn setup(app: &mut App) {
+/// app.add_observer(on_actions_reset);
+/// # }
 /// ```
 #[derive(Event, Clone, Debug, Reflect)]
 pub struct ActionsResetHook {

@@ -54,7 +54,10 @@ use crate::IssunSet;
 /// ```no_run
 /// use bevy::prelude::*;
 /// use issun_bevy::plugins::action::{ActionPlugin, CheckTurnEndMessage, ActionPoints};
-/// use issun_bevy::plugins::time::events::AdvanceTimeRequested;
+/// use issun_bevy::plugins::time::AdvanceTimeRequested;
+///
+/// #[derive(Component)]
+/// struct Player;
 ///
 /// // Custom system: Only check player entities
 /// fn check_turn_end_players_only(

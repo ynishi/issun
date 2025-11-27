@@ -96,7 +96,7 @@ pub fn handle_action_consume(
 /// **Optimized Design Options:**
 ///
 /// **Option 1: Global Reset Event Only (Recommended for Phase 3)**
-/// ```rust
+/// ```ignore
 /// // Publish single global event instead of per-entity
 /// commands.trigger(AllActionsResetHook { count: entity_count });
 /// ```
@@ -105,12 +105,12 @@ pub fn handle_action_consume(
 /// - Use case: Games with many NPCs that don't need individual tracking
 ///
 /// **Option 2: Conditional Per-Entity Messages**
-/// ```rust
+/// ```ignore
 /// // Only publish messages for entities with UITracked marker
 /// for (entity, mut action_points, tracked) in action_query.iter_mut() {
 ///     action_points.reset();
 ///     if tracked.is_some() {
-///         reset_messages.write(...); // Only for UI-tracked entities
+///         reset_messages.write(ActionsResetMessage { entity, new_count: action_points.current }); // Only for UI-tracked entities
 ///     }
 /// }
 /// ```
@@ -119,7 +119,7 @@ pub fn handle_action_consume(
 /// - Use case: Track only player party, not all NPCs
 ///
 /// **Option 3: Batch Reset with Summary**
-/// ```rust
+/// ```ignore
 /// let mut reset_count = 0;
 /// for (entity, mut action_points) in action_query.iter_mut() {
 ///     action_points.reset();
@@ -199,7 +199,14 @@ pub fn on_actions_depleted_check_turn_end(
 ///
 /// # Example: Check Only Players
 ///
-/// ```rust
+/// ```no_run
+/// use bevy::prelude::*;
+/// use issun_bevy::plugins::action::{CheckTurnEndMessage, ActionPoints};
+/// use issun_bevy::plugins::time::AdvanceTimeRequested;
+///
+/// #[derive(Component)]
+/// struct Player;
+///
 /// fn check_turn_end_players_only(
 ///     mut messages: MessageReader<CheckTurnEndMessage>,
 ///     mut commands: Commands,
