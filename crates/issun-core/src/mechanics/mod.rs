@@ -11,6 +11,7 @@ pub mod evolution;
 pub mod exchange;
 pub mod execution;
 pub mod propagation;
+pub mod reputation;
 pub mod securitization;
 pub mod state_machine;
 
