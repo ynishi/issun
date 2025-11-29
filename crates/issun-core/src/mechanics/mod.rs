@@ -13,6 +13,7 @@ pub mod execution;
 pub mod inventory;
 pub mod propagation;
 pub mod reputation;
+pub mod rights;
 pub mod securitization;
 pub mod state_machine;
 
