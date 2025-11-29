@@ -8,8 +8,10 @@ pub mod combat;
 pub mod contagion;
 pub mod diplomacy;
 pub mod evolution;
+pub mod exchange;
 pub mod execution;
 pub mod propagation;
+pub mod securitization;
 pub mod state_machine;
 
 // Re-export execution hints for convenience
