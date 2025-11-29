@@ -13,7 +13,7 @@ categories = ["game-engines", "command-line-interface"]
 
 [dependencies]
 # Re-export macros
-issun-macros = { path = "../issun-macros", version = "0.7.0" }
+issun-macros = { path = "../issun-macros", version = "0.8.0" }
 
 # Workspace dependencies
 serde = { workspace = true }
