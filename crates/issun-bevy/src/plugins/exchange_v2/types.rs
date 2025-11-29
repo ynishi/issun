@@ -13,7 +13,6 @@ pub struct ExchangeConfigResource {
     pub config: ExchangeConfig,
 }
 
-
 impl ExchangeConfigResource {
     pub fn new(config: ExchangeConfig) -> Self {
         Self { config }
@@ -56,7 +55,6 @@ pub struct Trader {
     #[reflect(ignore)]
     pub state: ExchangeState,
 }
-
 
 impl Trader {
     pub fn new(initial_reputation: f32) -> Self {

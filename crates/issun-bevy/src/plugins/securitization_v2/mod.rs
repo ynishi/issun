@@ -18,7 +18,6 @@ pub struct SecuritizationConfigResource {
     pub config: SecuritizationConfig,
 }
 
-
 /// Component: Securitization pool state
 #[derive(Component, Reflect, Clone)]
 #[reflect(Component)]
@@ -27,7 +26,6 @@ pub struct SecuritizationPool {
     #[reflect(ignore)]
     pub state: issun_core::mechanics::securitization::SecuritizationState,
 }
-
 
 /// Message: Request securitization operation
 #[derive(bevy::ecs::message::Message, Clone, Debug)]
