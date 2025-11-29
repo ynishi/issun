@@ -3,41 +3,31 @@
 //! This plugin integrates issun-core's policy-based securitization mechanic with Bevy's ECS.
 
 use bevy::prelude::*;
-use issun_core::mechanics::securitization::{SecuritizationConfig, SecuritizationInput, SecuritizationAction};
+use issun_core::mechanics::securitization::{
+    SecuritizationAction, SecuritizationConfig, SecuritizationInput,
+};
 use issun_core::mechanics::Mechanic;
 use std::marker::PhantomData;
 
 /// Securitization configuration resource
 #[derive(Resource, Clone, Reflect)]
 #[reflect(Resource)]
+#[derive(Default)]
 pub struct SecuritizationConfigResource {
     #[reflect(ignore)]
     pub config: SecuritizationConfig,
 }
 
-impl Default for SecuritizationConfigResource {
-    fn default() -> Self {
-        Self {
-            config: SecuritizationConfig::default(),
-        }
-    }
-}
 
 /// Component: Securitization pool state
 #[derive(Component, Reflect, Clone)]
 #[reflect(Component)]
+#[derive(Default)]
 pub struct SecuritizationPool {
     #[reflect(ignore)]
     pub state: issun_core::mechanics::securitization::SecuritizationState,
 }
 
-impl Default for SecuritizationPool {
-    fn default() -> Self {
-        Self {
-            state: issun_core::mechanics::securitization::SecuritizationState::default(),
-        }
-    }
-}
 
 /// Message: Request securitization operation
 #[derive(bevy::ecs::message::Message, Clone, Debug)]

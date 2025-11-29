@@ -27,7 +27,10 @@ pub fn trade_system<M>(
     for request in trade_requests.read() {
         // Get trader component
         let Ok((mut trader, market_liquidity)) = traders.get_mut(request.trader) else {
-            warn!("Trade request for non-existent trader: {:?}", request.trader);
+            warn!(
+                "Trade request for non-existent trader: {:?}",
+                request.trader
+            );
             continue;
         };
 
@@ -71,10 +74,7 @@ pub fn log_exchange_events(mut events: MessageReader<ExchangeEventWrapper>) {
                     wrapper.entity, offered, requested
                 );
             }
-            issun_core::mechanics::exchange::ExchangeEvent::TradeAccepted {
-                fair_value,
-                fee,
-            } => {
+            issun_core::mechanics::exchange::ExchangeEvent::TradeAccepted { fair_value, fee } => {
                 info!(
                     "Trade accepted for {:?}: fair_value={}, fee={}",
                     wrapper.entity, fair_value, fee

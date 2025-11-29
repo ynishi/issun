@@ -7,18 +7,12 @@ use issun_core::mechanics::EventEmitter;
 /// Exchange configuration resource - wraps issun-core's ExchangeConfig
 #[derive(Resource, Clone, Reflect)]
 #[reflect(Resource)]
+#[derive(Default)]
 pub struct ExchangeConfigResource {
     #[reflect(ignore)]
     pub config: ExchangeConfig,
 }
 
-impl Default for ExchangeConfigResource {
-    fn default() -> Self {
-        Self {
-            config: ExchangeConfig::default(),
-        }
-    }
-}
 
 impl ExchangeConfigResource {
     pub fn new(config: ExchangeConfig) -> Self {
@@ -57,18 +51,12 @@ impl<'a, 'b> EventEmitter<ExchangeEvent> for BevyExchangeEventEmitter<'a, 'b> {
 /// Component: Trader state (wraps issun-core's ExchangeState).
 #[derive(Component, Reflect, Clone)]
 #[reflect(Component)]
+#[derive(Default)]
 pub struct Trader {
     #[reflect(ignore)]
     pub state: ExchangeState,
 }
 
-impl Default for Trader {
-    fn default() -> Self {
-        Self {
-            state: ExchangeState::default(),
-        }
-    }
-}
 
 impl Trader {
     pub fn new(initial_reputation: f32) -> Self {
