@@ -126,7 +126,7 @@ impl Default for ReputationState {
 /// use issun_core::mechanics::reputation::ReputationEvent;
 ///
 /// // Check if value changed
-/// match ReputationEvent::ValueChanged { old_value: 50.0, new_value: 75.0 } {
+/// match (ReputationEvent::ValueChanged { old_value: 50.0, new_value: 75.0 }) {
 ///     ReputationEvent::ValueChanged { old_value, new_value } => {
 ///         println!("Reputation changed from {} to {}", old_value, new_value);
 ///     }

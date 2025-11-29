@@ -232,10 +232,10 @@ mod tests {
 
         assert!(state.has_claim(42));
         assert_eq!(state.claim_strength(42), 1.0);
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, RightsEvent::ClaimAsserted { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, RightsEvent::ClaimAsserted { .. })));
     }
 
     #[test]
@@ -277,10 +277,10 @@ mod tests {
         BasicRights::step(&config, &mut state, input, &mut emitter);
 
         assert!(!state.has_claim(42));
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, RightsEvent::ActionRejected { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, RightsEvent::ActionRejected { .. })));
     }
 
     #[test]
@@ -303,10 +303,10 @@ mod tests {
 
         // Entire claim transferred (removed from state)
         assert!(!state.has_claim(42));
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, RightsEvent::ClaimTransferred { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, RightsEvent::ClaimTransferred { .. })));
     }
 
     #[test]
@@ -329,17 +329,19 @@ mod tests {
 
         // Transfer rejected, claim unchanged
         assert_eq!(state.claim_strength(42), 0.5);
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, RightsEvent::ActionRejected { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, RightsEvent::ActionRejected { .. })));
     }
 
     #[test]
     fn test_claim_expiration() {
         let config = RightsConfig::default();
         let mut state = RightsState::new();
-        state.claims.insert(42, Claim::with_expiration(42, 1.0, 100));
+        state
+            .claims
+            .insert(42, Claim::with_expiration(42, 1.0, 100));
         let mut emitter = TestEmitter::new();
 
         let input = RightsInput {
@@ -355,10 +357,10 @@ mod tests {
 
         // Expired claim removed
         assert!(!state.has_claim(42));
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, RightsEvent::ClaimExpired { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, RightsEvent::ClaimExpired { .. })));
     }
 
     #[test]

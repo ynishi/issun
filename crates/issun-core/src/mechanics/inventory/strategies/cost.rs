@@ -83,11 +83,7 @@ impl CostPolicy for NoCost {
 pub struct SlotBasedCost;
 
 impl CostPolicy for SlotBasedCost {
-    fn calculate_cost(
-        state: &InventoryState,
-        config: &InventoryConfig,
-        elapsed_time: u32,
-    ) -> f32 {
+    fn calculate_cost(state: &InventoryState, config: &InventoryConfig, elapsed_time: u32) -> f32 {
         state.occupied_slots as f32 * config.holding_cost_per_slot * elapsed_time as f32
     }
 }
@@ -132,11 +128,7 @@ impl CostPolicy for SlotBasedCost {
 pub struct WeightBasedCost;
 
 impl CostPolicy for WeightBasedCost {
-    fn calculate_cost(
-        state: &InventoryState,
-        config: &InventoryConfig,
-        elapsed_time: u32,
-    ) -> f32 {
+    fn calculate_cost(state: &InventoryState, config: &InventoryConfig, elapsed_time: u32) -> f32 {
         state.total_weight * config.holding_cost_per_weight * elapsed_time as f32
     }
 }

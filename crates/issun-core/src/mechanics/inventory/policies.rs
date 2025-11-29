@@ -56,10 +56,7 @@ pub trait CapacityPolicy {
     /// # Returns
     ///
     /// `Ok(())` if the operation can proceed, or `Err(RejectionReason)` if not.
-    fn can_remove(
-        state: &InventoryState,
-        stack: &ItemStack,
-    ) -> Result<(), RejectionReason> {
+    fn can_remove(state: &InventoryState, stack: &ItemStack) -> Result<(), RejectionReason> {
         // Check if item exists
         let existing = state.find_stack(stack.item_id);
 
@@ -102,11 +99,7 @@ pub trait StackingPolicy {
     /// * `state` - Mutable inventory state
     /// * `stack` - Item stack to add
     /// * `weight_per_item` - Weight of each individual item
-    fn add_to_inventory(
-        state: &mut InventoryState,
-        stack: ItemStack,
-        weight_per_item: Weight,
-    );
+    fn add_to_inventory(state: &mut InventoryState, stack: ItemStack, weight_per_item: Weight);
 
     /// Remove an item stack from the inventory.
     ///
@@ -145,9 +138,5 @@ pub trait CostPolicy {
     /// # Returns
     ///
     /// Total holding cost for the elapsed time period.
-    fn calculate_cost(
-        state: &InventoryState,
-        config: &InventoryConfig,
-        elapsed_time: u32,
-    ) -> f32;
+    fn calculate_cost(state: &InventoryState, config: &InventoryConfig, elapsed_time: u32) -> f32;
 }

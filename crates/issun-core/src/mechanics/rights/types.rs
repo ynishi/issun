@@ -107,10 +107,10 @@ pub struct RightsConfig {
 impl Default for RightsConfig {
     fn default() -> Self {
         Self {
-            allow_partial_claims: true,   // Default: allow partial ownership
-            require_recognition: false,   // Default: no authority required
-            transfer_tax_rate: 0.0,       // Default: no taxes
-            legitimacy_decay_rate: 0.0,   // Default: no decay
+            allow_partial_claims: true, // Default: allow partial ownership
+            require_recognition: false, // Default: no authority required
+            transfer_tax_rate: 0.0,     // Default: no taxes
+            legitimacy_decay_rate: 0.0, // Default: no decay
         }
     }
 }

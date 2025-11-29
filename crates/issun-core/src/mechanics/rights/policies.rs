@@ -158,11 +158,7 @@ pub trait RecognitionPolicy {
     /// * `state` - Mutable rights state
     /// * `recognition_count` - Number of entities recognizing claims
     /// * `config` - Rights configuration
-    fn update_legitimacy(
-        state: &mut RightsState,
-        recognition_count: usize,
-        config: &RightsConfig,
-    );
+    fn update_legitimacy(state: &mut RightsState, recognition_count: usize, config: &RightsConfig);
 
     /// Apply legitimacy decay over time.
     ///

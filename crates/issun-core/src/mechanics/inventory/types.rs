@@ -72,9 +72,9 @@ pub struct InventoryConfig {
 impl Default for InventoryConfig {
     fn default() -> Self {
         Self {
-            max_slots: Some(20),        // Default: 20 slots
-            max_weight: None,           // Default: no weight limit
-            max_stack_size: Some(99),   // Default: stack up to 99
+            max_slots: Some(20),      // Default: 20 slots
+            max_weight: None,         // Default: no weight limit
+            max_stack_size: Some(99), // Default: stack up to 99
             holding_cost_per_slot: 0.0,
             holding_cost_per_weight: 0.0,
         }
@@ -190,9 +190,7 @@ impl InventoryState {
 
     /// Get the total quantity of a specific item.
     pub fn quantity_of(&self, item_id: ItemId) -> Quantity {
-        self.find_stack(item_id)
-            .map(|s| s.quantity)
-            .unwrap_or(0)
+        self.find_stack(item_id).map(|s| s.quantity).unwrap_or(0)
     }
 }
 
@@ -213,7 +211,7 @@ impl Default for InventoryState {
 /// use issun_core::mechanics::inventory::{InventoryEvent, ItemStack};
 ///
 /// // Check if item was added
-/// match InventoryEvent::ItemAdded { stack: ItemStack::new(1, 5) } {
+/// match (InventoryEvent::ItemAdded { stack: ItemStack::new(1, 5) }) {
 ///     InventoryEvent::ItemAdded { stack } => {
 ///         println!("Added {} of item {}", stack.quantity, stack.item_id);
 ///     }

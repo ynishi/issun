@@ -95,11 +95,7 @@ impl RecognitionPolicy for AuthorityRecognition {
         config.require_recognition
     }
 
-    fn update_legitimacy(
-        state: &mut RightsState,
-        recognition_count: usize,
-        config: &RightsConfig,
-    ) {
+    fn update_legitimacy(state: &mut RightsState, recognition_count: usize, config: &RightsConfig) {
         if config.require_recognition {
             // Binary: recognized or not
             state.legitimacy = if recognition_count > 0 { 1.0 } else { 0.0 };
@@ -220,7 +216,9 @@ mod tests {
         assert!(AuthorityRecognition::requires_recognition(&config_required));
 
         let config_not_required = default_config();
-        assert!(!AuthorityRecognition::requires_recognition(&config_not_required));
+        assert!(!AuthorityRecognition::requires_recognition(
+            &config_not_required
+        ));
     }
 
     #[test]

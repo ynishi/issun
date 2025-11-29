@@ -249,10 +249,10 @@ mod tests {
 
         // Should be rejected
         assert_eq!(state.stacks.len(), 1);
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, InventoryEvent::OperationRejected { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, InventoryEvent::OperationRejected { .. })));
     }
 
     #[test]
@@ -334,8 +334,7 @@ mod tests {
 
     #[test]
     fn test_weight_based_capacity() {
-        type WeightInventory =
-            InventoryMechanic<WeightBasedCapacity, AlwaysStack, NoCost>;
+        type WeightInventory = InventoryMechanic<WeightBasedCapacity, AlwaysStack, NoCost>;
 
         let config = InventoryConfig {
             max_weight: Some(100.0),
@@ -357,9 +356,9 @@ mod tests {
         WeightInventory::step(&config, &mut state, input, &mut emitter);
 
         // Should be rejected
-        assert!(matches!(
-            emitter.events.iter().find(|e| matches!(e, InventoryEvent::OperationRejected { .. })),
-            Some(_)
-        ));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(&e, InventoryEvent::OperationRejected { .. })));
     }
 }

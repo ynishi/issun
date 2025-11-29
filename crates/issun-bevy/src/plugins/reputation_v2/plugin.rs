@@ -8,7 +8,9 @@ use issun_core::mechanics::{ExecutionHint, Mechanic};
 use std::marker::PhantomData;
 
 use super::systems::{log_reputation_events, reputation_system};
-use super::types::{ReputationChangeRequested, ReputationConfigResource, ReputationEventWrapper, ReputationValue};
+use super::types::{
+    ReputationChangeRequested, ReputationConfigResource, ReputationEventWrapper, ReputationValue,
+};
 
 /// SystemSet for sequential reputation execution.
 ///
@@ -155,14 +157,20 @@ where
                     "PREFERRED_SCHEDULE '{}' specified but not yet implemented, using Update",
                     schedule
                 );
-                app.add_systems(Update, reputation_system::<M>.in_set(ReputationSequentialSet));
+                app.add_systems(
+                    Update,
+                    reputation_system::<M>.in_set(ReputationSequentialSet),
+                );
             } else {
                 // No specific schedule, use sequential set
                 info!(
                     "ReputationPluginV2 initialized with mechanic: {} (sequential)",
                     std::any::type_name::<M>()
                 );
-                app.add_systems(Update, reputation_system::<M>.in_set(ReputationSequentialSet));
+                app.add_systems(
+                    Update,
+                    reputation_system::<M>.in_set(ReputationSequentialSet),
+                );
             }
             app.add_systems(Update, log_reputation_events);
         }
@@ -197,7 +205,9 @@ mod tests {
             decay_rate: 0.95,
         };
 
-        app.add_plugins(ReputationPluginV2::<TestReputation>::with_config(config.clone()));
+        app.add_plugins(ReputationPluginV2::<TestReputation>::with_config(
+            config.clone(),
+        ));
 
         let resource = app.world().resource::<ReputationConfigResource>();
         assert_eq!(resource.config.min, -100.0);

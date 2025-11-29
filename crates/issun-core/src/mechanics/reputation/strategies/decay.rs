@@ -131,7 +131,7 @@ impl DecayPolicy for LinearDecay {
 /// assert_eq!(value, 90.0); // 100 * 0.9^1
 ///
 /// let value2 = ExponentialDecay::apply_decay(100.0, 2, &config);
-/// assert_eq!(value2, 81.0); // 100 * 0.9^2 = 81.0
+/// assert!((value2 - 81.0).abs() < 0.01); // 100 * 0.9^2 ≈ 81.0
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExponentialDecay;
@@ -245,8 +245,8 @@ mod tests {
         let turn2 = ExponentialDecay::apply_decay(turn1, 1, &config);
         let turn3 = ExponentialDecay::apply_decay(turn2, 1, &config);
 
-        assert_eq!(turn1, 50.0);  // 100 * 0.5
-        assert_eq!(turn2, 25.0);  // 50 * 0.5
-        assert_eq!(turn3, 12.5);  // 25 * 0.5
+        assert_eq!(turn1, 50.0); // 100 * 0.5
+        assert_eq!(turn2, 25.0); // 50 * 0.5
+        assert_eq!(turn3, 12.5); // 25 * 0.5
     }
 }

@@ -98,7 +98,7 @@ impl RightsSystemPolicy for PartialRights {
         }
 
         // Validate range
-        if strength < 0.0 || strength > 1.0 {
+        if !(0.0..=1.0).contains(&strength) {
             Err(RejectionReason::InvalidClaimStrength)
         } else {
             Ok(strength)

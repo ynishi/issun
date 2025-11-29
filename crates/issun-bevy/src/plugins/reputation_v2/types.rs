@@ -10,6 +10,7 @@ use issun_core::mechanics::EventEmitter;
 /// Reputation configuration resource - wraps issun-core's ReputationConfig
 #[derive(Resource, Clone, Reflect)]
 #[reflect(Resource)]
+#[derive(Default)]
 pub struct ReputationConfigResource {
     #[reflect(ignore)]
     pub config: ReputationConfig,
@@ -18,14 +19,6 @@ pub struct ReputationConfigResource {
 impl ReputationConfigResource {
     pub fn new(config: ReputationConfig) -> Self {
         Self { config }
-    }
-}
-
-impl Default for ReputationConfigResource {
-    fn default() -> Self {
-        Self {
-            config: ReputationConfig::default(),
-        }
     }
 }
 

@@ -39,11 +39,7 @@ use crate::mechanics::inventory::types::*;
 pub struct AlwaysStack;
 
 impl StackingPolicy for AlwaysStack {
-    fn add_to_inventory(
-        state: &mut InventoryState,
-        stack: ItemStack,
-        weight_per_item: Weight,
-    ) {
+    fn add_to_inventory(state: &mut InventoryState, stack: ItemStack, weight_per_item: Weight) {
         if let Some(existing) = state.find_stack_mut(stack.item_id) {
             // Stack with existing
             existing.quantity += stack.quantity;
@@ -104,11 +100,7 @@ impl StackingPolicy for AlwaysStack {
 pub struct NeverStack;
 
 impl StackingPolicy for NeverStack {
-    fn add_to_inventory(
-        state: &mut InventoryState,
-        stack: ItemStack,
-        weight_per_item: Weight,
-    ) {
+    fn add_to_inventory(state: &mut InventoryState, stack: ItemStack, weight_per_item: Weight) {
         // Always add as new stack, quantity forced to 1
         state.stacks.push(ItemStack::new(stack.item_id, 1));
         state.occupied_slots += 1;
@@ -154,11 +146,7 @@ impl StackingPolicy for NeverStack {
 pub struct LimitedStack;
 
 impl StackingPolicy for LimitedStack {
-    fn add_to_inventory(
-        state: &mut InventoryState,
-        stack: ItemStack,
-        weight_per_item: Weight,
-    ) {
+    fn add_to_inventory(state: &mut InventoryState, stack: ItemStack, weight_per_item: Weight) {
         // Try to stack with existing first
         if let Some(existing) = state.find_stack_mut(stack.item_id) {
             existing.quantity += stack.quantity;

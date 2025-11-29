@@ -204,7 +204,10 @@ mod tests {
         assert_eq!(emitter.events.len(), 1);
         assert!(matches!(
             emitter.events[0],
-            ReputationEvent::ValueChanged { old_value: 50.0, new_value: 60.0 }
+            ReputationEvent::ValueChanged {
+                old_value: 50.0,
+                new_value: 60.0
+            }
         ));
     }
 
@@ -244,12 +247,15 @@ mod tests {
         assert!(emitter.events.len() >= 2);
         assert!(emitter.events.iter().any(|e| matches!(
             e,
-            ReputationEvent::Clamped { attempted_value: 110.0, clamped_value: 100.0 }
+            ReputationEvent::Clamped {
+                attempted_value: 110.0,
+                clamped_value: 100.0
+            }
         )));
-        assert!(emitter.events.iter().any(|e| matches!(
-            e,
-            ReputationEvent::ReachedMaximum { max_value: 100.0 }
-        )));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(e, ReputationEvent::ReachedMaximum { max_value: 100.0 })));
     }
 
     #[test]
@@ -267,10 +273,10 @@ mod tests {
         BasicReputation::step(&config, &mut state, input, &mut emitter);
 
         assert_eq!(state.value, 0.0);
-        assert!(emitter.events.iter().any(|e| matches!(
-            e,
-            ReputationEvent::ReachedMinimum { min_value: 0.0 }
-        )));
+        assert!(emitter
+            .events
+            .iter()
+            .any(|e| matches!(e, ReputationEvent::ReachedMinimum { min_value: 0.0 })));
     }
 
     #[test]

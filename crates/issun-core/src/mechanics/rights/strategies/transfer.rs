@@ -172,7 +172,9 @@ mod tests {
 
     fn state_with_claim(asset_id: AssetId, strength: ClaimStrength) -> RightsState {
         let mut state = RightsState::new();
-        state.claims.insert(asset_id, Claim::new(asset_id, strength));
+        state
+            .claims
+            .insert(asset_id, Claim::new(asset_id, strength));
         state
     }
 
