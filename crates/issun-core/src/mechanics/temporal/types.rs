@@ -18,10 +18,11 @@ use std::fmt;
 /// # Examples
 ///
 /// ```
-/// use issun_core::mechanics::temporal::types::GameDateTime;
+/// use issun_core::mechanics::temporal::types::{GameDateTime, CalendarConfig};
 ///
+/// let config = CalendarConfig::gregorian();
 /// let dt = GameDateTime::new(1, 4, 15, 10, 30); // Year 1, April 15, 10:30
-/// let later = dt.add_hours(2);
+/// let later = dt.add_hours(2, &config);
 /// assert_eq!(later.hour, 12);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
