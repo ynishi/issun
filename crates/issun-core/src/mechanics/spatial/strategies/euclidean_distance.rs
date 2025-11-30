@@ -33,12 +33,7 @@ use crate::mechanics::spatial::types::{NodeId, SpatialGraph};
 pub struct EuclideanDistance;
 
 impl DistancePolicy for EuclideanDistance {
-    fn calculate_distance(
-        &self,
-        graph: &SpatialGraph,
-        from: &NodeId,
-        to: &NodeId,
-    ) -> Option<f32> {
+    fn calculate_distance(&self, graph: &SpatialGraph, from: &NodeId, to: &NodeId) -> Option<f32> {
         // Same node = 0 distance
         if from == to {
             return Some(0.0);

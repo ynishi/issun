@@ -2,7 +2,7 @@
 
 use super::policies::EconomicPolicy;
 use super::types::{
-    CyclePhase, EconomicEvent, EconomicIndicators, EconomicParameters, EconomicSnapshot,
+    EconomicEvent, EconomicIndicators, EconomicParameters, EconomicSnapshot,
     SentimentDirection, ShockType,
 };
 use crate::mechanics::{EventEmitter, Mechanic, Transactional};
@@ -123,7 +123,11 @@ impl<P: EconomicPolicy> MacroeconomyMechanic<P> {
         emitter: &mut impl EventEmitter<EconomicEvent>,
     ) {
         // Supply shock detection: High scarcity in multiple resources
-        let high_scarcity_count = state.scarcity_indices.values().filter(|&&s| s > 0.7).count();
+        let high_scarcity_count = state
+            .scarcity_indices
+            .values()
+            .filter(|&&s| s > 0.7)
+            .count();
         if high_scarcity_count >= 3 {
             emitter.emit(EconomicEvent::Shock {
                 shock_type: ShockType::SupplyShock,
@@ -154,6 +158,7 @@ impl<P: EconomicPolicy> MacroeconomyMechanic<P> {
 mod tests {
     use super::*;
     use crate::mechanics::macroeconomy::strategies::SimpleEconomicPolicy;
+    use crate::mechanics::macroeconomy::CyclePhase;
     use std::collections::HashMap;
 
     type SimpleMacroeconomy = MacroeconomyMechanic<SimpleEconomicPolicy>;
@@ -174,12 +179,9 @@ mod tests {
         let mut state = EconomicIndicators::default();
         let snapshot = EconomicSnapshot {
             transaction_volume: 5000.0,
-            price_changes: vec![
-                ("bread".to_string(), 0.02),
-                ("water".to_string(), 0.01),
-            ]
-            .into_iter()
-            .collect(),
+            price_changes: vec![("bread".to_string(), 0.02), ("water".to_string(), 0.01)]
+                .into_iter()
+                .collect(),
             production_output: 1000.0,
             currency_circulation: 100_000.0,
             resource_availability: HashMap::new(),

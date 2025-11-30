@@ -232,12 +232,18 @@ impl SpatialGraph {
     }
 
     /// Get all edges starting from a node.
-    pub fn outgoing_edges<'a>(&'a self, node: &'a NodeId) -> impl Iterator<Item = &'a SpatialEdge> + 'a {
+    pub fn outgoing_edges<'a>(
+        &'a self,
+        node: &'a NodeId,
+    ) -> impl Iterator<Item = &'a SpatialEdge> + 'a {
         self.edges.iter().filter(move |e| &e.from == node)
     }
 
     /// Get all edges ending at a node.
-    pub fn incoming_edges<'a>(&'a self, node: &'a NodeId) -> impl Iterator<Item = &'a SpatialEdge> + 'a {
+    pub fn incoming_edges<'a>(
+        &'a self,
+        node: &'a NodeId,
+    ) -> impl Iterator<Item = &'a SpatialEdge> + 'a {
         self.edges.iter().filter(move |e| &e.to == node)
     }
 
@@ -373,11 +379,7 @@ pub enum SpatialEvent {
     },
 
     /// Movement is allowed
-    MovementAllowed {
-        from: NodeId,
-        to: NodeId,
-        cost: f32,
-    },
+    MovementAllowed { from: NodeId, to: NodeId, cost: f32 },
 
     /// Movement is blocked
     MovementBlocked {

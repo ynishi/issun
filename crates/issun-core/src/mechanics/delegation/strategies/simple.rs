@@ -54,7 +54,8 @@ impl DelegationPolicy for SimpleDelegationPolicy {
 
         // Rank difference penalty (subordinate ignoring superior is harder)
         if delegate.hierarchy_rank > delegator.hierarchy_rank {
-            let rank_bonus = ((delegate.hierarchy_rank - delegator.hierarchy_rank) as f32).min(3.0) * 0.1;
+            let rank_bonus =
+                ((delegate.hierarchy_rank - delegator.hierarchy_rank) as f32).min(3.0) * 0.1;
             compliance += rank_bonus;
         }
 
@@ -163,7 +164,10 @@ impl DelegationPolicy for SimpleDelegationPolicy {
         };
 
         // Task deadlines increase priority
-        if let DirectiveType::Task { deadline: Some(dl), .. } = &directive.directive_type {
+        if let DirectiveType::Task {
+            deadline: Some(dl), ..
+        } = &directive.directive_type
+        {
             let time_pressure = if *dl > input.current_tick {
                 let remaining = (*dl - input.current_tick) as f32;
                 (100.0 / (remaining + 10.0)).min(0.3) // Up to 0.3 bonus
@@ -329,7 +333,10 @@ impl DelegationPolicy for SimpleDelegationPolicy {
             Opportunist => {
                 // Compliance depends on what's in it for them
                 match directive_type {
-                    DirectiveType::Request { compensation: Some(c), .. } => {
+                    DirectiveType::Request {
+                        compensation: Some(c),
+                        ..
+                    } => {
                         0.7 + c.min(0.5) // Compensation increases compliance
                     }
                     DirectiveType::Task { .. } => 0.9, // Tasks may bring advancement
@@ -413,7 +420,11 @@ mod tests {
         let compliance = SimpleDelegationPolicy::calculate_compliance(&config, &input);
 
         // High loyalty, good relationship, high authority, obedient = very high compliance
-        assert!(compliance > 0.8, "Expected high compliance, got {}", compliance);
+        assert!(
+            compliance > 0.8,
+            "Expected high compliance, got {}",
+            compliance
+        );
     }
 
     #[test]
@@ -425,7 +436,11 @@ mod tests {
         let compliance = SimpleDelegationPolicy::calculate_compliance(&config, &input);
 
         // Negative loyalty, poor relationship, low authority, independent = low compliance
-        assert!(compliance < 0.5, "Expected low compliance, got {}", compliance);
+        assert!(
+            compliance < 0.5,
+            "Expected low compliance, got {}",
+            compliance
+        );
     }
 
     #[test]
@@ -436,7 +451,11 @@ mod tests {
         let compliance = SimpleDelegationPolicy::calculate_compliance(&config, &input);
 
         // Negative loyalty, terrible relationship, low authority = potential defiance
-        assert!(compliance < 0.2, "Expected very low compliance, got {}", compliance);
+        assert!(
+            compliance < 0.2,
+            "Expected very low compliance, got {}",
+            compliance
+        );
     }
 
     #[test]
@@ -448,8 +467,7 @@ mod tests {
 
         let innovative_interp =
             SimpleDelegationPolicy::calculate_interpretation(&config, &innovative_input);
-        let rigid_interp =
-            SimpleDelegationPolicy::calculate_interpretation(&config, &rigid_input);
+        let rigid_interp = SimpleDelegationPolicy::calculate_interpretation(&config, &rigid_input);
 
         assert!(
             innovative_interp > rigid_interp,

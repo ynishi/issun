@@ -3,8 +3,12 @@
 use bevy::prelude::*;
 use issun_core::mechanics::spatial::{OccupancyState, SpatialGraph};
 
-use super::systems::{handle_move_entity, handle_spatial_queries, log_spatial_events, OccupancyStateResource};
-use super::types::{MoveEntityRequest, SpatialGraphResource, SpatialQueryRequest, SpatialQueryResult};
+use super::systems::{
+    handle_move_entity, handle_spatial_queries, log_spatial_events, OccupancyStateResource,
+};
+use super::types::{
+    MoveEntityRequest, SpatialGraphResource, SpatialQueryRequest, SpatialQueryResult,
+};
 
 /// Spatial plugin for Bevy integration.
 ///

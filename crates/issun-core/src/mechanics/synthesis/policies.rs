@@ -1,7 +1,7 @@
 //! Policy traits for synthesis mechanic.
 
 use super::types::{
-    CatalystId, InheritanceSource, InheritedTrait, IngredientInput, Prerequisite,
+    CatalystId, IngredientInput, InheritanceSource, InheritedTrait, Prerequisite,
     PrerequisiteResult, QualityLevel, Recipe, SynthesisConfig, SynthesisContext, SynthesisInput,
     SynthesisOutcome, SynthesizerStats, UnexpectedTrigger, UnlockedPrerequisites,
 };

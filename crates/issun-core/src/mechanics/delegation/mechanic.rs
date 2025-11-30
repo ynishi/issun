@@ -275,7 +275,11 @@ mod tests {
         }
     }
 
-    fn create_test_input(loyalty: f32, relationship: f32, personality: DelegateTrait) -> DelegationInput {
+    fn create_test_input(
+        loyalty: f32,
+        relationship: f32,
+        personality: DelegateTrait,
+    ) -> DelegationInput {
         DelegationInput {
             directive: Directive {
                 id: DirectiveId("test_cmd".into()),
@@ -350,7 +354,10 @@ mod tests {
 
         // Low compliance should lead to Ignore or Defer
         assert!(
-            matches!(state.response, ResponseType::Ignore | ResponseType::Defer | ResponseType::AcceptWithReservation),
+            matches!(
+                state.response,
+                ResponseType::Ignore | ResponseType::Defer | ResponseType::AcceptWithReservation
+            ),
             "Expected Ignore, Defer, or AcceptWithReservation, got {:?} (compliance: {})",
             state.response,
             state.compliance
@@ -429,7 +436,12 @@ mod tests {
         let mut innovative_state = DelegationState::default();
         let innovative_input = create_test_input(0.7, 0.5, DelegateTrait::Innovative);
         let mut emitter2 = VecEmitter { events: Vec::new() };
-        SimpleDelegationMechanic::step(&config, &mut innovative_state, innovative_input, &mut emitter2);
+        SimpleDelegationMechanic::step(
+            &config,
+            &mut innovative_state,
+            innovative_input,
+            &mut emitter2,
+        );
 
         assert!(
             innovative_state.interpretation > obedient_state.interpretation,
@@ -451,7 +463,12 @@ mod tests {
         let mut reluctant_state = DelegationState::default();
         let reluctant_input = create_test_input(0.3, 0.2, DelegateTrait::Reluctant);
         let mut emitter2 = VecEmitter { events: Vec::new() };
-        SimpleDelegationMechanic::step(&config, &mut reluctant_state, reluctant_input, &mut emitter2);
+        SimpleDelegationMechanic::step(
+            &config,
+            &mut reluctant_state,
+            reluctant_input,
+            &mut emitter2,
+        );
 
         assert!(
             eager_state.feedback_probability > reluctant_state.feedback_probability,

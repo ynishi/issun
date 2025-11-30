@@ -197,7 +197,8 @@ impl PerceptionPolicy for FogOfWarPolicy {
         }
 
         // Base detection chance
-        let detection_chance = effective_capability / (effective_capability + effective_concealment);
+        let detection_chance =
+            effective_capability / (effective_capability + effective_concealment);
 
         detection_chance >= config.min_accuracy
     }
@@ -236,8 +237,9 @@ impl PerceptionPolicy for FogOfWarPolicy {
     }
 
     fn calculate_effective_concealment(input: &PerceptionInput) -> f32 {
-        let mut concealment =
-            input.target.concealment * input.target.stealth_bonus * input.target.environmental_bonus;
+        let mut concealment = input.target.concealment
+            * input.target.stealth_bonus
+            * input.target.environmental_bonus;
 
         // Apply target traits
         for trait_ in &input.target.traits {
@@ -396,11 +398,7 @@ mod tests {
     fn test_confidence_decay() {
         // After 1 tick with 5% decay
         let conf1 = FogOfWarPolicy::calculate_confidence_decay(1.0, 1, 0.05);
-        assert!(
-            (conf1 - 0.95).abs() < 0.01,
-            "Expected ~0.95, got {}",
-            conf1
-        );
+        assert!((conf1 - 0.95).abs() < 0.01, "Expected ~0.95, got {}", conf1);
 
         // After 10 ticks: 0.95^10 ≈ 0.5987
         let conf10 = FogOfWarPolicy::calculate_confidence_decay(1.0, 10, 0.05);

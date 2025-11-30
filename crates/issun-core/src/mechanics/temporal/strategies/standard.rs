@@ -39,7 +39,7 @@ impl TemporalPolicy for StandardTemporalPolicy {
 
         // Apply temporary modifiers
         let mut modifier = 1.0 - skill_reduction - efficiency_reduction;
-        for (_, mod_value) in &context.temporary_modifiers {
+        for mod_value in context.temporary_modifiers.values() {
             modifier *= 1.0 + mod_value;
         }
 
@@ -95,16 +95,12 @@ impl TemporalPolicy for TurnBasedPolicy {
 pub struct RealTimePolicy;
 
 impl TemporalPolicy for RealTimePolicy {
-    fn cost_modifier(
-        config: &TemporalConfig,
-        action: &ActionType,
-        context: &ActorContext,
-    ) -> f32 {
-        let base_modifier = StandardTemporalPolicy::cost_modifier(config, action, context);
+    fn cost_modifier(config: &TemporalConfig, action: &ActionType, context: &ActorContext) -> f32 {
+        
 
         // Real-time games might want time-of-day effects
         // Override time_of_day_modifier for specific games
-        base_modifier
+        StandardTemporalPolicy::cost_modifier(config, action, context)
     }
 
     fn should_reset(
@@ -168,8 +164,8 @@ impl TemporalPolicy for PersonaStylePolicy {
     fn season_modifier(_config: &TemporalConfig, season: Season) -> f32 {
         // Season might affect certain activities
         match season {
-            Season::Summer => 0.9,  // Summer vacation = easier
-            Season::Winter => 1.1,  // Winter = harder
+            Season::Summer => 0.9, // Summer vacation = easier
+            Season::Winter => 1.1, // Winter = harder
             _ => 1.0,
         }
     }
@@ -184,17 +180,13 @@ impl TemporalPolicy for PersonaStylePolicy {
 pub struct StrategyGamePolicy;
 
 impl TemporalPolicy for StrategyGamePolicy {
-    fn cost_modifier(
-        _config: &TemporalConfig,
-        action: &ActionType,
-        context: &ActorContext,
-    ) -> f32 {
+    fn cost_modifier(_config: &TemporalConfig, action: &ActionType, context: &ActorContext) -> f32 {
         // Different action types have different scaling
         let type_multiplier = match action.0.as_str() {
             "move" => 1.0,
             "attack" => 1.0,
-            "build" => 0.8,     // Building benefits more from skill
-            "research" => 0.7,  // Research benefits most from skill
+            "build" => 0.8,    // Building benefits more from skill
+            "research" => 0.7, // Research benefits most from skill
             _ => 1.0,
         };
 

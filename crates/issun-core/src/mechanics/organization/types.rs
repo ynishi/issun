@@ -27,12 +27,14 @@ impl From<String> for MemberId {
 /// Each type fundamentally affects how decisions are made, authority is
 /// distributed, and members relate to the organization.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum OrganizationType {
     /// Hierarchical structure
     /// - Fast decisions (top-down)
     /// - Concentrated power
     /// - Clear chain of command
     /// - Example: Military, Traditional corporations
+    #[default]
     Hierarchy,
 
     /// Democratic structure
@@ -78,11 +80,6 @@ pub enum OrganizationType {
     Anarchy,
 }
 
-impl Default for OrganizationType {
-    fn default() -> Self {
-        OrganizationType::Hierarchy
-    }
-}
 
 // ============================================================================
 // Member Archetype
@@ -93,6 +90,7 @@ impl Default for OrganizationType {
 /// Members with archetypes that match their organization type have higher
 /// loyalty and productivity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemberArchetype {
     /// Prefers strong leadership and clear hierarchy
     /// - High loyalty in: Hierarchy, Corporate
@@ -116,6 +114,7 @@ pub enum MemberArchetype {
 
     /// Pragmatic, adapts to any structure
     /// - Moderate loyalty everywhere
+    #[default]
     Pragmatic,
 
     /// Respects tradition and elders
@@ -129,11 +128,6 @@ pub enum MemberArchetype {
     Ambitious,
 }
 
-impl Default for MemberArchetype {
-    fn default() -> Self {
-        MemberArchetype::Pragmatic
-    }
-}
 
 // ============================================================================
 // Config
@@ -395,7 +389,9 @@ mod tests {
             Some(&2.0)
         );
         assert_eq!(
-            config.consensus_thresholds.get(&OrganizationType::Democracy),
+            config
+                .consensus_thresholds
+                .get(&OrganizationType::Democracy),
             Some(&0.51)
         );
     }

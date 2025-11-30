@@ -121,9 +121,7 @@ impl GameDateTime {
 
     /// Convert to total minutes since epoch.
     fn to_total_minutes(&self, config: &CalendarConfig) -> u64 {
-        let days_before_year = (0..self.year)
-            .map(|y| config.days_per_year(y))
-            .sum::<u32>() as u64;
+        let days_before_year = (0..self.year).map(|y| config.days_per_year(y)).sum::<u32>() as u64;
 
         let days_before_month: u64 = (1..self.month)
             .map(|m| config.days_per_month(m, self.year) as u64)
@@ -268,18 +266,18 @@ impl CalendarConfig {
             use_leap_years: true,
             ticks_per_minute: 1,
             month_to_season: vec![
-                Season::Winter,  // Jan
-                Season::Winter,  // Feb
-                Season::Spring,  // Mar
-                Season::Spring,  // Apr
-                Season::Spring,  // May
-                Season::Summer,  // Jun
-                Season::Summer,  // Jul
-                Season::Summer,  // Aug
-                Season::Autumn,  // Sep
-                Season::Autumn,  // Oct
-                Season::Autumn,  // Nov
-                Season::Winter,  // Dec
+                Season::Winter, // Jan
+                Season::Winter, // Feb
+                Season::Spring, // Mar
+                Season::Spring, // Apr
+                Season::Spring, // May
+                Season::Summer, // Jun
+                Season::Summer, // Jul
+                Season::Summer, // Aug
+                Season::Autumn, // Sep
+                Season::Autumn, // Oct
+                Season::Autumn, // Nov
+                Season::Winter, // Dec
             ],
         }
     }
@@ -294,18 +292,18 @@ impl CalendarConfig {
             use_leap_years: false,
             ticks_per_minute: 1,
             month_to_season: vec![
-                Season::Winter,  // Month 1
-                Season::Winter,  // Month 2
-                Season::Winter,  // Month 3
-                Season::Spring,  // Month 4
-                Season::Spring,  // Month 5
-                Season::Spring,  // Month 6
-                Season::Summer,  // Month 7
-                Season::Summer,  // Month 8
-                Season::Summer,  // Month 9
-                Season::Autumn,  // Month 10
-                Season::Autumn,  // Month 11
-                Season::Autumn,  // Month 12
+                Season::Winter, // Month 1
+                Season::Winter, // Month 2
+                Season::Winter, // Month 3
+                Season::Spring, // Month 4
+                Season::Spring, // Month 5
+                Season::Spring, // Month 6
+                Season::Summer, // Month 7
+                Season::Summer, // Month 8
+                Season::Summer, // Month 9
+                Season::Autumn, // Month 10
+                Season::Autumn, // Month 11
+                Season::Autumn, // Month 12
             ],
         }
     }
@@ -361,7 +359,7 @@ impl CalendarConfig {
 
     /// Check if a year is a leap year (Gregorian rules).
     pub fn is_leap_year(year: u32) -> bool {
-        (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+        (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
     }
 }
 
@@ -784,8 +782,10 @@ impl ActionCost {
 
 /// Time flow mode.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default)]
 pub enum TimeFlowMode {
     /// Turn-based: advance only on explicit request
+    #[default]
     Discrete,
     /// Real-time: continuous progression
     Continuous {
@@ -827,18 +827,15 @@ impl TimeFlowMode {
     }
 }
 
-impl Default for TimeFlowMode {
-    fn default() -> Self {
-        TimeFlowMode::Discrete
-    }
-}
 
 /// When budgets should reset.
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum ResetTrigger {
     /// Reset every N ticks
     PerTick(u64),
     /// Reset at day boundary
+    #[default]
     PerDay,
     /// Reset at hour boundary
     PerHour,
@@ -848,11 +845,6 @@ pub enum ResetTrigger {
     OnEvent(String),
 }
 
-impl Default for ResetTrigger {
-    fn default() -> Self {
-        ResetTrigger::PerDay
-    }
-}
 
 // ============================================================================
 // Global Time Interface

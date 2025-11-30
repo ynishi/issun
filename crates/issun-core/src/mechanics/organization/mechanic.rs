@@ -106,7 +106,8 @@ where
         let new_authority = P::determine_authority_distribution(config, &input);
 
         // Find top authority holder and concentration
-        let (top_authority, concentration_index) = calculate_authority_concentration(&new_authority);
+        let (top_authority, concentration_index) =
+            calculate_authority_concentration(&new_authority);
 
         emitter.emit(OrganizationEvent::AuthorityRebalanced {
             top_authority,
@@ -287,12 +288,10 @@ mod tests {
         SimpleOrganizationMechanic::step(&config, &mut state, input, &mut emitter);
 
         // Should emit DecisionDynamicsCalculated
-        let has_dynamics_event = emitter.events.iter().any(|e| {
-            matches!(
-                e,
-                OrganizationEvent::DecisionDynamicsCalculated { .. }
-            )
-        });
+        let has_dynamics_event = emitter
+            .events
+            .iter()
+            .any(|e| matches!(e, OrganizationEvent::DecisionDynamicsCalculated { .. }));
         assert!(has_dynamics_event);
     }
 
@@ -307,9 +306,10 @@ mod tests {
         SimpleOrganizationMechanic::step(&config, &mut state, input, &mut emitter);
 
         // Should emit AuthorityRebalanced
-        let has_authority_event = emitter.events.iter().any(|e| {
-            matches!(e, OrganizationEvent::AuthorityRebalanced { .. })
-        });
+        let has_authority_event = emitter
+            .events
+            .iter()
+            .any(|e| matches!(e, OrganizationEvent::AuthorityRebalanced { .. }));
         assert!(has_authority_event);
     }
 
@@ -438,7 +438,7 @@ mod tests {
         SimpleOrganizationMechanic::step(&config, &mut state, input, &mut emitter);
 
         // In Democracy, all should have equal authority
-        for (_, weight) in &state.authority_distribution {
+        for weight in state.authority_distribution.values() {
             assert!((weight - 0.25).abs() < 0.01);
         }
 

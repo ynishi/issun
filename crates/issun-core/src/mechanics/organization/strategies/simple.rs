@@ -58,7 +58,8 @@ impl OrganizationPolicy for SimpleOrganizationPolicy {
             1.0 / (1.0 + (input.member_count as f32 * config.member_count_scaling).sqrt())
         } else {
             // Standard logarithmic scaling
-            1.0 / (1.0 + (input.member_count as f32 / 100.0).ln().max(0.0) * config.member_count_scaling)
+            1.0 / (1.0
+                + (input.member_count as f32 / 100.0).ln().max(0.0) * config.member_count_scaling)
         };
 
         // Urgency bonus
@@ -169,7 +170,7 @@ impl OrganizationPolicy for SimpleOrganizationPolicy {
         // Build HashMap
         members
             .into_iter()
-            .zip(weights.into_iter())
+            .zip(weights)
             .map(|(id, w)| (id.clone(), w))
             .collect()
     }
@@ -334,10 +335,8 @@ mod tests {
         let mut high_urgency = create_input(OrganizationType::Hierarchy, 20);
         high_urgency.urgency = 0.9;
 
-        let low_speed =
-            SimpleOrganizationPolicy::calculate_decision_speed(&config, &low_urgency);
-        let high_speed =
-            SimpleOrganizationPolicy::calculate_decision_speed(&config, &high_urgency);
+        let low_speed = SimpleOrganizationPolicy::calculate_decision_speed(&config, &low_urgency);
+        let high_speed = SimpleOrganizationPolicy::calculate_decision_speed(&config, &high_urgency);
 
         assert!(high_speed > low_speed);
     }
@@ -347,8 +346,7 @@ mod tests {
         let config = OrganizationConfig::default();
         let input = create_input(OrganizationType::Cult, 100);
 
-        let consensus =
-            SimpleOrganizationPolicy::calculate_consensus_requirement(&config, &input);
+        let consensus = SimpleOrganizationPolicy::calculate_consensus_requirement(&config, &input);
 
         assert_eq!(consensus, 0.0); // Cult leader decides alone
     }
@@ -358,8 +356,7 @@ mod tests {
         let config = OrganizationConfig::default();
         let input = create_input(OrganizationType::Democracy, 100);
 
-        let consensus =
-            SimpleOrganizationPolicy::calculate_consensus_requirement(&config, &input);
+        let consensus = SimpleOrganizationPolicy::calculate_consensus_requirement(&config, &input);
 
         assert!(consensus > 0.5); // Democracy needs majority+
     }
@@ -399,7 +396,7 @@ mod tests {
             SimpleOrganizationPolicy::determine_authority_distribution(&config, &input);
 
         // All should have equal authority
-        for (_, weight) in &distribution {
+        for weight in distribution.values() {
             assert!((weight - 0.25).abs() < 0.01);
         }
     }
@@ -446,8 +443,7 @@ mod tests {
         let hol_input = create_input(OrganizationType::Holacracy, 10);
         let anarchy_input = create_input(OrganizationType::Anarchy, 10);
 
-        let hol_eff =
-            SimpleOrganizationPolicy::calculate_efficiency(&config, &state, &hol_input);
+        let hol_eff = SimpleOrganizationPolicy::calculate_efficiency(&config, &state, &hol_input);
         let anarchy_eff =
             SimpleOrganizationPolicy::calculate_efficiency(&config, &state, &anarchy_input);
 

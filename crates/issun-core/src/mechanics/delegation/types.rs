@@ -125,8 +125,10 @@ impl DirectiveType {
 
 /// Personality traits that affect how a delegate handles directives
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum DelegateTrait {
     /// Follows orders precisely, little interpretation
+    #[default]
     Obedient,
 
     /// Questions orders, may refuse unreasonable ones
@@ -151,11 +153,6 @@ pub enum DelegateTrait {
     Rigid,
 }
 
-impl Default for DelegateTrait {
-    fn default() -> Self {
-        DelegateTrait::Obedient
-    }
-}
 
 // ============================================================================
 // Config

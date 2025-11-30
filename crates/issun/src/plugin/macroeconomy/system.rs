@@ -20,11 +20,13 @@ impl MacroeconomySystem {
         if config.update_interval == 0 {
             return true; // Update every tick
         }
-        current_tick % config.update_interval == 0
+        current_tick.is_multiple_of(config.update_interval)
     }
 
     /// Update economic indicators
-    pub fn update_indicators<E: EventEmitter<issun_core::mechanics::macroeconomy::EconomicEvent>>(
+    pub fn update_indicators<
+        E: EventEmitter<issun_core::mechanics::macroeconomy::EconomicEvent>,
+    >(
         config: &MacroeconomyConfig,
         state: &mut MacroeconomyState,
         metrics: &EconomicMetrics,
@@ -34,12 +36,7 @@ impl MacroeconomySystem {
         let snapshot = service.create_snapshot(metrics);
 
         // Run the mechanic
-        DefaultMacroeconomy::step(
-            &config.parameters,
-            &mut state.indicators,
-            snapshot,
-            emitter,
-        );
+        DefaultMacroeconomy::step(&config.parameters, &mut state.indicators, snapshot, emitter);
     }
 }
 

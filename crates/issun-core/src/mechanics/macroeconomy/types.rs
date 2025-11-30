@@ -14,6 +14,7 @@ pub type ItemId = String;
 
 /// Configuration parameters for economic calculations
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct EconomicParameters {
     /// Inflation calculation parameters
     pub inflation_model: InflationModelConfig,
@@ -28,16 +29,6 @@ pub struct EconomicParameters {
     pub currency_supply: CurrencySupplyConfig,
 }
 
-impl Default for EconomicParameters {
-    fn default() -> Self {
-        Self {
-            inflation_model: InflationModelConfig::default(),
-            sentiment_thresholds: SentimentThresholds::default(),
-            cycle_detection: CycleDetectionConfig::default(),
-            currency_supply: CurrencySupplyConfig::default(),
-        }
-    }
-}
 
 /// Inflation model configuration
 #[derive(Debug, Clone)]

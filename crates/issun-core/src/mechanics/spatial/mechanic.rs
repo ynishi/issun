@@ -6,9 +6,7 @@ use crate::mechanics::{EventEmitter, Mechanic, Transactional};
 
 use super::policies::{DistancePolicy, TopologyPolicy};
 use super::strategies::{FixedDistance, GraphTopology};
-use super::types::{
-    BlockReason, OccupancyState, SpatialEvent, SpatialGraph, SpatialQuery,
-};
+use super::types::{BlockReason, OccupancyState, SpatialEvent, SpatialGraph, SpatialQuery};
 
 /// The core spatial mechanic that composes topology and distance policies.
 ///

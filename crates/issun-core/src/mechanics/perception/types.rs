@@ -82,7 +82,9 @@ pub enum GroundTruth {
     Category { value: String },
 
     /// Composite fact with multiple fields
-    Composite { fields: HashMap<String, GroundTruth> },
+    Composite {
+        fields: HashMap<String, GroundTruth>,
+    },
 }
 
 impl GroundTruth {
@@ -408,8 +410,7 @@ impl PerceptionState {
 
     /// Remove stale perceptions
     pub fn prune_stale(&mut self, min_confidence: f32) {
-        self.knowledge
-            .retain(|_, p| p.confidence >= min_confidence);
+        self.knowledge.retain(|_, p| p.confidence >= min_confidence);
     }
 }
 

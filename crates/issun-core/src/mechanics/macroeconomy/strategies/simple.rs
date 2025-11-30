@@ -210,7 +210,7 @@ mod tests {
         let config = EconomicParameters::default();
         let state = EconomicIndicators::default();
         let snapshot = create_snapshot(
-            10000.0, // High volume
+            10000.0,                                                      // High volume
             vec![("item1".to_string(), 0.1), ("item2".to_string(), 0.2)], // Rising prices
             1000.0,
         );
@@ -273,8 +273,8 @@ mod tests {
         let config = EconomicParameters::default();
         let mut snapshot = create_snapshot(5000.0, vec![], 1000.0);
         snapshot.resource_availability = vec![
-            ("wood".to_string(), 500),   // 50% of baseline -> scarcity 0.5
-            ("stone".to_string(), 1000),  // 100% of baseline -> scarcity 0.0
+            ("wood".to_string(), 500),     // 50% of baseline -> scarcity 0.5
+            ("stone".to_string(), 1000),   // 100% of baseline -> scarcity 0.0
             ("rare_ore".to_string(), 100), // 10% of baseline -> scarcity 0.9
         ]
         .into_iter()

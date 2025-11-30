@@ -112,8 +112,8 @@ pub mod types;
 pub use mechanic::{SimpleSynthesisMechanic, SynthesisMechanic};
 pub use policies::SynthesisPolicy;
 pub use types::{
-    Byproduct, CatalystId, Defect, FailureReason, FlagId, InheritanceSource, InheritedTrait,
-    Ingredient, IngredientId, IngredientInput, OutcomeTable, OutcomeType, Prerequisite,
+    Byproduct, CatalystId, Defect, FailureReason, FlagId, Ingredient, IngredientId,
+    IngredientInput, InheritanceSource, InheritedTrait, OutcomeTable, OutcomeType, Prerequisite,
     PrerequisiteResult, QualityLevel, Recipe, RecipeCategory, RecipeId, SynthesisBonus,
     SynthesisConfig, SynthesisContext, SynthesisCost, SynthesisEvent, SynthesisHistoryEntry,
     SynthesisInput, SynthesisOutcome, SynthesisOutput, SynthesisState, SynthesizerId,
@@ -133,12 +133,12 @@ pub mod prelude {
     pub use super::policies::SynthesisPolicy;
     pub use super::strategies::CraftingPolicy;
     pub use super::types::{
-        Byproduct, CatalystId, Defect, FailureReason, FlagId, InheritanceSource, InheritedTrait,
-        Ingredient, IngredientId, IngredientInput, OutcomeTable, OutcomeType, Prerequisite,
-        PrerequisiteResult, QualityLevel, Recipe, RecipeCategory, RecipeId, SynthesisBonus,
-        SynthesisConfig, SynthesisContext, SynthesisCost, SynthesisEvent, SynthesisHistoryEntry,
-        SynthesisInput, SynthesisOutcome, SynthesisOutput, SynthesisState, SynthesizerId,
-        SynthesizerStats, TechId, TraitId, TransmutationEntry, UnexpectedEntry, UnexpectedTrigger,
-        UnlockedPrerequisites,
+        Byproduct, CatalystId, Defect, FailureReason, FlagId, Ingredient, IngredientId,
+        IngredientInput, InheritanceSource, InheritedTrait, OutcomeTable, OutcomeType,
+        Prerequisite, PrerequisiteResult, QualityLevel, Recipe, RecipeCategory, RecipeId,
+        SynthesisBonus, SynthesisConfig, SynthesisContext, SynthesisCost, SynthesisEvent,
+        SynthesisHistoryEntry, SynthesisInput, SynthesisOutcome, SynthesisOutput, SynthesisState,
+        SynthesizerId, SynthesizerStats, TechId, TraitId, TransmutationEntry, UnexpectedEntry,
+        UnexpectedTrigger, UnlockedPrerequisites,
     };
 }

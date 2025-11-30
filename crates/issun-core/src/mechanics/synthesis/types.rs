@@ -126,12 +126,14 @@ impl From<String> for SynthesizerId {
 
 /// Quality level of synthesized items
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub enum QualityLevel {
     /// Broken/unusable
     Broken = 0,
     /// Poor quality
     Poor = 1,
     /// Common/normal quality
+    #[default]
     Common = 2,
     /// Uncommon/above average
     Uncommon = 3,
@@ -143,11 +145,6 @@ pub enum QualityLevel {
     Legendary = 6,
 }
 
-impl Default for QualityLevel {
-    fn default() -> Self {
-        QualityLevel::Common
-    }
-}
 
 impl QualityLevel {
     /// Get numeric value
@@ -496,8 +493,10 @@ impl Recipe {
 
 /// Recipe category
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum RecipeCategory {
     /// Item crafting
+    #[default]
     Crafting,
     /// Technology research
     Research,
@@ -513,11 +512,6 @@ pub enum RecipeCategory {
     Custom,
 }
 
-impl Default for RecipeCategory {
-    fn default() -> Self {
-        RecipeCategory::Crafting
-    }
-}
 
 // ============================================================================
 // Output
@@ -1335,8 +1329,7 @@ mod tests {
 
     #[test]
     fn test_synthesis_cost() {
-        let cost = SynthesisCost::time(100)
-            .with_custom("mana", 50.0);
+        let cost = SynthesisCost::time(100).with_custom("mana", 50.0);
 
         assert_eq!(cost.time, 100);
         assert_eq!(cost.custom.get("mana"), Some(&50.0));

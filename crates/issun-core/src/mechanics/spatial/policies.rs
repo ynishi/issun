@@ -83,8 +83,7 @@ pub trait DistancePolicy {
     /// - Distance should be non-negative
     /// - Distance from a node to itself should be 0.0
     /// - Distance should be symmetric for undirected graphs
-    fn calculate_distance(&self, graph: &SpatialGraph, from: &NodeId, to: &NodeId)
-        -> Option<f32>;
+    fn calculate_distance(&self, graph: &SpatialGraph, from: &NodeId, to: &NodeId) -> Option<f32>;
 
     /// Get the movement cost for traversing an edge.
     ///

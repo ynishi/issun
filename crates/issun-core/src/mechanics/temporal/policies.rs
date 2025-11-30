@@ -162,7 +162,7 @@ pub trait CostPolicy {
     /// Apply temporary modifiers (buffs/debuffs).
     fn apply_temporary_modifiers(base_modifier: f32, context: &ActorContext) -> f32 {
         let mut modifier = base_modifier;
-        for (_, mod_value) in &context.temporary_modifiers {
+        for mod_value in context.temporary_modifiers.values() {
             modifier *= 1.0 + mod_value;
         }
         modifier.max(0.1) // Minimum 10% of original cost

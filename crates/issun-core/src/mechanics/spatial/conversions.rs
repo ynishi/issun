@@ -207,8 +207,11 @@ mod tests {
 
     #[test]
     fn test_high_rate_low_cost() {
-        let prop_graph =
-            PropagationGraph::new(vec![PropagationEdge::new("A".to_string(), "B".to_string(), 1.0)]);
+        let prop_graph = PropagationGraph::new(vec![PropagationEdge::new(
+            "A".to_string(),
+            "B".to_string(),
+            1.0,
+        )]);
 
         let spatial = propagation_to_spatial(&prop_graph);
         assert_eq!(spatial.edges[0].cost, 1.0); // rate 1.0 → cost 1.0
@@ -216,8 +219,11 @@ mod tests {
 
     #[test]
     fn test_zero_rate_max_cost() {
-        let prop_graph =
-            PropagationGraph::new(vec![PropagationEdge::new("A".to_string(), "B".to_string(), 0.0)]);
+        let prop_graph = PropagationGraph::new(vec![PropagationEdge::new(
+            "A".to_string(),
+            "B".to_string(),
+            0.0,
+        )]);
 
         let spatial = propagation_to_spatial(&prop_graph);
         assert_eq!(spatial.edges[0].cost, f32::MAX); // rate 0.0 → max cost (impassable)

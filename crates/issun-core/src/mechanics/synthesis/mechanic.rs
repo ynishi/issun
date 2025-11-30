@@ -140,12 +140,8 @@ where
         state.missing_prerequisites.clear();
 
         // 2. Calculate success rate
-        let success_rate = P::calculate_success_rate(
-            config,
-            recipe,
-            &input.synthesizer,
-            &input.ingredients,
-        );
+        let success_rate =
+            P::calculate_success_rate(config, recipe, &input.synthesizer, &input.ingredients);
 
         state.success_rate = success_rate;
 
@@ -293,8 +289,8 @@ pub type SimpleSynthesisMechanic = SynthesisMechanic<CraftingPolicy>;
 mod tests {
     use super::*;
     use crate::mechanics::synthesis::types::{
-        Ingredient, IngredientInput, QualityLevel, Recipe, RecipeCategory, SynthesisContext,
-        SynthesisOutput, SynthesizerStats, TechId, UnlockedPrerequisites, Prerequisite,
+        Ingredient, IngredientInput, Prerequisite, QualityLevel, Recipe, RecipeCategory,
+        SynthesisContext, SynthesisOutput, SynthesizerStats, TechId, UnlockedPrerequisites,
     };
 
     struct VecEmitter {
@@ -391,7 +387,9 @@ mod tests {
         let mut state = SynthesisState::default();
 
         let mut input = create_test_input(1.0, 0.5);
-        input.recipe = input.recipe.with_prerequisite(Prerequisite::tech("required_tech"));
+        input.recipe = input
+            .recipe
+            .with_prerequisite(Prerequisite::tech("required_tech"));
 
         let mut emitter = VecEmitter { events: Vec::new() };
 
@@ -413,7 +411,9 @@ mod tests {
         let mut state = SynthesisState::default();
 
         let mut input = create_test_input(1.0, 0.5);
-        input.recipe = input.recipe.with_prerequisite(Prerequisite::tech("smithing"));
+        input.recipe = input
+            .recipe
+            .with_prerequisite(Prerequisite::tech("smithing"));
         input.unlocked.techs.insert(TechId("smithing".into()));
 
         let mut emitter = VecEmitter { events: Vec::new() };

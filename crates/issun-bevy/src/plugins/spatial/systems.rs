@@ -1,6 +1,9 @@
 //! Systems for the spatial plugin.
 
-use bevy::{ecs::message::{MessageReader, MessageWriter}, prelude::*};
+use bevy::{
+    ecs::message::{MessageReader, MessageWriter},
+    prelude::*,
+};
 use issun_core::mechanics::spatial::{GraphSpatialMechanic, OccupancyState, SpatialQuery};
 use issun_core::mechanics::{EventEmitter, Mechanic};
 

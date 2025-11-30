@@ -105,8 +105,8 @@ pub mod types;
 pub use mechanic::{GraphSpatialMechanic, GridSpatialMechanic, SpatialMechanic};
 pub use policies::{DistancePolicy, TopologyPolicy};
 pub use types::{
-    BlockReason, EntityId, GraphMetadata, NodeId, NodeType, OccupancyState, Position,
-    SpatialEdge, SpatialEvent, SpatialGraph, SpatialNode, SpatialQuery,
+    BlockReason, EntityId, GraphMetadata, NodeId, NodeType, OccupancyState, Position, SpatialEdge,
+    SpatialEvent, SpatialGraph, SpatialNode, SpatialQuery,
 };
 
 /// Prelude module for convenient imports.

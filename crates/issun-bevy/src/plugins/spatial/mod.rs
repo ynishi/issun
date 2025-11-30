@@ -26,6 +26,4 @@ pub mod systems;
 pub mod types;
 
 pub use plugin::SpatialPlugin;
-pub use types::{
-    SpatialGraphResource, SpatialLocation, SpatialQueryRequest, SpatialQueryResult,
-};
+pub use types::{SpatialGraphResource, SpatialLocation, SpatialQueryRequest, SpatialQueryResult};

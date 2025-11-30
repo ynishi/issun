@@ -5,8 +5,8 @@
 
 use crate::mechanics::synthesis::policies::SynthesisPolicy;
 use crate::mechanics::synthesis::types::{
-    Byproduct, CatalystId, Defect, FailureReason, InheritanceSource, InheritedTrait,
-    IngredientInput, Prerequisite, PrerequisiteResult, QualityLevel, Recipe, RecipeId,
+    Byproduct, CatalystId, Defect, FailureReason, IngredientInput, InheritanceSource,
+    InheritedTrait, Prerequisite, PrerequisiteResult, QualityLevel, Recipe, RecipeId,
     SynthesisBonus, SynthesisConfig, SynthesisContext, SynthesisInput, SynthesisOutcome,
     SynthesisOutput, SynthesizerStats, UnexpectedTrigger, UnlockedPrerequisites,
 };
@@ -131,17 +131,11 @@ impl SynthesisPolicy for CraftingPolicy {
         let outcome_table = recipe.outcome_table.as_ref();
 
         // Get thresholds
-        let critical_threshold = outcome_table
-            .map(|t| t.critical_threshold)
-            .unwrap_or(0.95);
-        let partial_threshold = outcome_table
-            .map(|t| t.partial_threshold)
-            .unwrap_or(0.3);
+        let critical_threshold = outcome_table.map(|t| t.critical_threshold).unwrap_or(0.95);
+        let partial_threshold = outcome_table.map(|t| t.partial_threshold).unwrap_or(0.3);
 
         // Check for unexpected outcome first
-        if let Some(trigger) =
-            Self::check_unexpected(recipe, &input.ingredients, &input.context)
-        {
+        if let Some(trigger) = Self::check_unexpected(recipe, &input.ingredients, &input.context) {
             // Check if there's a matching unexpected entry
             if let Some(table) = outcome_table {
                 for entry in &table.unexpected_outcomes {
@@ -199,7 +193,11 @@ impl SynthesisPolicy for CraftingPolicy {
         if !is_success {
             // Failure (roll too low)
             SynthesisOutcome::Failure {
-                reason: determine_failure_reason(success_rate, &input.synthesizer, &input.ingredients),
+                reason: determine_failure_reason(
+                    success_rate,
+                    &input.synthesizer,
+                    &input.ingredients,
+                ),
                 consumption: Self::calculate_failure_consumption(config, recipe, success_rate),
                 salvage: calculate_salvage(&input.ingredients, success_rate),
             }
@@ -417,12 +415,12 @@ fn check_single_prerequisite(prereq: &Prerequisite, unlocked: &UnlockedPrerequis
         Prerequisite::Item { id, quantity } => unlocked.has_item(id, *quantity),
         Prerequisite::Level { min_level } => unlocked.meets_level(*min_level),
         Prerequisite::Flag { id } => unlocked.has_flag(id),
-        Prerequisite::All { prerequisites } => {
-            prerequisites.iter().all(|p| check_single_prerequisite(p, unlocked))
-        }
-        Prerequisite::Any { prerequisites } => {
-            prerequisites.iter().any(|p| check_single_prerequisite(p, unlocked))
-        }
+        Prerequisite::All { prerequisites } => prerequisites
+            .iter()
+            .all(|p| check_single_prerequisite(p, unlocked)),
+        Prerequisite::Any { prerequisites } => prerequisites
+            .iter()
+            .any(|p| check_single_prerequisite(p, unlocked)),
         Prerequisite::Not { prerequisite } => !check_single_prerequisite(prerequisite, unlocked),
     }
 }
@@ -534,7 +532,9 @@ fn calculate_salvage(ingredients: &[IngredientInput], success_rate: f32) -> Vec<
         ingredients
             .iter()
             .take(1)
-            .map(|i| SynthesisOutput::new(i.id.clone(), (i.quantity as f32 * salvage_chance) as u64))
+            .map(|i| {
+                SynthesisOutput::new(i.id.clone(), (i.quantity as f32 * salvage_chance) as u64)
+            })
             .filter(|s| s.quantity > 0)
             .collect()
     } else {
@@ -653,10 +653,7 @@ mod tests {
     fn test_prerequisite_check_composite() {
         // Requires (smithing AND level 5) OR advanced_smithing
         let prereqs = vec![Prerequisite::any(vec![
-            Prerequisite::all(vec![
-                Prerequisite::tech("smithing"),
-                Prerequisite::level(5),
-            ]),
+            Prerequisite::all(vec![Prerequisite::tech("smithing"), Prerequisite::level(5)]),
             Prerequisite::tech("advanced_smithing"),
         ])];
 
@@ -797,12 +794,9 @@ mod tests {
             InheritanceSource {
                 entity_id: "entity_a".into(),
                 traits: vec![TraitId("fire".into()), TraitId("ice".into())],
-                affinities: [
-                    (TraitId("fire".into()), 0.8),
-                    (TraitId("ice".into()), 0.3),
-                ]
-                .into_iter()
-                .collect(),
+                affinities: [(TraitId("fire".into()), 0.8), (TraitId("ice".into()), 0.3)]
+                    .into_iter()
+                    .collect(),
             },
             InheritanceSource {
                 entity_id: "entity_b".into(),

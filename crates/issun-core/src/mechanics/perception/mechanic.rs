@@ -127,8 +127,12 @@ where
         let delay = P::calculate_delay(accuracy, config.max_delay);
 
         // 4. Apply noise to ground truth
-        let perceived_value =
-            P::apply_noise(&input.ground_truth, accuracy, input.rng, config.noise_amplitude);
+        let perceived_value = P::apply_noise(
+            &input.ground_truth,
+            accuracy,
+            input.rng,
+            config.noise_amplitude,
+        );
 
         // 5. Calculate initial confidence (based on accuracy)
         let initial_confidence = accuracy;
@@ -142,9 +146,13 @@ where
         }
 
         // 7. Create perception
-        let perception =
-            Perception::new(perceived_value, accuracy, initial_confidence, input.current_tick)
-                .with_delay(delay);
+        let perception = Perception::new(
+            perceived_value,
+            accuracy,
+            initial_confidence,
+            input.current_tick,
+        )
+        .with_delay(delay);
 
         // 8. Emit observation event
         emitter.emit(PerceptionEvent::ObservationMade {
@@ -171,9 +179,7 @@ where
             });
         }
 
-        state
-            .knowledge
-            .insert(input.fact_id, perception.clone());
+        state.knowledge.insert(input.fact_id, perception.clone());
 
         // 10. Update state
         state.accuracy = accuracy;
