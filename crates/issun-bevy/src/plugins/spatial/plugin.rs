@@ -7,8 +7,10 @@ use super::systems::{
     handle_move_entity, handle_spatial_queries, log_spatial_events, OccupancyStateResource,
 };
 use super::types::{
-    MoveEntityRequest, SpatialGraphResource, SpatialQueryRequest, SpatialQueryResult,
+    MoveEntityRequest, SpatialGraphResource, SpatialLocation, SpatialQueryRequest,
+    SpatialQueryResult,
 };
+use crate::IssunSet;
 
 /// Spatial plugin for Bevy integration.
 ///
@@ -56,6 +58,11 @@ impl Default for SpatialPlugin {
 
 impl Plugin for SpatialPlugin {
     fn build(&self, app: &mut App) {
+        // Register types for reflection
+        app.register_type::<SpatialGraphResource>()
+            .register_type::<SpatialLocation>()
+            .register_type::<OccupancyStateResource>();
+
         // Register resources
         app.insert_resource(SpatialGraphResource::new(self.graph.clone()))
             .insert_resource(OccupancyStateResource(OccupancyState::new()));
@@ -73,7 +80,8 @@ impl Plugin for SpatialPlugin {
                 handle_move_entity,
                 log_spatial_events,
             )
-                .chain(),
+                .chain()
+                .in_set(IssunSet::Logic),
         );
     }
 }

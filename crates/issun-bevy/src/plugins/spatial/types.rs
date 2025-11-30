@@ -4,8 +4,10 @@ use bevy::prelude::*;
 use issun_core::mechanics::spatial::{NodeId, SpatialEvent, SpatialGraph, SpatialQuery};
 
 /// Resource holding the spatial graph configuration.
-#[derive(Resource, Clone)]
+#[derive(Resource, Clone, Reflect)]
+#[reflect(Resource)]
 pub struct SpatialGraphResource {
+    #[reflect(ignore)]
     pub graph: SpatialGraph,
 }
 
@@ -16,7 +18,8 @@ impl SpatialGraphResource {
 }
 
 /// Component marking an entity's location in the spatial graph.
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Reflect)]
+#[reflect(Component)]
 pub struct SpatialLocation {
     pub node: NodeId,
 }

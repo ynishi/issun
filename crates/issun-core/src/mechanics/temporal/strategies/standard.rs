@@ -96,8 +96,6 @@ pub struct RealTimePolicy;
 
 impl TemporalPolicy for RealTimePolicy {
     fn cost_modifier(config: &TemporalConfig, action: &ActionType, context: &ActorContext) -> f32 {
-        
-
         // Real-time games might want time-of-day effects
         // Override time_of_day_modifier for specific games
         StandardTemporalPolicy::cost_modifier(config, action, context)

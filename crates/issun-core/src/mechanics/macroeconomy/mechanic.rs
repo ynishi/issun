@@ -2,8 +2,8 @@
 
 use super::policies::EconomicPolicy;
 use super::types::{
-    EconomicEvent, EconomicIndicators, EconomicParameters, EconomicSnapshot,
-    SentimentDirection, ShockType,
+    EconomicEvent, EconomicIndicators, EconomicParameters, EconomicSnapshot, SentimentDirection,
+    ShockType,
 };
 use crate::mechanics::{EventEmitter, Mechanic, Transactional};
 use std::marker::PhantomData;

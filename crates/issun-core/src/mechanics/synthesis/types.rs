@@ -125,8 +125,7 @@ impl From<String> for SynthesizerId {
 // ============================================================================
 
 /// Quality level of synthesized items
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum QualityLevel {
     /// Broken/unusable
     Broken = 0,
@@ -144,7 +143,6 @@ pub enum QualityLevel {
     /// Legendary/masterwork
     Legendary = 6,
 }
-
 
 impl QualityLevel {
     /// Get numeric value
@@ -492,8 +490,7 @@ impl Recipe {
 }
 
 /// Recipe category
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RecipeCategory {
     /// Item crafting
     #[default]
@@ -511,7 +508,6 @@ pub enum RecipeCategory {
     /// Custom category
     Custom,
 }
-
 
 // ============================================================================
 // Output

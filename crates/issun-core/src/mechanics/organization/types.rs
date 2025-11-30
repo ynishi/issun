@@ -26,8 +26,7 @@ impl From<String> for MemberId {
 ///
 /// Each type fundamentally affects how decisions are made, authority is
 /// distributed, and members relate to the organization.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum OrganizationType {
     /// Hierarchical structure
     /// - Fast decisions (top-down)
@@ -80,7 +79,6 @@ pub enum OrganizationType {
     Anarchy,
 }
 
-
 // ============================================================================
 // Member Archetype
 // ============================================================================
@@ -89,8 +87,7 @@ pub enum OrganizationType {
 ///
 /// Members with archetypes that match their organization type have higher
 /// loyalty and productivity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum MemberArchetype {
     /// Prefers strong leadership and clear hierarchy
     /// - High loyalty in: Hierarchy, Corporate
@@ -127,7 +124,6 @@ pub enum MemberArchetype {
     /// - Low loyalty in: Tribal, Anarchy
     Ambitious,
 }
-
 
 // ============================================================================
 // Config

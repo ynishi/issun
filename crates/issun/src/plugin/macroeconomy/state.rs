@@ -3,10 +3,8 @@
 use issun_core::mechanics::macroeconomy::EconomicIndicators;
 
 /// State for macroeconomy plugin
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MacroeconomyState {
     /// Current economic indicators
     pub indicators: EconomicIndicators,
 }
-

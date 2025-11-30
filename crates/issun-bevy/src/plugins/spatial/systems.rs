@@ -73,8 +73,9 @@ pub fn log_spatial_events(mut events: MessageReader<SpatialQueryResult>) {
 }
 
 /// Resource wrapper for OccupancyState
-#[derive(Resource)]
-pub struct OccupancyStateResource(pub OccupancyState);
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+pub struct OccupancyStateResource(#[reflect(ignore)] pub OccupancyState);
 
 /// Bevy event emitter for spatial mechanic.
 struct BevySpatialEventEmitter<'a, 'b> {

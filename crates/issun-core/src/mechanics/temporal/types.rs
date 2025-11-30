@@ -781,8 +781,7 @@ impl ActionCost {
 // ============================================================================
 
 /// Time flow mode.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum TimeFlowMode {
     /// Turn-based: advance only on explicit request
     #[default]
@@ -827,10 +826,8 @@ impl TimeFlowMode {
     }
 }
 
-
 /// When budgets should reset.
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum ResetTrigger {
     /// Reset every N ticks
     PerTick(u64),
@@ -844,7 +841,6 @@ pub enum ResetTrigger {
     /// Reset on custom event
     OnEvent(String),
 }
-
 
 // ============================================================================
 // Global Time Interface

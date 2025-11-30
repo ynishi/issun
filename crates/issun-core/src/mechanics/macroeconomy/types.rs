@@ -13,8 +13,7 @@ pub type ItemId = String;
 // ============================================================================
 
 /// Configuration parameters for economic calculations
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct EconomicParameters {
     /// Inflation calculation parameters
     pub inflation_model: InflationModelConfig,
@@ -28,7 +27,6 @@ pub struct EconomicParameters {
     /// Currency supply rules
     pub currency_supply: CurrencySupplyConfig,
 }
-
 
 /// Inflation model configuration
 #[derive(Debug, Clone)]

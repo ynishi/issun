@@ -124,8 +124,7 @@ impl DirectiveType {
 // ============================================================================
 
 /// Personality traits that affect how a delegate handles directives
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum DelegateTrait {
     /// Follows orders precisely, little interpretation
     #[default]
@@ -152,7 +151,6 @@ pub enum DelegateTrait {
     /// By-the-book execution, no deviation
     Rigid,
 }
-
 
 // ============================================================================
 // Config
