@@ -6,6 +6,7 @@
 
 pub mod combat;
 pub mod contagion;
+pub mod delegation;
 pub mod diplomacy;
 pub mod evolution;
 pub mod exchange;
