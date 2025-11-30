@@ -16,4 +16,5 @@ pub mod reputation_v2;
 pub mod save_load;
 pub mod scripting;
 pub mod securitization_v2;
+pub mod spatial;
 pub mod time;

@@ -15,6 +15,7 @@ pub mod propagation;
 pub mod reputation;
 pub mod rights;
 pub mod securitization;
+pub mod spatial;
 pub mod state_machine;
 
 // Re-export execution hints for convenience
