@@ -4,6 +4,7 @@
 //! The design is based on Policy-Based Design patterns, allowing for compile-time
 //! composition of behaviors with zero runtime overhead.
 
+pub mod temporal;
 pub mod combat;
 pub mod contagion;
 pub mod delegation;
@@ -14,11 +15,13 @@ pub mod execution;
 pub mod inventory;
 pub mod macroeconomy;
 pub mod organization;
+pub mod perception;
 pub mod propagation;
 pub mod reputation;
 pub mod rights;
 pub mod securitization;
 pub mod spatial;
+pub mod synthesis;
 pub mod state_machine;
 
 // Re-export execution hints for convenience
