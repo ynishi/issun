@@ -39,6 +39,7 @@ pub mod holacracy;
 pub mod inventory;
 pub mod logistics;
 pub mod loot;
+pub mod macroeconomy;
 pub mod market;
 pub mod metrics;
 pub mod modular_synthesis;
