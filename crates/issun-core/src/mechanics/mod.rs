@@ -12,6 +12,7 @@ pub mod exchange;
 pub mod execution;
 pub mod inventory;
 pub mod macroeconomy;
+pub mod organization;
 pub mod propagation;
 pub mod reputation;
 pub mod rights;
