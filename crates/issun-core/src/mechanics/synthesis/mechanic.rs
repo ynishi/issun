@@ -267,7 +267,7 @@ where
                 let affinity = (0.5 + input.synthesizer.skill_level * 0.5).clamp(0.5, 1.5);
 
                 // Decorrelate from outcome RNG to avoid statistical coupling
-                let inheritance_rng = (input.rng * 1.618_033_988).fract();
+                let inheritance_rng = (input.rng * 1.618_034).fract();
 
                 let inherited_traits = P::determine_inheritance(
                     &input.inheritance_sources,
