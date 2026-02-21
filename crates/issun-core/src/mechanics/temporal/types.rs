@@ -121,7 +121,7 @@ impl GameDateTime {
     }
 
     /// Convert to total minutes since epoch.
-    fn to_total_minutes(&self, config: &CalendarConfig) -> u64 {
+    fn to_total_minutes(self, config: &CalendarConfig) -> u64 {
         let days_before_year = (0..self.year).map(|y| config.days_per_year(y)).sum::<u32>() as u64;
 
         let days_before_month: u64 = (1..self.month)

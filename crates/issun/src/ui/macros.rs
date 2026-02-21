@@ -72,6 +72,7 @@ macro_rules! drive {
             }
             chunk_idx += 1;
         )*
+        let _ = chunk_idx;
     }};
 }
 

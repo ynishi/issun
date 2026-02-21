@@ -228,30 +228,45 @@ impl Default for EconomicSnapshot {
 pub enum EconomicEvent {
     /// Inflation rate changed
     InflationChanged {
+        /// Previous inflation rate before the change.
         old_rate: f32,
+        /// Updated inflation rate after the change.
         new_rate: f32,
+        /// Difference between new and old rates.
         delta: f32,
     },
 
     /// Market sentiment shifted
     SentimentShifted {
+        /// Previous sentiment value before the shift.
         old_sentiment: f32,
+        /// Updated sentiment value after the shift.
         new_sentiment: f32,
+        /// Whether sentiment moved bullish or bearish.
         direction: SentimentDirection,
     },
 
     /// Business cycle phase transition
-    CyclePhaseChanged { from: CyclePhase, to: CyclePhase },
+    CyclePhaseChanged {
+        /// Phase before the transition.
+        from: CyclePhase,
+        /// Phase after the transition.
+        to: CyclePhase,
+    },
 
     /// Economic shock detected
     Shock {
+        /// Category of economic shock.
         shock_type: ShockType,
+        /// Severity of the shock (0.0 to 1.0).
         magnitude: f32,
     },
 
     /// Resource scarcity alert
     ScarcityAlert {
+        /// Identifier of the scarce resource.
         resource: ResourceId,
+        /// Scarcity severity index (higher means more scarce).
         scarcity_index: f32,
     },
 }

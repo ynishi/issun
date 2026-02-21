@@ -16,8 +16,11 @@ pub type EntityId = String;
 /// Can be used for both 2D (ignore `z`) and 3D spatial representations.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Position {
+    /// X coordinate.
     pub x: f32,
+    /// Y coordinate.
     pub y: f32,
+    /// Z coordinate (0.0 for 2D).
     pub z: f32,
 }
 
@@ -327,22 +330,41 @@ impl OccupancyState {
 /// Input query for the spatial mechanic.
 #[derive(Debug, Clone)]
 pub enum SpatialQuery {
-    /// Get all neighbors of a node
-    Neighbors { node: NodeId },
+    /// Get all neighbors of a node.
+    Neighbors {
+        /// Target node to query neighbors for.
+        node: NodeId,
+    },
 
-    /// Calculate distance between two nodes
-    Distance { from: NodeId, to: NodeId },
+    /// Calculate distance between two nodes.
+    Distance {
+        /// Origin node.
+        from: NodeId,
+        /// Destination node.
+        to: NodeId,
+    },
 
-    /// Check if movement is allowed
-    CanMove { from: NodeId, to: NodeId },
+    /// Check if movement is allowed.
+    CanMove {
+        /// Origin node.
+        from: NodeId,
+        /// Destination node.
+        to: NodeId,
+    },
 
-    /// Get all occupants at a location
-    GetOccupants { node: NodeId },
+    /// Get all occupants at a location.
+    GetOccupants {
+        /// Node to query occupants for.
+        node: NodeId,
+    },
 
-    /// Update occupancy (entity moved)
+    /// Update occupancy (entity moved).
     UpdateOccupancy {
+        /// Entity that moved.
         entity: EntityId,
+        /// Previous location (None if entering the system).
         from: Option<NodeId>,
+        /// New location.
         to: NodeId,
     },
 }
@@ -365,33 +387,51 @@ pub enum BlockReason {
 /// Events emitted by the spatial mechanic.
 #[derive(Debug, Clone)]
 pub enum SpatialEvent {
-    /// Neighbors query result
+    /// Neighbors query result.
     NeighborsFound {
+        /// Queried node.
         node: NodeId,
+        /// Adjacent nodes found.
         neighbors: Vec<NodeId>,
     },
 
-    /// Distance calculation result
+    /// Distance calculation result.
     DistanceCalculated {
+        /// Origin node.
         from: NodeId,
+        /// Destination node.
         to: NodeId,
+        /// Calculated distance.
         distance: f32,
     },
 
-    /// Movement is allowed
-    MovementAllowed { from: NodeId, to: NodeId, cost: f32 },
-
-    /// Movement is blocked
-    MovementBlocked {
+    /// Movement is allowed.
+    MovementAllowed {
+        /// Origin node.
         from: NodeId,
+        /// Destination node.
         to: NodeId,
+        /// Movement cost.
+        cost: f32,
+    },
+
+    /// Movement is blocked.
+    MovementBlocked {
+        /// Origin node.
+        from: NodeId,
+        /// Destination node.
+        to: NodeId,
+        /// Why movement was blocked.
         reason: BlockReason,
     },
 
-    /// Occupancy changed (entity entered/left)
+    /// Occupancy changed (entity entered/left).
     OccupancyChanged {
+        /// Affected node.
         node: NodeId,
+        /// Entity that moved.
         entity: EntityId,
+        /// True if entered, false if left.
         entered: bool,
     },
 }

@@ -103,8 +103,10 @@ mod tests {
 
     #[test]
     fn test_market_adjusted_valuation_unfair_trade() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.8;
+        let config = ExchangeConfig {
+            fairness_threshold: 0.8,
+            ..Default::default()
+        };
         let fair = MarketAdjustedValuation::calculate_fair_value(100.0, 300.0, 1.0, 1.0, &config);
         assert_eq!(fair, 0.0); // Unfair trade regardless of bonuses
     }

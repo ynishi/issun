@@ -64,25 +64,50 @@ impl From<String> for FactId {
 #[derive(Debug, Clone, PartialEq)]
 pub enum GroundTruth {
     /// Numeric quantity (e.g., troop count, resource amount)
-    Quantity { value: i64 },
+    Quantity {
+        /// The integer quantity value.
+        value: i64,
+    },
 
     /// Floating-point value (e.g., health, price)
-    Scalar { value: f32 },
+    Scalar {
+        /// The scalar floating-point value.
+        value: f32,
+    },
 
     /// Position in 2D space
-    Position { x: f32, y: f32 },
+    Position {
+        /// X coordinate.
+        x: f32,
+        /// Y coordinate.
+        y: f32,
+    },
 
     /// Position in 3D space
-    Position3D { x: f32, y: f32, z: f32 },
+    Position3D {
+        /// X coordinate.
+        x: f32,
+        /// Y coordinate.
+        y: f32,
+        /// Z coordinate.
+        z: f32,
+    },
 
     /// Boolean presence (e.g., does this unit exist?)
-    Presence { exists: bool },
+    Presence {
+        /// Whether the entity exists.
+        exists: bool,
+    },
 
     /// Categorical state (e.g., faction allegiance, unit type)
-    Category { value: String },
+    Category {
+        /// The category label.
+        value: String,
+    },
 
     /// Composite fact with multiple fields
     Composite {
+        /// Named sub-fields mapping to nested ground truths.
         fields: HashMap<String, GroundTruth>,
     },
 }

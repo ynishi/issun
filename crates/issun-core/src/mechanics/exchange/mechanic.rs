@@ -202,8 +202,10 @@ mod tests {
 
     #[test]
     fn test_simple_exchange_unfair_rejection() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.8;
+        let config = ExchangeConfig {
+            fairness_threshold: 0.8,
+            ..Default::default()
+        };
 
         let mut state = ExchangeState::default();
         let input = ExchangeInput {
@@ -230,8 +232,10 @@ mod tests {
     #[test]
     fn test_simple_exchange_locked() {
         let config = ExchangeConfig::default();
-        let mut state = ExchangeState::default();
-        state.is_locked = true;
+        let mut state = ExchangeState {
+            is_locked: true,
+            ..Default::default()
+        };
 
         let input = ExchangeInput {
             offered_value: 100.0,
@@ -282,8 +286,10 @@ mod tests {
 
     #[test]
     fn test_market_exchange_urgent_unfair_trade() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.5;
+        let config = ExchangeConfig {
+            fairness_threshold: 0.5,
+            ..Default::default()
+        };
 
         let mut state = ExchangeState::new(0.8); // High reputation
         let input = ExchangeInput {
@@ -305,8 +311,10 @@ mod tests {
 
     #[test]
     fn test_transaction_fee() {
-        let mut config = ExchangeConfig::default();
-        config.transaction_fee_rate = 0.05; // 5% fee
+        let config = ExchangeConfig {
+            transaction_fee_rate: 0.05, // 5% fee
+            ..Default::default()
+        };
 
         let mut state = ExchangeState::default();
         let input = ExchangeInput {

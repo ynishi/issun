@@ -67,8 +67,10 @@ mod tests {
 
     #[test]
     fn test_plugin_with_config() {
-        let mut config = MacroeconomyConfig::default();
-        config.update_interval = 5;
+        let config = MacroeconomyConfig {
+            update_interval: 5,
+            ..Default::default()
+        };
 
         let plugin = MacroeconomyPlugin::new().with_config(config);
         assert_eq!(plugin.config().update_interval, 5);
