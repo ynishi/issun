@@ -979,6 +979,14 @@ pub struct SynthesisInput {
     pub context: SynthesisContext,
     /// Unlocked prerequisites
     pub unlocked: UnlockedPrerequisites,
+    /// Inheritance sources for fusion trait inheritance.
+    ///
+    /// When non-empty, the policy's `determine_inheritance` is called
+    /// and the resulting traits are emitted as `TraitInherited` events
+    /// with correct source attribution.
+    ///
+    /// Leave empty for non-fusion synthesis (crafting, research, etc.).
+    pub inheritance_sources: Vec<InheritanceSource>,
     /// Random value for outcome determination (0.0-1.0)
     pub rng: f32,
     /// Current tick
