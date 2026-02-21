@@ -73,6 +73,7 @@ use super::types::{
 ///     },
 ///     context: SynthesisContext::default(),
 ///     unlocked: UnlockedPrerequisites::default(),
+///     inheritance_sources: Vec::new(),
 ///     rng: 0.6,
 ///     current_tick: 100,
 /// };
@@ -249,16 +250,38 @@ where
         }
 
         // 6. Emit trait inheritance events (for fusion)
+        //
+        // When inheritance_sources is provided, determine_inheritance dynamically
+        // resolves which traits are inherited and from which source. The resulting
+        // TraitInherited events are the authoritative inheritance record; the static
+        // output.inherited_traits from the recipe definition is not used in this path.
         if let Some(output) = outcome.output() {
-            for trait_id in &output.inherited_traits {
-                // Find source of trait
-                for source in &input.ingredients {
+            if !input.inheritance_sources.is_empty() {
+                let total_source_traits: usize = input
+                    .inheritance_sources
+                    .iter()
+                    .map(|s| s.traits.len())
+                    .sum();
+
+                // Affinity scaled by synthesizer skill: higher skill = better inheritance
+                let affinity = (0.5 + input.synthesizer.skill_level * 0.5).clamp(0.5, 1.5);
+
+                // Decorrelate from outcome RNG to avoid statistical coupling
+                let inheritance_rng = (input.rng * 1.618_033_988).fract();
+
+                let inherited_traits = P::determine_inheritance(
+                    &input.inheritance_sources,
+                    total_source_traits,
+                    affinity,
+                    inheritance_rng,
+                );
+
+                for inherited in &inherited_traits {
                     emitter.emit(SynthesisEvent::TraitInherited {
                         output_id: output.id.clone(),
-                        trait_id: trait_id.clone(),
-                        source: source.id.clone(),
+                        trait_id: inherited.trait_id.clone(),
+                        source: inherited.source.clone(),
                     });
-                    break; // Only emit once per trait
                 }
             }
         }
@@ -289,8 +312,9 @@ pub type SimpleSynthesisMechanic = SynthesisMechanic<CraftingPolicy>;
 mod tests {
     use super::*;
     use crate::mechanics::synthesis::types::{
-        Ingredient, IngredientInput, Prerequisite, QualityLevel, Recipe, RecipeCategory,
-        SynthesisContext, SynthesisOutput, SynthesizerStats, TechId, UnlockedPrerequisites,
+        Ingredient, IngredientId, IngredientInput, InheritanceSource, Prerequisite, QualityLevel,
+        Recipe, RecipeCategory, SynthesisContext, SynthesisOutput, SynthesizerStats, TechId,
+        TraitId, UnlockedPrerequisites,
     };
 
     struct VecEmitter {
@@ -329,6 +353,7 @@ mod tests {
             },
             context: SynthesisContext::default(),
             unlocked: UnlockedPrerequisites::default(),
+            inheritance_sources: Vec::new(),
             rng,
             current_tick: 100,
         }
@@ -465,5 +490,200 @@ mod tests {
         SimpleSynthesisMechanic::step(&config, &mut state, input, &mut emitter);
 
         assert_eq!(state.last_synthesis, 500);
+    }
+
+    // =========================================================================
+    // Trait inheritance (fusion) tests
+    // =========================================================================
+
+    fn create_fusion_recipe() -> Recipe {
+        Recipe::new("fusion_demon", "Fusion Demon")
+            .with_category(RecipeCategory::Fusion)
+            .with_difficulty(1.0)
+            .with_ingredient(Ingredient::new("demon_a", 1))
+            .with_ingredient(Ingredient::new("demon_b", 1))
+            .with_output(SynthesisOutput::new("fused_demon", 1))
+            .with_base_quality(QualityLevel::Common)
+    }
+
+    fn create_fusion_input(rng: f32) -> SynthesisInput {
+        SynthesisInput {
+            recipe: create_fusion_recipe(),
+            ingredients: vec![
+                IngredientInput {
+                    id: "demon_a".into(),
+                    quantity: 1,
+                    quality: QualityLevel::Common,
+                },
+                IngredientInput {
+                    id: "demon_b".into(),
+                    quantity: 1,
+                    quality: QualityLevel::Common,
+                },
+            ],
+            synthesizer: SynthesizerStats {
+                entity_id: "summoner".into(),
+                skill_level: 1.0,
+                luck: 0.0,
+                quality_bonus: 0.0,
+                specializations: Default::default(),
+            },
+            context: SynthesisContext::default(),
+            unlocked: UnlockedPrerequisites::default(),
+            inheritance_sources: vec![
+                InheritanceSource {
+                    entity_id: IngredientId("demon_a".into()),
+                    traits: vec![TraitId("fire_breath".into()), TraitId("resist_ice".into())],
+                    affinities: [
+                        (TraitId("fire_breath".into()), 0.9),
+                        (TraitId("resist_ice".into()), 0.7),
+                    ]
+                    .into_iter()
+                    .collect(),
+                },
+                InheritanceSource {
+                    entity_id: IngredientId("demon_b".into()),
+                    traits: vec![TraitId("lightning".into())],
+                    affinities: [(TraitId("lightning".into()), 0.8)].into_iter().collect(),
+                },
+            ],
+            rng,
+            current_tick: 200,
+        }
+    }
+
+    #[test]
+    fn test_fusion_trait_inherited_events_have_correct_source() {
+        let config = SynthesisConfig::default();
+        let mut state = SynthesisState::default();
+        let input = create_fusion_input(0.5);
+
+        let mut emitter = VecEmitter { events: Vec::new() };
+
+        SimpleSynthesisMechanic::step(&config, &mut state, input, &mut emitter);
+
+        // Synthesis should succeed (high skill)
+        assert!(
+            state
+                .outcome
+                .as_ref()
+                .map(|o| o.is_success())
+                .unwrap_or(false),
+            "Fusion should succeed: {:?}",
+            state.outcome
+        );
+
+        // Collect TraitInherited events
+        let trait_events: Vec<_> = emitter
+            .events
+            .iter()
+            .filter_map(|e| match e {
+                SynthesisEvent::TraitInherited {
+                    output_id,
+                    trait_id,
+                    source,
+                } => Some((output_id.clone(), trait_id.clone(), source.clone())),
+                _ => None,
+            })
+            .collect();
+
+        // Should have at least one TraitInherited event
+        assert!(
+            !trait_events.is_empty(),
+            "Fusion with inheritance_sources should emit TraitInherited events"
+        );
+
+        // Each TraitInherited event's source must match the actual owner of that trait
+        for (_, trait_id, source) in &trait_events {
+            let is_correct_source = match trait_id.0.as_str() {
+                "fire_breath" | "resist_ice" => source.0 == "demon_a",
+                "lightning" => source.0 == "demon_b",
+                other => panic!("Unexpected trait: {}", other),
+            };
+            assert!(
+                is_correct_source,
+                "Trait {:?} should come from correct source, got {:?}",
+                trait_id, source
+            );
+        }
+    }
+
+    #[test]
+    fn test_fusion_no_inheritance_sources_no_trait_events() {
+        let config = SynthesisConfig::default();
+        let mut state = SynthesisState::default();
+        // Use standard input (no inheritance_sources)
+        let input = create_test_input(1.0, 0.5);
+
+        let mut emitter = VecEmitter { events: Vec::new() };
+
+        SimpleSynthesisMechanic::step(&config, &mut state, input, &mut emitter);
+
+        let trait_events: Vec<_> = emitter
+            .events
+            .iter()
+            .filter(|e| matches!(e, SynthesisEvent::TraitInherited { .. }))
+            .collect();
+
+        assert!(
+            trait_events.is_empty(),
+            "No inheritance_sources should produce no TraitInherited events"
+        );
+    }
+
+    #[test]
+    fn test_fusion_trait_events_output_id_matches_synthesis_output() {
+        let config = SynthesisConfig::default();
+        let mut state = SynthesisState::default();
+        let input = create_fusion_input(0.5);
+
+        let mut emitter = VecEmitter { events: Vec::new() };
+
+        SimpleSynthesisMechanic::step(&config, &mut state, input, &mut emitter);
+
+        // All TraitInherited events should reference the output entity
+        for event in &emitter.events {
+            if let SynthesisEvent::TraitInherited { output_id, .. } = event {
+                assert_eq!(
+                    output_id.0, "fused_demon",
+                    "TraitInherited output_id should match synthesis output"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_fusion_failed_synthesis_no_trait_events() {
+        let config = SynthesisConfig::default();
+        let mut state = SynthesisState::default();
+        // skill=0.1, difficulty=1.0 → success_rate≈0.08, failure_threshold≈0.92
+        // rng=0.01 → roll=0.01 < 0.92 → guaranteed failure
+        let mut input = create_fusion_input(0.01);
+        input.synthesizer.skill_level = 0.1;
+
+        let mut emitter = VecEmitter { events: Vec::new() };
+
+        SimpleSynthesisMechanic::step(&config, &mut state, input, &mut emitter);
+
+        // Assert synthesis actually failed
+        assert!(
+            !state
+                .outcome
+                .as_ref()
+                .expect("outcome should exist")
+                .has_output(),
+            "Synthesis should fail with skill=0.1, rng=0.01"
+        );
+
+        let trait_events: Vec<_> = emitter
+            .events
+            .iter()
+            .filter(|e| matches!(e, SynthesisEvent::TraitInherited { .. }))
+            .collect();
+
+        assert!(
+            trait_events.is_empty(),
+            "Failed synthesis should not emit TraitInherited events"
+        );
     }
 }

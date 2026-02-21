@@ -694,6 +694,7 @@ mod tests {
             synthesizer,
             context: SynthesisContext::default(),
             unlocked: UnlockedPrerequisites::default(),
+            inheritance_sources: Vec::new(),
             rng: 0.5,
             current_tick: 100,
         };
@@ -721,6 +722,7 @@ mod tests {
             synthesizer,
             context: SynthesisContext::default(),
             unlocked: UnlockedPrerequisites::default(),
+            inheritance_sources: Vec::new(),
             rng: 0.05,
             current_tick: 100,
         };
@@ -751,6 +753,7 @@ mod tests {
             synthesizer,
             context: SynthesisContext::default(),
             unlocked: UnlockedPrerequisites::default(),
+            inheritance_sources: Vec::new(),
             rng: 0.96,
             current_tick: 100,
         };
