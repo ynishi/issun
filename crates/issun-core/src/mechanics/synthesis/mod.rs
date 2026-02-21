@@ -72,6 +72,7 @@
 //!         u.techs.insert(TechId("basic_alchemy".into()));
 //!         u
 //!     },
+//!     inheritance_sources: Vec::new(),
 //!     rng: 0.6,
 //!     current_tick: 100,
 //! };
