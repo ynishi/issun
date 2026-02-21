@@ -67,24 +67,30 @@ mod tests {
 
     #[test]
     fn test_simple_valuation_below_threshold() {
-        let mut config = ExchangeConfig::default();
-        config.minimum_value_threshold = 50.0;
+        let config = ExchangeConfig {
+            minimum_value_threshold: 50.0,
+            ..Default::default()
+        };
         let fair = SimpleValuation::calculate_fair_value(30.0, 30.0, 0.5, 0.5, &config);
         assert_eq!(fair, 0.0); // Below threshold
     }
 
     #[test]
     fn test_simple_valuation_unfair_ratio() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.8; // 0.8x to 1.25x is acceptable
+        let config = ExchangeConfig {
+            fairness_threshold: 0.8, // 0.8x to 1.25x is acceptable
+            ..Default::default()
+        };
         let fair = SimpleValuation::calculate_fair_value(100.0, 300.0, 0.5, 0.5, &config);
         assert_eq!(fair, 0.0); // Ratio 0.33 is below threshold 0.8
     }
 
     #[test]
     fn test_simple_valuation_fee() {
-        let mut config = ExchangeConfig::default();
-        config.transaction_fee_rate = 0.05; // 5% fee
+        let config = ExchangeConfig {
+            transaction_fee_rate: 0.05, // 5% fee
+            ..Default::default()
+        };
         let fair = SimpleValuation::calculate_fair_value(100.0, 100.0, 0.5, 0.5, &config);
         let fee = SimpleValuation::calculate_fee(fair, &config);
         assert_eq!(fee, 5.0);

@@ -195,8 +195,10 @@ mod tests {
     #[test]
     fn test_calculate_inflation_no_prices() {
         let config = EconomicParameters::default();
-        let mut state = EconomicIndicators::default();
-        state.inflation_rate = 0.05;
+        let state = EconomicIndicators {
+            inflation_rate: 0.05,
+            ..Default::default()
+        };
         let snapshot = create_snapshot(5000.0, vec![], 1000.0);
 
         let inflation = SimpleEconomicPolicy::calculate_inflation(&config, &state, &snapshot);
@@ -243,9 +245,11 @@ mod tests {
     #[test]
     fn test_detect_cycle_phase_expansion() {
         let config = EconomicParameters::default();
-        let mut state = EconomicIndicators::default();
-        state.production_index = 1000.0;
-        state.cycle_phase = CyclePhase::Expansion;
+        let state = EconomicIndicators {
+            production_index: 1000.0,
+            cycle_phase: CyclePhase::Expansion,
+            ..Default::default()
+        };
 
         let snapshot = create_snapshot(5000.0, vec![], 1050.0); // 5% growth
 
@@ -257,9 +261,11 @@ mod tests {
     #[test]
     fn test_detect_cycle_phase_contraction() {
         let config = EconomicParameters::default();
-        let mut state = EconomicIndicators::default();
-        state.production_index = 1000.0;
-        state.cycle_phase = CyclePhase::Expansion;
+        let state = EconomicIndicators {
+            production_index: 1000.0,
+            cycle_phase: CyclePhase::Expansion,
+            ..Default::default()
+        };
 
         let snapshot = create_snapshot(5000.0, vec![], 980.0); // -2% growth
 

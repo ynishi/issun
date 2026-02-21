@@ -205,8 +205,10 @@ mod tests {
     #[test]
     fn test_inflation_change_event() {
         let config = EconomicParameters::default();
-        let mut state = EconomicIndicators::default();
-        state.inflation_rate = 0.01;
+        let mut state = EconomicIndicators {
+            inflation_rate: 0.01,
+            ..Default::default()
+        };
 
         let snapshot = EconomicSnapshot {
             transaction_volume: 5000.0,
@@ -234,9 +236,11 @@ mod tests {
     #[test]
     fn test_cycle_phase_transition() {
         let config = EconomicParameters::default();
-        let mut state = EconomicIndicators::default();
-        state.production_index = 1000.0;
-        state.cycle_phase = CyclePhase::Expansion;
+        let mut state = EconomicIndicators {
+            production_index: 1000.0,
+            cycle_phase: CyclePhase::Expansion,
+            ..Default::default()
+        };
 
         // Simulate contraction
         let snapshot = EconomicSnapshot {
@@ -300,9 +304,11 @@ mod tests {
     #[test]
     fn test_money_supply_growth() {
         let config = EconomicParameters::default();
-        let mut state = EconomicIndicators::default();
-        state.money_supply = 100_000.0;
-        state.inflation_rate = 0.02;
+        let mut state = EconomicIndicators {
+            money_supply: 100_000.0,
+            inflation_rate: 0.02,
+            ..Default::default()
+        };
 
         let snapshot = EconomicSnapshot::default();
         let mut emitter = TestEmitter { events: vec![] };

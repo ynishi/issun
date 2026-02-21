@@ -46,8 +46,10 @@ mod tests {
 
     #[test]
     fn test_should_update_every_tick() {
-        let mut config = MacroeconomyConfig::default();
-        config.update_interval = 0;
+        let config = MacroeconomyConfig {
+            update_interval: 0,
+            ..Default::default()
+        };
 
         assert!(MacroeconomySystem::should_update(0, &config));
         assert!(MacroeconomySystem::should_update(1, &config));
@@ -56,8 +58,10 @@ mod tests {
 
     #[test]
     fn test_should_update_interval() {
-        let mut config = MacroeconomyConfig::default();
-        config.update_interval = 10;
+        let config = MacroeconomyConfig {
+            update_interval: 10,
+            ..Default::default()
+        };
 
         assert!(MacroeconomySystem::should_update(0, &config));
         assert!(!MacroeconomySystem::should_update(1, &config));
@@ -70,8 +74,10 @@ mod tests {
     fn test_update_indicators() {
         let config = MacroeconomyConfig::default();
         let mut state = MacroeconomyState::default();
-        let mut metrics = EconomicMetrics::default();
-        metrics.current_tick = 100;
+        let metrics = EconomicMetrics {
+            current_tick: 100,
+            ..Default::default()
+        };
 
         struct TestEmitter {
             events: Vec<issun_core::mechanics::macroeconomy::EconomicEvent>,

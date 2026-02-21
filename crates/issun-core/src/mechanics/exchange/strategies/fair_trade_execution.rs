@@ -75,16 +75,20 @@ mod tests {
 
     #[test]
     fn test_fair_trade_execution_insufficient_value() {
-        let mut config = ExchangeConfig::default();
-        config.minimum_value_threshold = 50.0;
+        let config = ExchangeConfig {
+            minimum_value_threshold: 50.0,
+            ..Default::default()
+        };
         let result = FairTradeExecution::should_execute(30.0, 30.0, 0.5, 0.5, false, &config);
         assert_eq!(result, Err(RejectionReason::InsufficientValue));
     }
 
     #[test]
     fn test_fair_trade_execution_unfair() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.8;
+        let config = ExchangeConfig {
+            fairness_threshold: 0.8,
+            ..Default::default()
+        };
         let result = FairTradeExecution::should_execute(100.0, 300.0, 0.5, 0.5, false, &config);
         assert_eq!(result, Err(RejectionReason::UnfairTrade));
     }

@@ -54,8 +54,10 @@ mod tests {
 
     #[test]
     fn test_calculate_issuance_limit() {
-        let mut config = SecuritizationConfig::default();
-        config.minimum_backing_ratio = 1.0; // 100% backing
+        let config = SecuritizationConfig {
+            minimum_backing_ratio: 1.0, // 100% backing
+            ..Default::default()
+        };
 
         // Collateral 1000, nothing issued yet
         let limit = FullBackingIssuance::calculate_issuance_limit(1000.0, 0.0, 0.0, &config);
@@ -68,8 +70,10 @@ mod tests {
 
     #[test]
     fn test_can_issue_securities_success() {
-        let mut config = SecuritizationConfig::default();
-        config.minimum_backing_ratio = 1.0;
+        let config = SecuritizationConfig {
+            minimum_backing_ratio: 1.0,
+            ..Default::default()
+        };
 
         let result =
             FullBackingIssuance::can_issue_securities(500.0, 1000.0, 0.0, 2.0, false, &config);
@@ -78,8 +82,10 @@ mod tests {
 
     #[test]
     fn test_can_issue_securities_insufficient_collateral() {
-        let mut config = SecuritizationConfig::default();
-        config.minimum_backing_ratio = 1.0;
+        let config = SecuritizationConfig {
+            minimum_backing_ratio: 1.0,
+            ..Default::default()
+        };
 
         // Try to issue 1500 with only 1000 collateral
         let result =

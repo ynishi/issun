@@ -267,8 +267,8 @@ impl Prerequisite {
         Prerequisite::Any { prerequisites }
     }
 
-    /// Create a NOT condition
-    pub fn not(prerequisite: Prerequisite) -> Self {
+    /// Create a negated condition (prerequisite must NOT be met).
+    pub fn negated(prerequisite: Prerequisite) -> Self {
         Prerequisite::Not {
             prerequisite: Box::new(prerequisite),
         }

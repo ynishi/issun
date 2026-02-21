@@ -250,15 +250,13 @@ where
 
         // 6. Emit trait inheritance events (for fusion)
         if let Some(output) = outcome.output() {
-            for trait_id in &output.inherited_traits {
-                // Find source of trait
-                for source in &input.ingredients {
+            if let Some(first_source) = input.ingredients.first() {
+                for trait_id in &output.inherited_traits {
                     emitter.emit(SynthesisEvent::TraitInherited {
                         output_id: output.id.clone(),
                         trait_id: trait_id.clone(),
-                        source: source.id.clone(),
+                        source: first_source.id.clone(),
                     });
-                    break; // Only emit once per trait
                 }
             }
         }

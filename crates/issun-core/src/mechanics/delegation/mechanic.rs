@@ -405,8 +405,10 @@ mod tests {
     #[test]
     fn test_mechanic_emits_compliance_change() {
         let config = DelegationConfig::default();
-        let mut state = DelegationState::default();
-        state.compliance = 0.3; // Start with low compliance
+        let mut state = DelegationState {
+            compliance: 0.3, // Start with low compliance
+            ..Default::default()
+        };
 
         // Input that should result in high compliance
         let input = create_test_input(0.95, 0.9, DelegateTrait::Loyal);

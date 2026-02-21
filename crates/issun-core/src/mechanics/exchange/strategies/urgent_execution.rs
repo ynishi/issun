@@ -84,8 +84,10 @@ mod tests {
 
     #[test]
     fn test_urgent_execution_high_urgency_relaxes_fairness() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.5;
+        let config = ExchangeConfig {
+            fairness_threshold: 0.5,
+            ..Default::default()
+        };
 
         // Without urgency, 0.4 ratio would fail
         let result = UrgentExecution::should_execute(40.0, 100.0, 0.0, 0.8, false, &config);
@@ -98,8 +100,10 @@ mod tests {
 
     #[test]
     fn test_urgent_execution_low_reputation_blocks_unfair() {
-        let mut config = ExchangeConfig::default();
-        config.fairness_threshold = 0.5;
+        let config = ExchangeConfig {
+            fairness_threshold: 0.5,
+            ..Default::default()
+        };
 
         // Even with high urgency, low reputation blocks very unfair trades
         // ratio = 0.15, adjusted_fairness = 0.5 * (1 - 1.0 * 0.6) = 0.2
@@ -110,8 +114,10 @@ mod tests {
 
     #[test]
     fn test_urgent_execution_relaxed_minimum_threshold() {
-        let mut config = ExchangeConfig::default();
-        config.minimum_value_threshold = 50.0;
+        let config = ExchangeConfig {
+            minimum_value_threshold: 50.0,
+            ..Default::default()
+        };
 
         // Without urgency, 30.0 would fail
         let result = UrgentExecution::should_execute(30.0, 30.0, 0.0, 0.5, false, &config);
