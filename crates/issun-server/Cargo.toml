@@ -41,4 +41,4 @@ prometheus = "0.13"
 axum = "0.7"
 
 # Issun core types
-issun = { version = "0.10.0", path = "../issun", features = ["network"] }
+issun = { version = "0.10.1", path = "../issun", features = ["network"] }

@@ -1,6 +1,6 @@
 [package]
 name = "issun-mod-rhai"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 authors = ["Yutaka Nishimura <ytk.nishimura@gmail.com>"]
 license = "MIT OR Apache-2.0"
@@ -8,7 +8,7 @@ repository = "https://github.com/ynishi/issun"
 description = "Rhai scripting backend for ISSUN MOD system"
 
 [dependencies]
-issun = { path = "../issun", version = "0.10.0", default-features = false, features = [] }
+issun = { path = "../issun", version = "0.10.1", default-features = false, features = [] }
 
 # Rhai scripting engine
 rhai = { workspace = true }
